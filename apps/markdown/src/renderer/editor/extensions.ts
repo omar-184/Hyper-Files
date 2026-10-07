@@ -10,9 +10,6 @@ import { CodeBlockView } from './CodeBlockView'
 import { ImageAwareLink, LocalImage } from './localImage'
 import { BlockDragHandle } from './blockDragHandle'
 import { BlockKeymap } from './blockKeymap'
-import { AiHighlight } from './aiHighlight'
-import { AiQueueAnchors } from './aiQueueAnchors'
-import { InactiveSelection } from './inactiveSelection'
 import { SearchHighlight } from './searchHighlight'
 import { buildMathExtensions } from './math'
 import {
@@ -122,9 +119,6 @@ export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[]
     ImageAwareLink.configure({ openOnClick: false }),
     BlockDragHandle,
     BlockKeymap,
-    AiHighlight,
-    AiQueueAnchors,
-    InactiveSelection,
     SearchHighlight,
     Placeholder.configure({ placeholder: () => t('placeholder') }),
     SlashCommand.configure({

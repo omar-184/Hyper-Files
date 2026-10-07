@@ -211,7 +211,6 @@ import { AutoDirectionExtension } from './direction'
 import { AutoCorrectExtension } from './autocorrect'
 import { InactiveSelectionExtension } from './inactive-selection'
 import { FieldCodesExtension } from './field-codes'
-import { AiQueueAnchorsExtension } from './ai-queue-anchors'
 import { CheckboxToggleExtension } from './checkbox-toggle'
 import { PageGapNavExtension } from './page-gap-nav'
 import { TrailingTableExitExtension } from './trailing-table-exit'
@@ -6536,7 +6535,6 @@ export const editorExtensions = [
   RowFillsExtension,
   FloatVShiftsExtension,
   InactiveSelectionExtension,
-  AiQueueAnchorsExtension,
   CheckboxToggleExtension,
   PageGapNavExtension,
   TrailingTableExitExtension,

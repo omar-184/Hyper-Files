@@ -260,7 +260,6 @@ import {
 } from './components/icons'
 import { ToastHost } from './components/toast'
 import {
-  AI_REWRITE_ACK_KEY,
   LinkInsertModal,
   TableInsertModal,
   applyParagraphStyle,
@@ -6339,7 +6338,6 @@ export function App() {
         showStylesPane={showStylesPane}
         onShowStylesPane={setShowStylesPane}
         commentCount={comments.length}
-        openCommentCount={comments.filter((c) => !c.parentId && c.done !== true).length}
         resolvedCommentCount={comments.filter((c) => !c.parentId && c.done === true).length}
         commentAtCaret={commentThreadAtCaretImpl(reviewCtxRef.current) !== null}
         canComment={!editor.state.selection.empty || wordRangeAtCaret(editor) !== null}

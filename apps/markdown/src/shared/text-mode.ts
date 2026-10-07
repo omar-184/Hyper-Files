@@ -18,7 +18,7 @@ const MARKDOWN_RE = /\.(md|markdown)$/i
  * The mode for a path, or 'markdown' for a null/untitled path.
  *
  * An untitled document is a new markdown document: that is what the New
- * button, the empty tab and the AI auto-naming path all mean by it.
+ * button and the empty tab both mean by it.
  */
 export function textModeForPath(path: string | null | undefined): TextMode {
   if (!path) return 'markdown'

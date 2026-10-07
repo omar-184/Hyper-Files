@@ -158,7 +158,6 @@ import {
 import { WRAP_OPTIONS } from './ContextMenu'
 import { CropDialog, CutoutDialog } from './PictureDialogs'
 import {
-  GensparkMark,
   IconAlignCenter,
   IconAlignJustify,
   IconAlignLeft,
@@ -273,8 +272,6 @@ interface RibbonProps {
   onOpen: () => void
   onSave: () => void
   onSaveAs: () => void
-  showAi: boolean
-  onToggleAi: () => void
   section: SectionSettings | null
   onSection: (next: SectionSettings) => void
   /** Multi-section documents: index of the cursor's section (0-based); null for single-section */
@@ -321,7 +318,6 @@ interface RibbonProps {
   onZoomDialog: () => void
   darkPage: boolean
   onDarkPage: (v: boolean) => void
-  onAiPreset: (instruction: string) => void
   /** external request (e.g. native menu Page Setup) to switch to a specific tab */
   tabRequest?: { tab: string; nonce: number } | null
   header: HeaderFooter | null
@@ -345,8 +341,6 @@ interface RibbonProps {
   showStylesPane?: boolean
   onShowStylesPane?: (v: boolean) => void
   commentCount: number
-  /** unresolved root comments (drives the AI resolve-comments action) */
-  openCommentCount: number
   resolvedCommentCount: number
   onShowComments: () => void
   /** Review → comments / revisions / compare / protection */
@@ -723,8 +717,6 @@ function RibbonInner({
   onOpen,
   onSave,
   onSaveAs,
-  showAi,
-  onToggleAi,
   section,
   onSection,
   activeSection,
@@ -758,7 +750,6 @@ function RibbonInner({
   onZoomDialog,
   darkPage,
   onDarkPage,
-  onAiPreset,
   tabRequest,
   header,
   onHeader,
@@ -778,7 +769,6 @@ function RibbonInner({
   showStylesPane,
   onShowStylesPane,
   commentCount,
-  openCommentCount,
   resolvedCommentCount,
   onShowComments,
   canComment,
@@ -822,8 +812,6 @@ function RibbonInner({
     compact: t('ribbonCompact'),
     expandFull: t('ribbonExpandFull'),
   })
-  // The one-click AI actions need text to work on; grey them out on an empty document
-  const docEmpty = !hasDoc || fs.docEmpty
   const [tab, setTab] = useState<RibbonTab>('home')
   const [dropdown, setDropdown] = useState<string | null>(null)
   // null = Automatic: the pen button clears the run colour instead of writing one
@@ -4017,9 +4005,7 @@ function RibbonInner({
             hasDoc={hasDoc}
             dropdown={dropdown}
             setDropdown={setDropdown}
-            onAiPreset={onAiPreset}
             commentCount={commentCount}
-            openCommentCount={openCommentCount}
             resolvedCommentCount={resolvedCommentCount}
             onShowComments={onShowComments}
             canComment={canComment}
@@ -4053,8 +4039,6 @@ function RibbonInner({
             onZoom={onZoom}
             onZoomFit={onZoomFit}
             onZoomDialog={onZoomDialog}
-            showAi={showAi}
-            onToggleAi={onToggleAi}
             darkPage={darkPage}
             onDarkPage={onDarkPage}
             showRuler={showRuler}

@@ -3,7 +3,6 @@ import { parseDocx, saveDocx } from '@genoffice/docx-engine'
 import JSZip from 'jszip'
 import { describe, expect, it } from 'vitest'
 import { buildDocx } from '../../../packages/docx-engine/tests/helpers/build-docx'
-import { executeOps } from '../src/renderer/ai/ops'
 import { blocksToPmDoc, pmDocToSavePlan, type PmNode } from '../src/renderer/editor/convert'
 import { editorExtensions } from '../src/renderer/editor/extensions'
 
@@ -76,9 +75,8 @@ describe('invisible characters survive saving', () => {
 
   it('round-trips NBSP/ZWSP/NNBSP and hyphen elements through a regenerated paragraph', async () => {
     const { parsed, editor, host } = await openDoc(BODY_PARA)
-    const outcome = executeOps(editor, [{ op: 'findReplace', find: INVISIBLE, replace: INVISIBLE }])
-    expect(outcome.ok).toBe(true)
-    expect(outcome.results[0]).toMatchObject({ matched: 1 })
+    // a text edit elsewhere in the paragraph regenerates every run
+    editor.commands.insertContentAt(1, 'z')
     const plan = pmDocToSavePlan(editor.getJSON() as PmNode, parsed.blocks)
     const xml = await documentXml(await saveDocx(parsed, plan.saveBlocks))
     expect(xml).toContain(INVISIBLE)

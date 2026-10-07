@@ -41,8 +41,8 @@ function blocks(editor: Editor): string[] {
   return out
 }
 
-const ai = (editor: Editor, ...ops: Parameters<typeof runOps>[1]) =>
-  runOps(editor, ops, { source: 'ai' })
+const batch = (editor: Editor, ...ops: Parameters<typeof runOps>[1]) =>
+  runOps(editor, ops, { source: 'batch' })
 
 describe('validateOps', () => {
   it('accepts the documented shapes and rejects the rest', () => {
@@ -64,7 +64,7 @@ describe('validateOps', () => {
 describe('structural ops on index targets', () => {
   it('setBlockType converts a range and lifts list items first', () => {
     const editor = createEditor('- one\n- two\n\npara')
-    const r = ai(editor, {
+    const r = batch(editor, {
       op: 'setBlockType',
       target: { start: 0, end: 1 },
       type: 'heading',
@@ -78,9 +78,14 @@ describe('structural ops on index targets', () => {
 
   it('setBlockType codeBlock sets and re-sets the language', () => {
     const editor = createEditor('print(1)')
-    ai(editor, { op: 'setBlockType', target: { start: 0 }, type: 'codeBlock', language: 'python' })
+    batch(editor, {
+      op: 'setBlockType',
+      target: { start: 0 },
+      type: 'codeBlock',
+      language: 'python',
+    })
     expect(editor.getMarkdown()).toContain('```python')
-    const r = ai(editor, {
+    const r = batch(editor, {
       op: 'setBlockType',
       target: { start: 0 },
       type: 'codeBlock',
@@ -90,27 +95,27 @@ describe('structural ops on index targets', () => {
     expect(editor.getMarkdown()).toContain('```ruby')
     // no language = keep the fence as is
     expect(
-      ai(editor, { op: 'setBlockType', target: { start: 0 }, type: 'codeBlock' }).applied,
+      batch(editor, { op: 'setBlockType', target: { start: 0 }, type: 'codeBlock' }).applied,
     ).toBe(1)
     expect(editor.getMarkdown()).toContain('```ruby')
   })
 
   it('setBlockType blockquote wraps the range once and is idempotent', () => {
     const editor = createEditor('a\n\nb\n\nc')
-    ai(editor, { op: 'setBlockType', target: { start: 0, end: 1 }, type: 'blockquote' })
+    batch(editor, { op: 'setBlockType', target: { start: 0, end: 1 }, type: 'blockquote' })
     expect(blocks(editor)).toEqual(['blockquote:ab', 'paragraph:c'])
     // a range that starts inside a quote re-wraps everything into one quote
-    ai(editor, { op: 'setBlockType', target: { start: 0, end: 1 }, type: 'blockquote' })
+    batch(editor, { op: 'setBlockType', target: { start: 0, end: 1 }, type: 'blockquote' })
     expect(blocks(editor)).toEqual(['blockquote:abc', 'paragraph:'])
     expect(editor.getMarkdown()).not.toContain('> >')
-    ai(editor, { op: 'setBlockType', target: { start: 0 }, type: 'paragraph' })
+    batch(editor, { op: 'setBlockType', target: { start: 0 }, type: 'paragraph' })
     expect(blocks(editor)).toEqual(['paragraph:a', 'paragraph:b', 'paragraph:c', 'paragraph:'])
   })
 
   it('nested wrappers unwrap fully and a doomed conversion leaves the document untouched', () => {
     const editor = createEditor('> - one\n> - two\n\n> ![p](assets/p.png)')
     const before = editor.getMarkdown()
-    const quotedImage = ai(editor, {
+    const quotedImage = batch(editor, {
       op: 'setBlockType',
       target: { start: 1 },
       type: 'heading',
@@ -121,7 +126,7 @@ describe('structural ops on index targets', () => {
       error: expect.stringContaining('no text'),
     })
     expect(editor.getMarkdown()).toBe(before)
-    ai(editor, { op: 'setBlockType', target: { start: 0 }, type: 'paragraph' })
+    batch(editor, { op: 'setBlockType', target: { start: 0 }, type: 'paragraph' })
     expect(blocks(editor).slice(0, 2)).toEqual(['paragraph:one', 'paragraph:two'])
   })
 
@@ -133,7 +138,7 @@ describe('structural ops on index targets', () => {
       { op: 'setStyle', target: { start: 1, end: 2 }, style: 'bold' },
       { op: 'setLink', target: { start: 2 }, href: 'https://x.test' },
     ] as Parameters<typeof runOps>[1]) {
-      const r = ai(editor, op)
+      const r = batch(editor, op)
       expect(r.results[0]).toMatchObject({ ok: false, error: expect.stringContaining('no text') })
     }
     expect(blocks(editor)).toEqual([
@@ -146,41 +151,41 @@ describe('structural ops on index targets', () => {
 
   it('toggleList wraps paragraphs into one list and back', () => {
     const editor = createEditor('a\n\nb\n\nc')
-    ai(editor, { op: 'toggleList', target: { start: 0, end: 1 }, list: 'bullet' })
+    batch(editor, { op: 'toggleList', target: { start: 0, end: 1 }, list: 'bullet' })
     expect(blocks(editor)).toEqual(['bulletList:ab', 'paragraph:c'])
-    ai(editor, { op: 'toggleList', target: { start: 0 }, list: 'task' })
+    batch(editor, { op: 'toggleList', target: { start: 0 }, list: 'task' })
     expect(editor.getMarkdown()).toContain('- [ ] a')
-    ai(editor, { op: 'toggleList', target: { start: 0 }, list: 'task' })
+    batch(editor, { op: 'toggleList', target: { start: 0 }, list: 'task' })
     expect(blocks(editor)).toEqual(['paragraph:a', 'paragraph:b', 'paragraph:c'])
   })
 
   it('moveBlocks places the range after the anchor, -1 = start', () => {
     const editor = createEditor('a\n\nb\n\nc\n\nd')
-    ai(editor, { op: 'moveBlocks', target: { start: 2, end: 3 }, after: -1 })
+    batch(editor, { op: 'moveBlocks', target: { start: 2, end: 3 }, after: -1 })
     expect(blocks(editor).map((b) => b.slice(-1))).toEqual(['c', 'd', 'a', 'b'])
-    ai(editor, { op: 'moveBlocks', target: { start: 0 }, after: 3 })
+    batch(editor, { op: 'moveBlocks', target: { start: 0 }, after: 3 })
     expect(blocks(editor).map((b) => b.slice(-1))).toEqual(['d', 'a', 'b', 'c'])
-    const bad = ai(editor, { op: 'moveBlocks', target: { start: 0, end: 2 }, after: 1 })
+    const bad = batch(editor, { op: 'moveBlocks', target: { start: 0, end: 2 }, after: 1 })
     expect(bad.results[0]).toMatchObject({ ok: false, error: expect.stringContaining('inside') })
   })
 
   it('duplicateBlocks copies the range right after itself', () => {
     const editor = createEditor('a\n\nb')
-    ai(editor, { op: 'duplicateBlocks', target: { start: 0, end: 1 } })
+    batch(editor, { op: 'duplicateBlocks', target: { start: 0, end: 1 } })
     expect(blocks(editor).map((b) => b.slice(-1))).toEqual(['a', 'b', 'a', 'b'])
   })
 
   it('setLink links matches and unlinks with href null', () => {
     const editor = createEditor('see the docs and the docs again')
-    ai(editor, { op: 'setLink', target: { start: 0 }, find: 'docs', href: 'https://x.test' })
+    batch(editor, { op: 'setLink', target: { start: 0 }, find: 'docs', href: 'https://x.test' })
     expect(editor.getMarkdown().match(/\[docs\]\(https:\/\/x\.test\)/g)).toHaveLength(2)
-    ai(editor, { op: 'setLink', target: { start: 0 }, href: null })
+    batch(editor, { op: 'setLink', target: { start: 0 }, href: null })
     expect(editor.getMarkdown()).not.toContain('](')
   })
 
   it('insertTable / insertHorizontalRule / insertImage land after the anchor block', () => {
     const editor = createEditor('a\n\nb')
-    const r = ai(
+    const r = batch(
       editor,
       { op: 'insertTable', after: 0, rows: 2, cols: 2, headerRow: false },
       { op: 'insertHorizontalRule', after: 1 },
@@ -200,7 +205,7 @@ describe('structural ops on index targets', () => {
 
   it('editTable acts at the addressed cell of an index target', () => {
     const editor = createEditor('| h1 | h2 |\n| --- | --- |\n| a | b |')
-    const r = ai(
+    const r = batch(
       editor,
       { op: 'editTable', target: { start: 0 }, action: 'addRowAfter', row: 1 },
       { op: 'editTable', target: { start: 0 }, action: 'addColumnAfter', col: 1 },
@@ -210,7 +215,7 @@ describe('structural ops on index targets', () => {
     expect(table.type.name).toBe('table')
     expect(table.childCount).toBe(3)
     expect(table.child(0).childCount).toBe(3)
-    const notTable = ai(editor, {
+    const notTable = batch(editor, {
       op: 'editTable',
       target: { start: 0 },
       action: 'deleteRow',
@@ -218,9 +223,9 @@ describe('structural ops on index targets', () => {
     })
     expect(notTable.results[0]).toMatchObject({ ok: false })
     const para = createEditor('text')
-    expect(ai(para, { op: 'editTable', target: { start: 0 }, action: 'deleteTable' }).applied).toBe(
-      0,
-    )
+    expect(
+      batch(para, { op: 'editTable', target: { start: 0 }, action: 'deleteTable' }).applied,
+    ).toBe(0)
   })
 
   it('every transaction an op dispatches carries the op meta', () => {
@@ -232,14 +237,14 @@ describe('structural ops on index targets', () => {
       else if (transaction.docChanged) metas.push({ op: 'insertContent', source: 'ui', batch: -1 })
     })
     // index setBlockType on a list: unwrap + selection + convert, all stamped
-    const r = ai(
+    const r = batch(
       editor,
       { op: 'setBlockType', target: { start: 0 }, type: 'heading', level: 2 },
       { op: 'replaceText', target: { start: 1 }, find: 'para', replace: 'text' },
     )
     expect(r.applied).toBe(2)
     expect(metas.length).toBeGreaterThanOrEqual(2)
-    expect(metas.every((m) => m.batch === metas[0]!.batch && m.source === 'ai')).toBe(true)
+    expect(metas.every((m) => m.batch === metas[0]!.batch && m.source === 'batch')).toBe(true)
     expect(metas.map((m) => m.op)).toEqual(expect.arrayContaining(['setBlockType', 'replaceText']))
     // UI path (slash-style caret op) is stamped as ui
     metas.length = 0
@@ -247,39 +252,6 @@ describe('structural ops on index targets', () => {
     uiOp(editor, { op: 'toggleList', target: 'selection', list: 'bullet' })
     expect(metas.length).toBeGreaterThan(0)
     expect(metas.every((m) => m.source === 'ui' && m.op === 'toggleList')).toBe(true)
-  })
-
-  it('mark-only AI ops (setStyle / setLink) highlight their matches', () => {
-    const editor = createEditor('make TODO bold and link docs here')
-    ai(
-      editor,
-      { op: 'setStyle', target: { start: 0 }, find: 'TODO', style: 'bold' },
-      { op: 'setLink', target: { start: 0 }, find: 'docs', href: 'https://x.test' },
-    )
-    const marked = Array.from(editor.view.dom.querySelectorAll('.ai-changed')).map(
-      (el) => el.textContent,
-    )
-    expect(marked).toEqual(['TODO', 'docs'])
-  })
-
-  it('a chain-based AI op (heading conversion) highlights the converted block', () => {
-    const editor = createEditor('title\n\nbody')
-    ai(editor, { op: 'setBlockType', target: { start: 0 }, type: 'heading', level: 1 })
-    const marked = Array.from(editor.view.dom.querySelectorAll('.ai-changed')).map(
-      (el) => el.textContent,
-    )
-    expect(marked.join('')).toContain('title')
-    expect(marked.join('')).not.toContain('body')
-  })
-
-  it('an AI op highlights the touched range; UI ops do not', () => {
-    const editor = createEditor('a\n\nb')
-    ai(editor, { op: 'replaceText', target: { start: 0 }, find: 'a', replace: 'aaa' })
-    const marked = editor.view.dom.querySelectorAll('.ai-changed')
-    expect(marked.length).toBe(1)
-    expect(marked[0]!.textContent).toBe('aaa')
-    uiOp(editor, { op: 'setStyle', target: { start: 1 }, style: 'bold' })
-    expect(editor.view.dom.querySelectorAll('.ai-changed').length).toBe(1)
   })
 })
 

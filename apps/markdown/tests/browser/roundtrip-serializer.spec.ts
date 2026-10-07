@@ -5,25 +5,18 @@ import type { Editor } from '@tiptap/core'
 import { openSource, rebaseSource, source } from './helpers'
 
 for (const enabled of [false, true]) {
-  test(`save and MCP read use the ${enabled ? 'opt-in' : 'default'} serializer`, async ({
-    page,
-  }) => {
+  test(`save uses the ${enabled ? 'opt-in' : 'default'} serializer`, async ({ page }) => {
     await openSource(page, enabled)
     await expect(page.locator('.doc-editor')).toContainText('Title')
-    const read = () =>
-      page.evaluate(
-        () =>
-          new Promise<string>((resolve) => {
-            window.addEventListener(
-              'test:read-source-result',
-              (event) => {
-                resolve((event as CustomEvent).detail.text)
-              },
-              { once: true },
-            )
-            window.dispatchEvent(new Event('test:read-source'))
-          }),
-      )
+    // each save writes the serializer's output; read it back from the save stub
+    const read = async () => {
+      await page.evaluate(() => {
+        delete document.body.dataset.saved
+        window.dispatchEvent(new Event('test:save'))
+      })
+      await expect(page.locator('body')).toHaveAttribute('data-saved', /[\s\S]*/)
+      return page.evaluate(() => document.body.dataset.saved ?? '')
+    }
     // block-level splicing already returns an unedited document's source; the
     // opt-in shortcut must agree with it
     const initial = await read()

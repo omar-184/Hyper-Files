@@ -1515,8 +1515,7 @@ export async function activateFormulaClosure(
 /// through journaled structural ops), installed into the engine as cached
 /// values, and added to the closure pinned map so viewport eviction
 /// re-applies them — the new formula then computes correctly and STAYS
-/// correct, exactly like closure-mode formulas. The session cell budget was
-/// already checked at propose time (streamedPinBudgetError); returns false
+/// correct, exactly like closure-mode formulas. Returns false
 /// when a sidecar read fails so the caller can abort before writing a
 /// formula that would evaluate against partial data.
 /// One source cell for a direct (grid-bypassing) copy read.
@@ -7259,27 +7258,6 @@ export function columnLetter(index: number): string {
   return label
 }
 
-/// Magic-byte check for downloaded images: the ai:fetch-image handler labels
-/// bytes from the Content-Type header (JPEG fallback), so a WebP or other
-/// unsupported payload could otherwise land in the xlsx as a mislabeled media
-/// part that Excel cannot display.
-export function sniffImageMime(base64: string): 'image/png' | 'image/jpeg' | 'image/gif' | null {
-  let bytes: Uint8Array
-  try {
-    bytes = Uint8Array.from(atob(base64.slice(0, 16)), (char) => char.charCodeAt(0))
-  } catch {
-    return null
-  }
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
-    return 'image/png'
-  }
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg'
-  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
-    return 'image/gif'
-  }
-  return null
-}
-
 /// Natural dimensions of an image data URL (fallback matches the picker).
 export function measureImage(dataUrl: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve) => {
@@ -7548,9 +7526,8 @@ export function lazyCellReader(worksheet: UniverWorksheet): (address: string) =>
     const richText =
       typeof richStream === 'string' ? richStream.replace(/\r\n$/, '').replace(/\r/g, '\n') : null
     const rawValue = (plainCellValue(rawCell?.v, rawCell?.t) ?? richText) as CellState['rawValue']
-    // Formula cells also carry their computed value (the AI needs to see results
-    // and error values like #REF!/#DIV/0!; drift checks compare only formula
-    // text for formula cells, see planStillMatches)
+    // Formula cells also carry their computed value, including error values
+    // like #REF!/#DIV/0!
     if (formula) return { value, formula, rawValue }
     return { value, rawValue }
   }

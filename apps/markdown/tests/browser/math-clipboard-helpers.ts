@@ -15,7 +15,6 @@ export async function openSource(
   await page.addInitScript(
     ({ text, enabled, rebase }) => {
       if (enabled) localStorage.setItem('mdapp.experimentalRoundTrip', '1')
-      localStorage.setItem('mdapp.showAi', '0')
       const off = () => {}
       window.markdownApi = {
         getLanguage: async () => 'en',
@@ -24,12 +23,6 @@ export async function openSource(
         onThemeChanged: () => off,
         getAutoSaveDefault: async () => ({ on: false, updatedAt: 0 }),
         onAutoSaveDefaultChanged: () => off,
-        getAiPanelPrefs: async () => ({
-          fontSize: 'default',
-          customFontSize: 14,
-          spellcheck: true,
-        }),
-        onAiPanelPrefsChanged: () => off,
         consumePending: async () => '/fixtures/polish.md',
         readFile: async () => text,
         consumeHeadlessExport: async () => null,
@@ -49,12 +42,6 @@ export async function openSource(
           window.addEventListener('test:save', save)
           return () => window.removeEventListener('test:save', save)
         },
-        onReadTextRequest: (handler) => {
-          window.addEventListener('test:read-source', handler)
-          return () => window.removeEventListener('test:read-source', handler)
-        },
-        sendReadTextResult: (result) =>
-          window.dispatchEvent(new CustomEvent('test:read-source-result', { detail: result })),
         sendSaveRequestAck: () => {},
         onCloseSaveRequest: () => off,
         sendCloseSaveResult: () => {},
@@ -72,23 +59,6 @@ export async function openSource(
         exportPdf: async () => ({ ok: false, error: 'not used in renderer coverage' }),
         onChromePressed: () => off,
         onViewImage: () => off,
-        getAiSettings: async () => ({ providers: [] }),
-        aiGskStatus: async () => ({ loggedIn: false }),
-        aiStream: async () => {},
-        aiStreamCancel: async () => {},
-        onAiStream: () => off,
-        webSearch: async () => ({
-          results: [],
-          method: 'error',
-          error: 'not used in renderer coverage',
-        }),
-        imageSearch: async () => ({
-          images: [],
-          method: 'error',
-          error: 'not used in renderer coverage',
-        }),
-        fetchImage: async () => null,
-        aiGenerateImage: async () => ({ error: 'not used in renderer coverage' }),
       }
     },
     { text: rebase ? rebaseSource : text, enabled, rebase },

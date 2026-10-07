@@ -4,7 +4,8 @@ import JSZip from 'jszip'
 import { parseDocx, saveDocx } from '@genoffice/docx-engine'
 import { buildDocx } from '../../../packages/docx-engine/tests/helpers/build-docx'
 import { blocksToPmDoc, pmDocToSavePlan, type PmNode } from '../src/renderer/editor/convert'
-import { executeTool } from '../src/renderer/ai/tools'
+import { runUiOps } from '../src/renderer/editor/paragraph-ops'
+import { replaceText } from './helpers/text-edits'
 
 /**
  * Third-party generators (PHPWord, docx4j...) pretty-print document.xml, so
@@ -13,8 +14,6 @@ import { executeTool } from '../src/renderer/ai/tools'
  * from the format model and drops keepNext/keepLines/widowControl and a
  * mid-document w:sectPr (a continuous multicolumn section break).
  */
-
-const NUM_IDS = { bullet: null, ordered: null }
 
 const HEADING_P =
   '<w:p>\n\t\t\t<w:pPr>\n\t\t\t\t<w:keepNext/>\n\t\t\t\t<w:keepLines/>\n\t\t\t\t<w:widowControl w:val="0"/>' +
@@ -34,7 +33,7 @@ const PLAIN_P =
 
 const BODY = `\n\t\t${HEADING_P}\n\t\t${SECTION_P}\n\t\t${PLAIN_P}\n\t\t`
 
-async function roundTrip(ops: unknown[]) {
+async function roundTrip(edit: (editor: Editor) => void) {
   const { editorExtensions } = await import('../src/renderer/editor/extensions')
   const parsed = await parseDocx(await buildDocx({ bodyXml: BODY }))
   const editor = new Editor({
@@ -42,8 +41,7 @@ async function roundTrip(ops: unknown[]) {
     extensions: editorExtensions,
   })
   editor.commands.setContent(blocksToPmDoc(parsed.blocks) as never)
-  const exec = await executeTool(editor, { id: 't', name: 'apply_ops', input: { ops } }, NUM_IDS)
-  expect(exec.isError).toBeFalsy()
+  edit(editor)
   const plan = pmDocToSavePlan(editor.getJSON() as PmNode, parsed.blocks)
   const saved = await saveDocx(parsed, plan.saveBlocks)
   editor.destroy()
@@ -52,12 +50,9 @@ async function roundTrip(ops: unknown[]) {
   return { parsed, plan, xml }
 }
 
-const retype = (text: string) => ({
-  op: 'findReplace',
-  find: text,
-  replace: `${text}!`,
-  matchCase: true,
-})
+const retype = (editor: Editor, text: string) => {
+  expect(replaceText(editor, text, `${text}!`)).toBe(1)
+}
 
 describe('pretty-printed pPr survives paragraph regeneration', () => {
   it('parses the raw pPr despite whitespace after <w:p>', async () => {
@@ -68,10 +63,10 @@ describe('pretty-printed pPr survives paragraph regeneration', () => {
   })
 
   it('a text edit keeps keepNext/keepLines/widowControl and the mid-document sectPr', async () => {
-    const { plan, xml } = await roundTrip([
-      retype('Formatted paragraph text'),
-      retype('Multicolumn section text'),
-    ])
+    const { plan, xml } = await roundTrip((editor) => {
+      retype(editor, 'Formatted paragraph text')
+      retype(editor, 'Multicolumn section text')
+    })
     expect(plan.changedCount).toBe(2)
     expect(xml).toContain('Multicolumn section text!')
     expect(xml.match(/<w:sectPr[\s>]/g)).toHaveLength(2)
@@ -82,9 +77,13 @@ describe('pretty-printed pPr survives paragraph regeneration', () => {
   })
 
   it('a format edit merges into the pretty-printed pPr in schema order', async () => {
-    const { xml } = await roundTrip([
-      { op: 'setParagraphFormat', target: { blockIndexes: [0] }, align: 'center' },
-    ])
+    const { xml } = await roundTrip((editor) => {
+      expect(
+        runUiOps(editor, [
+          { op: 'setParagraphAttrs', target: { blockIndexes: [0] }, attrs: { align: 'center' } },
+        ]),
+      ).toBe(true)
+    })
     const pPr = /<w:pPr>[\s\S]*?<\/w:pPr>/.exec(xml)![0]
     const names = [...pPr.matchAll(/<w:([A-Za-z]+)[\s/>]/g)]
       .map((m) => m[1])

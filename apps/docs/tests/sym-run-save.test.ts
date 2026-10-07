@@ -3,7 +3,6 @@ import { parseDocx, saveDocx } from '@genoffice/docx-engine'
 import JSZip from 'jszip'
 import { describe, expect, it } from 'vitest'
 import { buildDocx } from '../../../packages/docx-engine/tests/helpers/build-docx'
-import { executeOps } from '../src/renderer/ai/ops'
 import {
   blocksToPmDoc,
   inlineToRuns,
@@ -11,6 +10,7 @@ import {
   type PmNode,
 } from '../src/renderer/editor/convert'
 import { editorExtensions } from '../src/renderer/editor/extensions'
+import { replaceText } from './helpers/text-edits'
 
 // Word writes a Symbol-font glyph as its own <w:sym> run; regenerating the
 // paragraph from the editor used to flatten both into w:t text (the
@@ -70,10 +70,7 @@ describe('w:sym runs survive saving', () => {
 
   it('regenerates both w:sym elements after a text edit in the same paragraph', async () => {
     const { parsed, editor, host } = await openDoc(SYM_PARA + OTHER_PARA)
-    const outcome = executeOps(editor, [
-      { op: 'findReplace', find: '0.2).', replace: '0.2).[EE12]' },
-    ])
-    expect(outcome.ok).toBe(true)
+    expect(replaceText(editor, '0.2).', '0.2).[EE12]')).toBe(1)
     const plan = pmDocToSavePlan(editor.getJSON() as PmNode, parsed.blocks)
     expect(plan.changedCount).toBe(1)
     const xml = await documentXml(await saveDocx(parsed, plan.saveBlocks))
@@ -89,10 +86,7 @@ describe('w:sym runs survive saving', () => {
 
   it('splits text appended under the symbol mark into one w:sym plus plain w:t', async () => {
     const { parsed, editor, host } = await openDoc(SYM_PARA)
-    const outcome = executeOps(editor, [
-      { op: 'findReplace', find: '\u00d7', replace: '\u00d7\u00d7yz' },
-    ])
-    expect(outcome.ok).toBe(true)
+    expect(replaceText(editor, '\u00d7', '\u00d7\u00d7yz')).toBe(1)
     const plan = pmDocToSavePlan(editor.getJSON() as PmNode, parsed.blocks)
     const xml = await documentXml(await saveDocx(parsed, plan.saveBlocks))
     expect(xml.match(/<w:sym\b/g)).toHaveLength(3)
@@ -106,8 +100,7 @@ describe('w:sym runs survive saving', () => {
 
   it('writes a symbol replaced by ordinary text as plain w:t', async () => {
     const { parsed, editor, host } = await openDoc(SYM_PARA)
-    const outcome = executeOps(editor, [{ op: 'findReplace', find: '×', replace: 'x' }])
-    expect(outcome.ok).toBe(true)
+    expect(replaceText(editor, '×', 'x')).toBe(1)
     const plan = pmDocToSavePlan(editor.getJSON() as PmNode, parsed.blocks)
     const xml = await documentXml(await saveDocx(parsed, plan.saveBlocks))
     expect(xml).toContain(MINUS)

@@ -66,11 +66,11 @@ test('a write that landed while the pane sat unfocused is picked up on refocus',
   await expect(pane).toBeFocused()
   // blur first, so the re-sync that matters is the one on the way back in
   await page.locator('.status-bar').click()
-  // an AI run writes straight into the document, bypassing the pane
+  // a programmatic edit writes straight into the document, bypassing the pane
   await page.locator('.doc-editor').evaluate((node) => {
     const editor = (node as HTMLElement & { editor: Editor }).editor
-    editor.commands.insertContentAt(1, 'appended by an agent\n\n')
+    editor.commands.insertContentAt(1, 'appended elsewhere\n\n')
   })
   await pane.click()
-  await expect(pane).toHaveValue(/appended by an agent/)
+  await expect(pane).toHaveValue(/appended elsewhere/)
 })

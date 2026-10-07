@@ -10,8 +10,8 @@ import { inlineRuleDecls, inlineRuleStyle } from '../src/renderer/editor/inline-
 import { parseDocx, saveDocx, type HeaderFooter } from '@genoffice/docx-engine'
 import JSZip from 'jszip'
 import { buildDocx } from '../../../packages/docx-engine/tests/helpers/build-docx'
+import { replaceText } from './helpers/text-edits'
 import { blocksToPmDoc, pmDocToSavePlan } from '../src/renderer/editor/convert'
-import { executeOps } from '../src/renderer/ai/ops'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ParsedDocFull, StyleInfo } from '@genoffice/docx-engine'
@@ -327,10 +327,7 @@ describe('VML horizontal rule sharing a text paragraph', () => {
     expect(await saveDocx(parsed, noop.saveBlocks)).toBe(bytes)
 
     // an identity replace leaves the paragraph untouched (still 'original')
-    const same = executeOps(editor, [
-      { op: 'findReplace', find: 'Séquence', replace: 'Séquence', matchCase: true },
-    ] as never)
-    expect(same.ok).toBe(true)
+    replaceText(editor, 'Séquence', 'Séquence')
     expect(
       pmDocToSavePlan(editor.state.doc.toJSON() as never, parsed.blocks).saveBlocks.map(
         (b) => b.kind,
@@ -338,10 +335,7 @@ describe('VML horizontal rule sharing a text paragraph', () => {
     ).toEqual(['original', 'original'])
 
     // a real edit rebuilds the paragraph: text run rPr verbatim, rule runs whole
-    const edit = executeOps(editor, [
-      { op: 'findReplace', find: 'Séquence', replace: 'Chapitre', matchCase: true },
-    ] as never)
-    expect(edit.ok).toBe(true)
+    expect(replaceText(editor, 'Séquence', 'Chapitre')).toBe(1)
     const plan = pmDocToSavePlan(editor.state.doc.toJSON() as never, parsed.blocks)
     expect(plan.saveBlocks.map((b) => b.kind)).toEqual(['generated', 'original'])
     const saved = await saveDocx(parsed, plan.saveBlocks)

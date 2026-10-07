@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createRangeAggregator, formatRangeAggregate } from '../src/renderer/ai/aggregate'
+import { createRangeAggregator } from '../src/renderer/aggregate'
 
 describe('createRangeAggregator', () => {
   it('computes counts, distinct values, and numeric stats', () => {
@@ -80,19 +80,5 @@ describe('createRangeAggregator', () => {
     expect(result.distinct).toBe(4)
     expect(result.topValues).toContainEqual({ value: '1', count: 2 })
     expect(result.topValues).toContainEqual({ value: '1', count: 1 })
-  })
-})
-
-describe('formatRangeAggregate', () => {
-  it('renders a compact report and slices top values', () => {
-    const aggregator = createRangeAggregator()
-    for (const value of ['a', 'a', 'b', 5]) aggregator.add(value)
-    const text = formatRangeAggregate('D2:D5', aggregator.finish(10), 1)
-    expect(text).toContain('Statistics for D2:D5')
-    expect(text).toContain('non-empty: 4')
-    expect(text).toContain('distinct values: 3')
-    expect(text).toContain('sum: 5')
-    expect(text).toContain('a: 2')
-    expect(text).not.toContain('b: 1')
   })
 })

@@ -6,7 +6,7 @@ import {
   scanStreamedWorkbookErrors,
   type SheetError,
 } from '../src/renderer/error-checking'
-import { FILE_READ_BATCH_CELLS, MAX_SCAN_CELLS } from '../src/renderer/ai/workbook-search'
+import { FILE_READ_BATCH_CELLS, MAX_SCAN_CELLS } from '../src/renderer/workbook-search'
 import { ensureLazyRangeLoaded, readSheetRangeMapped } from '../src/renderer/univer-sync'
 import type { LazyWorkbookState } from '../src/renderer/univer-state'
 

@@ -10,7 +10,7 @@ import {
 } from '@genoffice/docx-engine'
 import { buildDocx } from '../../../packages/docx-engine/tests/helpers/build-docx'
 import { blocksToPmDoc, pmDocToSavePlan, type PmNode } from '../src/renderer/editor/convert'
-import { executeTool } from '../src/renderer/ai/tools'
+import { replaceText } from './helpers/text-edits'
 import { applySectPrRewrites } from '../src/renderer/sectpr-rewrite'
 
 /**
@@ -19,8 +19,6 @@ import { applySectPrRewrites } from '../src/renderer/sectpr-rewrite'
  * rawPPr. A Layout / set_page_setup change on that section must still reach
  * the file, whether or not the paragraph itself was edited in the same session.
  */
-
-const NUM_IDS = { bullet: null, ordered: null }
 
 const SECTION_P =
   '<w:p><w:pPr><w:sectPr><w:type w:val="nextPage"/><w:pgSz w:w="12240" w:h="15840"/>' +
@@ -37,7 +35,7 @@ const LANDSCAPE: Partial<SectionSettings> = {
   marginRight: 720,
 }
 
-async function saveWithLayoutChange(ops: unknown[]) {
+async function saveWithLayoutChange(edit?: (editor: Editor) => void) {
   const { editorExtensions } = await import('../src/renderer/editor/extensions')
   const parsed = await parseDocx(await buildDocx({ bodyXml: BODY }))
   const editor = new Editor({
@@ -45,10 +43,7 @@ async function saveWithLayoutChange(ops: unknown[]) {
     extensions: editorExtensions,
   })
   editor.commands.setContent(blocksToPmDoc(parsed.blocks) as never)
-  if (ops.length > 0) {
-    const exec = await executeTool(editor, { id: 't', name: 'apply_ops', input: { ops } }, NUM_IDS)
-    expect(exec.isError).toBeFalsy()
-  }
+  edit?.(editor)
   const plan = pmDocToSavePlan(editor.getJSON() as PmNode, parsed.blocks)
   editor.destroy()
 
@@ -75,7 +70,7 @@ const firstSectPr = (xml: string) => xml.match(/<w:sectPr[\s\S]*?<\/w:sectPr>/)!
 
 describe('section layout change on the break paragraph', () => {
   it('reaches the file when the paragraph is untouched', async () => {
-    const { xml } = await saveWithLayoutChange([])
+    const { xml } = await saveWithLayoutChange()
     const sectPr = firstSectPr(xml)
     expect(sectPr).toContain('w:orient="landscape"')
     expect(sectPr).toContain('w:w="15840" w:h="12240"')
@@ -106,14 +101,11 @@ describe('section layout change on the break paragraph', () => {
   })
 
   it('reaches the file when the paragraph text was edited in the same session', async () => {
-    const { plan, xml } = await saveWithLayoutChange([
-      {
-        op: 'findReplace',
-        find: 'Last line of section one',
-        replace: 'Last line of section one, edited',
-        matchCase: true,
-      },
-    ])
+    const { plan, xml } = await saveWithLayoutChange((editor) => {
+      expect(
+        replaceText(editor, 'Last line of section one', 'Last line of section one, edited'),
+      ).toBe(1)
+    })
     expect(plan.saveBlocks[1]?.kind).toBe('generated')
     expect(xml).toContain('Last line of section one, edited')
     const sectPr = firstSectPr(xml)

@@ -99,17 +99,3 @@ export function buildLazyChangePlan(
     warnings: [],
   }
 }
-
-/// True when every planned cell still holds its previewed "before" content.
-/// Structural changes have no per-cell before-state to verify; they rely on
-/// the sheet-existence check and Univer's own command gating at apply time.
-export function planStillMatches(plan: ChangePlan, readCell: CellReader): boolean {
-  return plan.cellChanges.every((change) => {
-    const current = readCell(change.address, change.sheetId)
-    if ((current.formula ?? undefined) !== (change.before.formula ?? undefined)) return false
-    // Formula cells only compare formula text: computed values fluctuate with
-    // recalcs/dependency changes and are not user-edit conflicts
-    if (change.before.formula) return true
-    return current.value === change.before.value
-  })
-}

@@ -1,21 +1,16 @@
-import { focusWorksheet } from './sheet-focus'
 import {
   activateFormulaClosure,
   applyDefinedNames,
-  applyFormatPatchToRange,
   applyWorkbookNotes,
   cellValueBounds,
   clearLazyState,
   columnLetter,
   disposeVisuals,
-  ensureLazyRangeLoaded,
   journalRangeSnapshot,
-  lazyWorkbookCellReader,
   loadSnapshotIntoUniver,
   loadVisibleRange,
   loadWorkbookSkeleton,
   matrixBounds,
-  modelCellValue,
   navigateToAnchor,
   preloadEntireWorkbook,
   workbookStructureLocked,
@@ -44,19 +39,17 @@ import {
   installLoadAutoHeightGate,
   journalSuppression,
   lazySheetMeta,
-  lazySheetScreenExtent,
   pendingEditsForClose,
   type ActiveCellEditor,
   type ActiveWorkbook,
   type LazyWorkbookState,
   type UniverRuntime,
-  type UniverWorksheet,
 } from './univer-state'
 import { applyChangePlan, planFromOps, type OpExecutorContext } from './op-executor'
 import { renameChartRefsForSheet } from './workbook-ops'
 import { structuralDeleteFormulaErrorSync } from './plan-operations'
 import { isNumericIdentifierText } from './cell-warning'
-import { consumePendingUndoCarry, undoStackDepth } from './undo-carry'
+import { consumePendingUndoCarry } from './undo-carry'
 import { shouldRunSaveTick } from './save-scheduler'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useAutoSavePref } from '@genoffice/ui'
@@ -73,7 +66,6 @@ import {
   mergeLocales,
   ThemeService,
   UniverInstanceType,
-  type ICellData,
   type IRange,
   type IStyleData,
   type Workbook,
@@ -114,11 +106,7 @@ import { greenTheme } from '@univerjs/themes'
 import { createUniver } from './create-univer'
 
 import { type WorkbookOperation } from '@genoffice/xlsx-gateway/domain/workbook-dsl'
-import {
-  columnLabel,
-  parseAddress,
-  rangeCellCount,
-} from '@genoffice/xlsx-gateway/domain/cell-address'
+import { columnLabel } from '@genoffice/xlsx-gateway/domain/cell-address'
 import { aggregateWorkbookRange } from './aggregate-range'
 import { collectCellFormulaTexts, quadraticFormulaError } from './formula-cost'
 import {
@@ -154,7 +142,6 @@ import {
   BLOCKED_COMMAND_PATTERN,
   CF_MUTATIONS,
   CF_RULE_COMMAND_PATTERN,
-  CHAT_STORAGE_KEY,
   COPY_SHEET_COMMAND,
   DEFINED_NAME_MUTATIONS,
   DV_EDIT_COMMAND_PATTERN,
@@ -171,12 +158,10 @@ import {
   MOVE_ROWS_MUTATION,
   MOVE_RANGE_MUTATION,
   NOTE_MUTATIONS,
-  PERSIST_TOOL_FIELD_MAX,
   pixelsToCharacterWidth,
   REMOVE_NUMFMT_MUTATION,
   REORDER_RANGE_MUTATION,
   ROW_COLUMN_MUTATIONS,
-  safeJsonInput,
   SET_FROZEN_MUTATION,
   SET_NUMFMT_MUTATION,
   TOGGLE_GRIDLINES_MUTATION,
@@ -191,7 +176,7 @@ import {
   STRUCTURAL_EDIT_COMMAND_PATTERN,
   STRUCTURE_LOCK_COMMANDS,
 } from './app-constants'
-import { readCells as readCellsImpl, type WorkbookReadContext } from './workbook-readers'
+import type { WorkbookReadContext } from './workbook-readers'
 import {
   getSourceRange as getSourceRangeImpl,
   handleCreatePivot as handleCreatePivotImpl,
@@ -351,7 +336,6 @@ import {
 } from './edit-journal'
 import { shiftPinnedCells } from './formula-closure'
 import { getLang, t } from './i18n/locale'
-import { planStillMatches } from './lazy-plan'
 import { lastSurvivingScreenLine, netAxisDelta, screenToFile } from './view-transform'
 import { selectionFormatEquals, toSelectionFormat, type SelectionFormat } from './selection-format'
 import { ExcelShell } from './ExcelShell'
@@ -372,12 +356,6 @@ import {
   setManualCalculation,
 } from './calc-options'
 import { solveGoalSeek } from './goal-seek'
-import {
-  awaitFormulaValues,
-  clearVerifiedFormulaValues,
-  formulaTargetsFromOps,
-  rememberFormulaValue,
-} from './formula-values'
 import { SlicerFieldPicker, SlicerPanels, type SlicerUiState } from './SlicerPanel'
 import { WatchWindowPanel, watchKey, type WatchCell, type WatchRowValue } from './WatchWindowPanel'
 import { TimelineFieldPicker, TimelinePanels, type TimelineUiState } from './TimelinePanel'
@@ -793,7 +771,6 @@ export function App({
       lazyWorkbookRef,
       setMessage,
       openLazyWorkbook,
-      readCells: (addresses, sheetId) => readCellsImpl(readContext(), addresses, sheetId),
       stashViewRestore: (view) => {
         viewRestoreRef.current = view
       },
@@ -2643,8 +2620,6 @@ export function App({
     // in the engine and in the menu alike.
     resetCalculationMode(univerRef.current)
     setCalcManual(false)
-    // Values verified against the previous workbook mean nothing for this one.
-    clearVerifiedFormulaValues()
     const previous = lazyWorkbookRef.current
     if (previous) {
       clearLazyState(previous)

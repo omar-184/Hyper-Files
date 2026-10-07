@@ -5,12 +5,7 @@ import {
   type MarkdownSourceSnapshot,
 } from './markdown/roundtripSerializer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ImageViewer,
-  aiPanelInitiallyOpen,
-  rememberAiPanelOpen,
-  useAutoSavePref,
-} from '@genoffice/ui'
+import { ImageViewer, useAutoSavePref } from '@genoffice/ui'
 import {
   pollUntilReady,
   runHeadlessRendererExport,
@@ -49,10 +44,6 @@ import { ToastHost } from './components/toast'
 import { showToast } from './components/toast-bus'
 import { TableMenu } from './components/TableMenu'
 import { FrontmatterPanel } from './components/FrontmatterPanel'
-import { AiAskPopover } from './components/AiAskPopover'
-import { AiPanel, GensparkMark, type AiPreset, type MarkdownAiDeps } from './ai/AiPanel'
-import { EDIT_QUEUE_MAX, selectionForAnchor, type EditQueueItem } from './ai/edit-queue'
-import { addQueueAnchor, clearQueueAnchors, removeQueueAnchors } from './editor/aiQueueAnchors'
 import { DOCX_MAX_IMAGE_PX, exportDocxBytes } from './export/docxExport'
 import { decodeImageDataUrl, toDocxImage } from './export/exportImage'
 import { buildPrintHtml } from './export/printHtml'
@@ -115,8 +106,7 @@ function applyImageRewrites(
   editor.view.dispatch(transaction)
 }
 
-/** Measure a document image via the DOM (the editor already displays it) */
-/** File name for an AI-generated untitled document: first heading, else first words */
+/** Suggested export/print name for an untitled document: first heading, else first words */
 export function deriveAutoFileName(editor: Editor): string {
   const doc = editor.state.doc
   for (let i = 0; i < doc.childCount; i++) {
@@ -150,13 +140,6 @@ export default function App() {
   const [slashState, setSlashState] = useState<SlashMenuState | null>(null)
   const [fmOpen, setFmOpen] = useState(false)
   const [fmText, setFmText] = useState('')
-  // Persisted so a closed AI panel stays closed on next launch (docs/slides parity)
-  const [aiOpen, setAiOpen] = useState(() => aiPanelInitiallyOpen('mdapp.showAi'))
-  const [aiPreset, setAiPreset] = useState<AiPreset | null>(null)
-  const [editQueue, setEditQueue] = useState<EditQueueItem[]>([])
-  const editQueueRef = useRef(editQueue)
-  editQueueRef.current = editQueue
-  const queueSeqRef = useRef(0)
   const [autoSave, setAutoSave] = useAutoSavePref('mdapp.autoSave', window.markdownApi)
   const [showFind, setShowFind] = useState(false)
   const [findFocus, setFindFocus] = useState<FindFocusRequest>({ field: 'find', nonce: 0 })
@@ -435,7 +418,7 @@ export default function App() {
 
   /**
    * A keystroke in the pane is re-parsed into the editor rather than saved, so
-   * every other consumer — save, autosave, the AI tools, the outline — keeps
+   * every other consumer — save, autosave, the outline — keeps
    * reading one document and no save-path special case is needed.
    */
   const onSourceChange = useCallback(
@@ -459,8 +442,7 @@ export default function App() {
 
   /**
    * The pane re-syncs from the editor whenever its focus changes, so a write
-   * that landed while it sat unfocused — an AI run rewriting the document — is
-   * picked up before the user can read stale text, while a half-typed line
+   * that landed while it sat unfocused is picked up before the user can read stale text, while a half-typed line
    * under their own cursor is never touched.
    */
   const onSourceFocusChange = useCallback(() => {
@@ -474,14 +456,14 @@ export default function App() {
 
   /** Serialize and write to disk; false when canceled/failed (caller keeps the tab open) */
   const doSave = useCallback(
-    async (mode: SaveMode, suggestedName?: string): Promise<boolean> => {
+    async (mode: SaveMode): Promise<boolean> => {
       if (sourceMode) return doSaveSource(mode)
       const current = editorRef.current
       if (!current || statusRef.current !== 'ready' || savingRef.current) return false
       savingRef.current = true
       setSaveState('saving')
       try {
-        // edits landing while the write is in flight (AI streaming, fast typing)
+        // edits landing while the write is in flight (fast typing)
         // must keep the document dirty — compare doc identity after the await
         const docAtSave = current.state.doc
         const fmAtSave = envelopeRef.current.frontmatter
@@ -494,7 +476,7 @@ export default function App() {
           sourceAtSave,
         )
         const imageSources = imageSourcesFromEditor(current)
-        const result = await window.markdownApi.save({ text, imageSources, mode, suggestedName })
+        const result = await window.markdownApi.save({ text, imageSources, mode })
         if (result.ok && 'path' in result) {
           const unchanged =
             editorRef.current?.state.doc === docAtSave &&
@@ -739,33 +721,12 @@ export default function App() {
     const offSave = window.markdownApi.onSaveRequest((mode) => {
       void (async () => {
         // same as the close-save path: wait out an in-flight autosave instead of
-        // answering false, or an MCP save-and-close during a blur autosave fails
+        // answering false, or a menu save during a blur autosave fails
         while (savingRef.current) {
           await new Promise((resolve) => setTimeout(resolve, 50))
         }
         window.markdownApi.sendSaveRequestAck(await doSave(mode))
       })()
-    })
-    // MCP read of this open document: hand back the same serialization a save
-    // would write, so unsaved edits are included. Staying silent while the
-    // editor is still loading keeps the main process retrying its request
-    // instead of failing on a document that is merely not ready yet.
-    const offReadText = window.markdownApi.onReadTextRequest(() => {
-      const current = editorRef.current
-      if (!current || statusRef.current !== 'ready') return
-      try {
-        const text = serializeMarkdown(
-          envelopeRef.current,
-          current.state.doc,
-          () => bodyMarkdown(current),
-          originalSourceRef.current,
-        )
-        window.markdownApi.sendReadTextResult({ text })
-      } catch (err) {
-        window.markdownApi.sendReadTextResult({
-          error: err instanceof Error ? err.message : String(err),
-        })
-      }
     })
     const offClose = window.markdownApi.onCloseSaveRequest(() => {
       void (async () => {
@@ -845,7 +806,6 @@ export default function App() {
     window.addEventListener('keydown', onKeyDown, true)
     return () => {
       offSave()
-      offReadText()
       offClose()
       offRenamed()
       window.removeEventListener('keydown', onKeyDown, true)
@@ -865,10 +825,6 @@ export default function App() {
     return () => window.removeEventListener('wheel', onWheel)
   }, [])
 
-  useEffect(() => {
-    rememberAiPanelOpen('mdapp.showAi', aiOpen)
-  }, [aiOpen])
-
   // autosave: every 30s and on window blur, silently persist pending changes
   // (same policy as the docs app; untitled documents are skipped — the first
   // save must go through the explicit save path that names the file)
@@ -887,51 +843,6 @@ export default function App() {
     }
   }, [autoSave, filePath, doSave])
 
-  // ---- selection-scoped AI edit queue (anchors live in the editor as decorations) ----
-  const getQueueItem = useCallback(
-    (qid: string) => editQueueRef.current.find((item) => item.qid === qid),
-    [],
-  )
-  const queueAdd = useCallback((instruction: string): void => {
-    const current = editorRef.current
-    if (!current) return
-    const { from, to, empty } = current.state.selection
-    if (empty || editQueueRef.current.length >= EDIT_QUEUE_MAX) return
-    const qid = `q${++queueSeqRef.current}`
-    addQueueAnchor(current, qid, from, to)
-    const capturedText = current.state.doc
-      .textBetween(from, to, ' ', ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 80)
-    setEditQueue((queue) => [...queue, { qid, instruction, capturedText }])
-  }, [])
-  const queueUpdate = useCallback(
-    (qid: string, instruction: string): void =>
-      setEditQueue((queue) => queue.map((i) => (i.qid === qid ? { ...i, instruction } : i))),
-    [],
-  )
-  const queueRemove = useCallback((qid: string): void => {
-    if (editorRef.current) removeQueueAnchors(editorRef.current, [qid])
-    setEditQueue((queue) => queue.filter((i) => i.qid !== qid))
-  }, [])
-  const queueClear = useCallback((): void => {
-    if (editorRef.current) clearQueueAnchors(editorRef.current)
-    setEditQueue([])
-  }, [])
-  /** a submission hands its items to the run and drops them from the queue */
-  const queueConsume = useCallback((qids: string[]): void => {
-    if (editorRef.current) removeQueueAnchors(editorRef.current, qids)
-    setEditQueue((queue) => queue.filter((i) => !qids.includes(i.qid)))
-  }, [])
-  const queueFocus = useCallback((qid: string): void => {
-    const current = editorRef.current
-    if (!current) return
-    const selection = selectionForAnchor(current, qid)
-    if (!selection) return
-    current.view.dispatch(current.state.tr.setSelection(selection).scrollIntoView())
-    current.view.focus()
-  }, [])
   /** outline click: move the cursor into the heading and scroll it into view */
   const jumpToOutline = useCallback((pos: number): void => {
     const current = editorRef.current
@@ -940,46 +851,6 @@ export default function App() {
     current.view.dispatch(current.state.tr.setSelection(selection).scrollIntoView())
     current.view.focus()
   }, [])
-  const askSendNow = useCallback((text: string): void => {
-    setAiOpen(true)
-    setAiPreset((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }))
-  }, [])
-
-  const aiDeps: MarkdownAiDeps = {
-    getEditor: () => editorRef.current,
-    // envelopeRef, not fmText state: a write-then-read within one AI run must
-    // see the new value before React commits
-    getFrontmatter: () => frontmatterInner(envelopeRef.current.frontmatter),
-    setFrontmatter: (inner) => {
-      onFrontmatterChange(inner)
-      setFmOpen(inner.trim() !== '')
-    },
-    // snapshots carry body + the raw frontmatter block (structured, no
-    // file-text round-trip) so a rollback also reverts set_frontmatter and
-    // an untouched block restores byte-for-byte
-    getSnapshot: () => ({
-      body: editorRef.current ? bodyMarkdown(editorRef.current) : '',
-      frontmatter: envelopeRef.current.frontmatter,
-    }),
-    restoreSnapshot: (snapshot) => {
-      const current = editorRef.current
-      if (!current) return
-      envelopeRef.current.frontmatter = snapshot.frontmatter
-      const inner = frontmatterInner(snapshot.frontmatter)
-      setFmText(inner)
-      setFmOpen(inner !== '')
-      current.commands.setContent(snapshot.body, { contentType: 'markdown' })
-      sourceMapRef.current = buildSourceMap(current, current.state.doc, snapshot.body)
-      markDirty()
-    },
-    onRunDone: (mutated) => {
-      // AI wrote into a never-saved document → name it from the content and save silently
-      if (!mutated || filePathRef.current || !editorRef.current) return
-      const name = deriveAutoFileName(editorRef.current)
-      if (name) void doSave('save', name)
-    },
-  }
-
   const fileName = filePath ? filePath.replace(/^.*[/\\]/, '') : null
   const statusText =
     saveState === 'saving'
@@ -1036,42 +907,9 @@ export default function App() {
         spellcheck={spellcheck}
         onToggleSpellcheck={() => setSpellcheck((v) => !v)}
         sourceMode={sourceMode}
-        aiOpen={aiOpen}
-        onToggleAi={() => setAiOpen((v) => !v)}
-        onAiPreset={(text) => {
-          setAiOpen(true)
-          setAiPreset((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }))
-        }}
       />
       {status === 'loading' && <div className="center-note">{t('loading')}</div>}
       <div className="app-main" style={status === 'ready' ? undefined : { display: 'none' }}>
-        <div className={`ai-dock${aiOpen ? '' : ' collapsed'}`}>
-          {!aiOpen && (
-            <button
-              className="ai-rail"
-              data-tip={t('aiOpenAssistant')}
-              aria-label={t('aiOpenAssistant')}
-              onClick={() => setAiOpen(true)}
-            >
-              <GensparkMark size={22} />
-            </button>
-          )}
-          {/* mounted only after the file is loaded so chat history resolves against the real path */}
-          {status === 'ready' && (
-            <AiPanel
-              deps={aiDeps}
-              filePath={filePath}
-              preset={aiPreset}
-              onCollapse={() => setAiOpen(false)}
-              editQueue={editQueue}
-              onQueueEditInstruction={queueUpdate}
-              onQueueRemove={queueRemove}
-              onQueueClear={queueClear}
-              onQueueFocus={queueFocus}
-              onQueueConsume={queueConsume}
-            />
-          )}
-        </div>
         {outlineOpen && !sourceMode && (
           <OutlinePane
             items={outlineItems}
@@ -1195,17 +1033,6 @@ export default function App() {
         />
       )}
       {!sourceMode && <TableMenu editor={editor} scrollRef={scrollRef} zoom={zoom} />}
-      {editor && !sourceMode && status === 'ready' && (
-        <AiAskPopover
-          editor={editor}
-          queueFull={editQueue.length >= EDIT_QUEUE_MAX}
-          getItem={getQueueItem}
-          onSendNow={askSendNow}
-          onQueueAdd={queueAdd}
-          onQueueUpdate={queueUpdate}
-          onQueueRemove={queueRemove}
-        />
-      )}
     </div>
   )
 }

@@ -30,7 +30,6 @@ import { t, useI18n, type StringKey } from '../i18n/locale'
 import type { RevisionDisplayMode } from '../editor/revision-view'
 import {
   IconAccept,
-  IconAiPanel,
   IconCaret,
   IconComment,
   IconCommentNext,
@@ -1103,8 +1102,6 @@ interface ViewTabProps {
   onZoom: (zoom: number) => void
   onZoomFit: (mode: 'width' | 'page') => void
   onZoomDialog: () => void
-  showAi: boolean
-  onToggleAi: () => void
   darkPage: boolean
   onDarkPage: (v: boolean) => void
   showRuler: boolean
@@ -1129,8 +1126,6 @@ export function ViewTab({
   onZoom,
   onZoomFit,
   onZoomDialog,
-  showAi,
-  onToggleAi,
   darkPage,
   onDarkPage,
   showRuler,
@@ -1308,16 +1303,6 @@ export function ViewTab({
 
       <div className="ribbon-group">
         <div className="ribbon-group-items">
-          <button
-            className={`rb-big ${showAi ? 'active' : ''}`}
-            data-tip={t('ribbonAiPanelTip')}
-            onClick={onToggleAi}
-          >
-            <span className="rb-big-icon">
-              <IconAiPanel size={BIG} />
-            </span>
-            <span>{t('ribbonAiPanel')}</span>
-          </button>
           <button
             className={`rb-big ${darkPage ? 'active' : ''}`}
             data-tip={t('ribbonDarkModeTip')}

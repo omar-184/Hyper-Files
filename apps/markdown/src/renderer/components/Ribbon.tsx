@@ -11,7 +11,6 @@ import {
 } from '@genoffice/ui'
 import { useI18n } from '../i18n/locale'
 import type { StringKey } from '../i18n/locale'
-import { GensparkMark } from '../ai/AiPanel'
 import { uiOp, type BlockType, type ListKind, type StylableMark } from '../editor/ops'
 import {
   IconBullets,
@@ -54,13 +53,10 @@ interface Props {
   hasOutline: boolean
   spellcheck: boolean
   onToggleSpellcheck: () => void
-  aiOpen: boolean
-  onToggleAi: () => void
-  onAiPreset: (instruction: string) => void
   /**
    * A .txt/.json is edited as source, so every button that formats a block
    * document is hidden rather than left there to act on a document that does
-   * not exist. Save, find, autosave and the AI panel still apply.
+   * not exist. Save, find and autosave still apply.
    */
   sourceMode?: boolean
 }
@@ -95,48 +91,6 @@ const toggleStyle = (editor: Editor | null, style: StylableMark) =>
 
 const toggleList = (editor: Editor | null, list: ListKind) =>
   editor && uiOp(editor, { op: 'toggleList', target: 'selection', list })
-
-/** doc + sparkle / pen + sparkle / lines + sparkle, same glyphs as the docs ribbon */
-function AiFeatureIcon({ kind }: { kind: 'summarize' | 'polish' | 'tidy' }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      {kind === 'summarize' && (
-        <>
-          <path d="M13.875 21H6.5C5.39543 21 4.5 20.1046 4.5 19V5C4.5 3.89543 5.39543 3 6.5 3H17.5C18.6046 3 19.5 3.89543 19.5 5V13" />
-          <path d="M8 7H16" />
-          <path d="M8 10.2H14" />
-          <path d="M8 13.4H12" />
-        </>
-      )}
-      {kind === 'polish' && (
-        <>
-          <path d="M5.00012 20.7481L8.80319 20.7482L21.7482 7.80317L17.945 4L5 16.945L5.00012 20.7481Z" />
-          <path d="M15.1406 6.80469L18.9438 10.6079" />
-          <path d="M8 3L8.22106 3.59745C8.51094 4.38087 8.65589 4.77259 8.94166 5.05833C9.22743 5.34409 9.61914 5.48903 10.4026 5.77893L11 6L10.4026 6.22107C9.61914 6.51097 9.22743 6.65592 8.94166 6.94167C8.65589 7.22741 8.51094 7.61913 8.22106 8.40255L8 9L7.77894 8.40255C7.48906 7.61913 7.34411 7.22741 7.05834 6.94167C6.77257 6.65592 6.38086 6.51097 5.59743 6.22107L5 6L5.59743 5.77893C6.38086 5.48903 6.77257 5.34409 7.05834 5.05833C7.34411 4.77259 7.48906 4.38087 7.77894 3.59745L8 3Z" />
-        </>
-      )}
-      {kind === 'tidy' && (
-        <>
-          <path d="M4 5H20" />
-          <path d="M4 9H16" />
-          <path d="M4 13H11" />
-          <path d="M4 17H10" />
-        </>
-      )}
-      {kind !== 'polish' && (
-        <path d="M17 14L17.2579 14.697C17.5961 15.611 17.7652 16.068 18.0986 16.4014C18.432 16.7348 18.889 16.9039 19.803 17.2421L20.5 17.5L19.803 17.7579C18.889 18.0961 18.432 18.2652 18.0986 18.5986C17.7652 18.932 17.5961 19.389 17.2579 20.303L17 21L16.7421 20.303C16.4039 19.389 16.2348 18.932 15.9014 18.5986C15.568 18.2652 15.111 18.0961 14.197 17.7579L13.5 17.5L14.197 17.2421C15.111 16.9039 15.568 16.7348 15.9014 16.4014C16.2348 16.068 16.4039 15.611 16.7421 14.697L17 14Z" />
-      )}
-    </svg>
-  )
-}
 
 function IconBtn({
   title,
@@ -186,9 +140,6 @@ export function Ribbon({
   hasOutline,
   spellcheck,
   onToggleSpellcheck,
-  aiOpen,
-  onToggleAi,
-  onAiPreset,
   sourceMode = false,
 }: Props) {
   const { t } = useI18n()
@@ -214,7 +165,6 @@ export function Ribbon({
             : 'paragraph'
       return {
         style,
-        empty: e.isEmpty,
         bold: e.isActive('bold'),
         italic: e.isActive('italic'),
         strike: e.isActive('strike'),
@@ -257,23 +207,6 @@ export function Ribbon({
   // 20px inline-row rendering, same as the docs toolbar these icons come from
   // (pinned stroke paints 1.5px at this size per the suite-wide icon rules)
   const ICON = 20
-
-  // polish/tidy act on the selection when one exists (read at click time; the
-  // mousedown preventDefault below keeps the selection alive); summarize stays whole-doc
-  const hasSelection = () => !(editor?.state.selection.empty ?? true)
-  const aiPresets = [
-    { kind: 'summarize', btn: 'aiSummarizeBtn', prompt: () => t('aiSummarizePrompt') },
-    {
-      kind: 'polish',
-      btn: 'aiPolishBtn',
-      prompt: () => t(hasSelection() ? 'aiPolishSelectionPrompt' : 'aiPolishPrompt'),
-    },
-    {
-      kind: 'tidy',
-      btn: 'aiTidyBtn',
-      prompt: () => t(hasSelection() ? 'aiTidySelectionPrompt' : 'aiTidyPrompt'),
-    },
-  ] as const
 
   return (
     <div className={`ribbon ${collapse.rootClass}`} ref={collapse.rootRef}>
@@ -347,44 +280,6 @@ export function Ribbon({
       </div>
 
       <div className="ribbon-body" data-ribbon-body="">
-        <div className="ribbon-group">
-          <div className="ribbon-group-items">
-            <button
-              type="button"
-              className={`rb-big ai-entry${aiOpen ? ' active' : ''}`}
-              data-tip={t('aiOpenAssistant')}
-              disabled={disabled}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={onToggleAi}
-            >
-              <span className="rb-big-icon">
-                <GensparkMark size={26} />
-              </span>
-              <span>Genspark AI</span>
-            </button>
-            {aiPresets.map(({ kind, btn, prompt }) => (
-              <button
-                key={kind}
-                type="button"
-                className="rb-big ai-entry"
-                data-tip={t(btn)}
-                disabled={off || state?.empty}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => onAiPreset(prompt())}
-              >
-                <span className="rb-big-icon">
-                  <span className="ai-feature-icon" aria-hidden="true">
-                    <AiFeatureIcon kind={kind} />
-                  </span>
-                </span>
-                <span>{t(btn)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="rb-sep" />
-
         {!sourceMode && (
           <div className="ribbon-group">
             <div className="ribbon-group-items">

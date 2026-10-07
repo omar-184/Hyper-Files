@@ -3,7 +3,7 @@
   "productName": "GenOffice Sheets",
   "version": "0.1.0",
   "private": true,
-  "description": "Cross-platform AI-native spreadsheet compatibility prototype",
+  "description": "Cross-platform spreadsheet compatibility prototype",
   "license": "Apache-2.0",
   "main": "out/main/index.js",
   "scripts": {
@@ -24,12 +24,8 @@
   },
   "dependencies": {
     "@fluentui/react-icons": "^2.0.333",
-    "@genoffice/agent-core": "*",
-    "@genoffice/ai-provider": "*",
-    "@genoffice/ai-search": "*",
     "@genoffice/docx-engine": "*",
     "@genoffice/electron-utils": "*",
-    "@genoffice/file-parse": "*",
     "@genoffice/i18n": "*",
     "@genoffice/ui": "*",
     "@genoffice/pptx-render": "*",
@@ -58,7 +54,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@genoffice/project-store": "*",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

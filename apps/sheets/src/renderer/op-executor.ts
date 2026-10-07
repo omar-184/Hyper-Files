@@ -79,7 +79,6 @@ import {
   pushVisualUndo,
   queueSparklineInstall,
   readCopySourceDirect,
-  sniffImageMime,
   workbookStructureLocked,
 } from './univer-sync'
 import {
@@ -183,26 +182,10 @@ export async function prefetchOpImages(
   const imageData = new Map<string, LoadedImage>()
   for (const op of ops) {
     if (op.op !== 'add_image' || imageData.has(op.path)) continue
-    let dataUrl: string
-    let mediaType: string
-    // file:// = a BYOK-generated image in the local store (fetchImage resolves it)
-    if (/^(https?|file):\/\//i.test(op.path)) {
-      const fetched = await window.desktopApi.fetchImage(op.path)
-      if (!fetched) throw new Error(t('appCannotReadImage'))
-      // Trust the bytes, not the Content-Type header the handler echoed
-      const sniffed = sniffImageMime(fetched.base64)
-      if (!sniffed) {
-        throw new Error('The downloaded image is not PNG/JPEG/GIF — pick another image URL.')
-      }
-      dataUrl = `data:${sniffed};base64,${fetched.base64}`
-      mediaType = sniffed
-    } else {
-      const image = await window.desktopApi.readLocalImage({ path: op.path })
-      dataUrl = `data:${image.mediaType};base64,${image.base64}`
-      mediaType = image.mediaType
-    }
+    const image = await window.desktopApi.readLocalImage({ path: op.path })
+    const dataUrl = `data:${image.mediaType};base64,${image.base64}`
     const size = await measureImage(dataUrl)
-    imageData.set(op.path, { dataUrl, mediaType, ...size })
+    imageData.set(op.path, { dataUrl, mediaType: image.mediaType, ...size })
   }
   return imageData
 }

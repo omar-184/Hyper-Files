@@ -23,8 +23,6 @@ export default defineConfig({
         '../../packages/electron-utils/src/safe-external-url.ts',
       ),
       '@genoffice/electron-utils': local('../../packages/electron-utils/src/index.ts'),
-      '@genoffice/ai-provider/browser': local('../../packages/ai-provider/src/browser.ts'),
-      '@genoffice/ai-provider': local('../../packages/ai-provider/src/index.ts'),
       '@genoffice/i18n': local('../../packages/i18n/src/index.ts'),
       '@genoffice/ui': local('../../packages/ui/src/index.ts'),
     },

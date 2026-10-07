@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { parseRange } from '@genoffice/xlsx-gateway/domain/cell-address'
-import { aggregateWorkbookRange } from '../src/renderer/ai/aggregate-range'
-import type { WorkbookReadContext } from '../src/renderer/ai/workbook-readers'
+import { aggregateWorkbookRange } from '../src/renderer/aggregate-range'
+import type { WorkbookReadContext } from '../src/renderer/workbook-readers'
 
 afterEach(() => {
   vi.unstubAllGlobals()

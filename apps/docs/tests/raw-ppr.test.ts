@@ -4,15 +4,13 @@ import { TextSelection } from '@tiptap/pm/state'
 import { parseDocx, saveDocx } from '@genoffice/docx-engine'
 import { buildDocx } from '../../../packages/docx-engine/tests/helpers/build-docx'
 import { blocksToPmDoc, pmDocToSavePlan, type PmNode } from '../src/renderer/editor/convert'
-import { executeTool } from '../src/renderer/ai/tools'
+import { runUiOps } from '../src/renderer/editor/paragraph-ops'
 
 /**
  * Guard tests for rawPPr passthrough: pPr constructs the format model cannot
  * express (keepNext, tabs, pPrChange revisions, paragraph-mark rPr) survive
  * in-editor edits byte-identically; format edits merge into the original pPr.
  */
-
-const NUM_IDS = { bullet: null, ordered: null }
 
 /** paragraph with exotic pPr: keepNext + tabs + tracked property change */
 const EXOTIC_P =
@@ -59,18 +57,10 @@ describe('rawPPr passthrough', () => {
 
   it('a format command merges into the pPr, keeping unmanaged children', async () => {
     const { editor, parsed } = await openEditor(EXOTIC_P)
-    const exec = await executeTool(
-      editor,
-      {
-        id: 't',
-        name: 'apply_ops',
-        input: {
-          ops: [{ op: 'setParagraphFormat', target: { blockIndexes: [0] }, align: 'center' }],
-        },
-      },
-      NUM_IDS,
-    )
-    expect(exec.isError).toBeFalsy()
+    const ok = runUiOps(editor, [
+      { op: 'setParagraphAttrs', target: { blockIndexes: [0] }, attrs: { align: 'center' } },
+    ])
+    expect(ok).toBe(true)
     const plan = pmDocToSavePlan(editor.getJSON() as PmNode, parsed.blocks)
     const saved = await saveDocx(parsed, plan.saveBlocks)
     editor.destroy()

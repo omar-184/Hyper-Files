@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "license": "Apache-2.0",
   "private": true,
-  "description": "AI-native streaming docx editor with paragraph-patch save",
+  "description": "Streaming docx editor with paragraph-patch save",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -18,13 +18,8 @@
     "dist:dir": "electron-vite build && electron-builder --dir"
   },
   "devDependencies": {
-    "@genoffice/agent-core": "*",
     "@genoffice/i18n": "*",
-    "@genoffice/ai-provider": "*",
-    "@genoffice/ai-search": "*",
     "@genoffice/docx-engine": "*",
-    "@genoffice/file-parse": "*",
-    "@genoffice/project-store": "*",
     "@genoffice/ui": "*",
     "@tiptap/core": "3.31.0",
     "@tiptap/extensions": "3.31.0",
@@ -93,7 +88,6 @@
   "dependencies": {
     "@genoffice/electron-utils": "*",
     "@genoffice/font-metrics": "*",
-    "electron-updater": "^6.8.9",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.2.108",
     "@genoffice/pptx-render": "*"

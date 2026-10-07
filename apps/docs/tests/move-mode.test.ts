@@ -3,9 +3,9 @@ import { Editor } from '@tiptap/core'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { parseDocx, saveDocx } from '@genoffice/docx-engine'
 import { buildDocx } from '../../../packages/docx-engine/tests/helpers/build-docx'
-import { executeOps } from '../src/renderer/ai/ops'
 import { blocksToPmDoc, pmDocToSavePlan, type PmNode } from '../src/renderer/editor/convert'
 import { editorExtensions } from '../src/renderer/editor/extensions'
+import { moveBlock } from './helpers/text-edits'
 
 const TABLE =
   '<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="4000"/></w:tblGrid>' +
@@ -112,8 +112,7 @@ describe('object move and text modes', () => {
       content: blocksToPmDoc(parsed.blocks) as never,
     })
 
-    const result = executeOps(editor, [{ op: 'moveBlocks', blockIndexes: [1], afterBlockIndex: 3 }])
-    expect(result.ok).toBe(true)
+    moveBlock(editor, 1, 3)
     const plan = pmDocToSavePlan(editor.getJSON() as PmNode, parsed.blocks)
     const reparsed = await parseDocx(await saveDocx(parsed, plan.saveBlocks))
     const visibleTypes = reparsed.blocks.filter((block) => !block.hidden).map((block) => block.type)

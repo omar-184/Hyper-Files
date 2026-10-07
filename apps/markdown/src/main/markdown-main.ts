@@ -31,7 +31,6 @@ import {
   rendererUrl,
 } from '@genoffice/electron-utils'
 import { createI18n, getUiLang } from '@genoffice/i18n'
-import { generateImageTool, documentMediaRoots } from '@genoffice/ai-search'
 import { ImageExportSessions } from './image-export'
 import { printMarkdownPdf } from './print-pdf'
 import { atomicWriteFile } from './atomic-write'
@@ -397,12 +396,8 @@ const dirtyByWc = new Set<number>()
 const closeSaveWaiters = new Map<number, (ok: boolean) => void>()
 /** Resolvers for menu-triggered saves, resolved when the renderer's save invoke completes */
 const saveWaiters = new Map<number, (ok: boolean) => void>()
-/** Resolvers for MCP reads of the live document text, resolved by the renderer's reply */
-const readTextWaiters = new Map<number, (result: { text: string } | { error: string }) => void>()
-/** one read per tab at a time: concurrent callers share this promise */
-const readTextInFlight = new Map<number, Promise<string>>()
 
-/** Fired after a save lands on a NEW path (untitled first save / Save As) — the shell syncs tab title, recents, projects */
+/** Fired after a save lands on a NEW path (untitled first save / Save As) — the shell syncs tab title and recents */
 let fileSavedHook: ((wc: WebContents, path: string) => void) | null = null
 
 export function setMarkdownFileSavedHook(hook: (wc: WebContents, path: string) => void): void {
@@ -437,10 +432,6 @@ export function sendMarkdownPrintRequest(contents: WebContents): void {
 
 export function markdownIsDirty(webContentsId: number): boolean {
   return dirtyByWc.has(webContentsId)
-}
-
-export function markdownFilePath(webContentsId: number): string | undefined {
-  return savePathByWc.get(webContentsId)
 }
 
 /** The file was renamed on disk — re-grant the new path and tell the renderer */
@@ -503,20 +494,6 @@ export async function requestMarkdownClose(
   })
 }
 
-/**
- * Drop assets staged next to the document but never written into it — the MCP
- * "discard unsaved changes" path, same cleanup the interactive close prompt
- * runs when the user picks "Don't Save".
- */
-export async function markdownDiscardPendingAssets(contents: WebContents): Promise<void> {
-  const documentPath = savePathByWc.get(contents.id)
-  if (!documentPath) return
-  const discarded = await discardPendingOwnedAssets(documentPath)
-  if (discarded.errors.length > 0) {
-    console.warn('[markdown] pending asset discard incomplete:', discarded.errors)
-  }
-}
-
 /** Menu Save / Save As: ask the renderer to serialize and save; clean views resolve true immediately on plain save */
 export function requestMarkdownSave(contents: WebContents, mode: SaveMode): Promise<boolean> {
   if (contents.isDestroyed()) return Promise.resolve(false)
@@ -536,99 +513,6 @@ export function requestMarkdownSave(contents: WebContents, mode: SaveMode): Prom
   })
 }
 
-/**
- * Read the live document text for an MCP `open_documents` read. Unlike reading
- * the file from disk this includes unsaved edits, which is the whole point of
- * reading an *open* document.
- *
- * Concurrent reads of the same tab share one request: the waiter slot below
- * holds a single resolver, so a second in-flight read would overwrite the first
- * and strand it until its 30s timeout (the same trap the docs close-state query
- * guards against).
- */
-export function markdownReadText(contents: WebContents): Promise<string> {
-  if (contents.isDestroyed()) return Promise.reject(new Error('the document is no longer open'))
-  const wcId = contents.id
-  const inFlight = readTextInFlight.get(wcId)
-  if (inFlight) return inFlight
-  const request = new Promise<string>((resolve, reject) => {
-    // The renderer registers its listener while mounting, which can land after
-    // the tab appears; a request sent before that is dropped silently. Re-send
-    // on an interval until the renderer answers, the way the shell's own
-    // control channel polls for a not-yet-ready editor.
-    let settled = false
-    const settle = (finish: () => void): void => {
-      if (settled) return
-      settled = true
-      clearInterval(retry)
-      clearTimeout(timer)
-      readTextWaiters.delete(wcId)
-      readTextInFlight.delete(wcId)
-      finish()
-    }
-    const retry = setInterval(() => {
-      if (contents.isDestroyed()) {
-        settle(() => reject(new Error('the document is no longer open')))
-        return
-      }
-      contents.send(MARKDOWN_CHANNELS.readTextRequest)
-    }, 250)
-    const timer = setTimeout(
-      () => settle(() => reject(new Error('timed out reading the document'))),
-      30_000,
-    )
-    readTextWaiters.set(wcId, (result) => {
-      settle(() => {
-        if ('text' in result) resolve(result.text)
-        else reject(new Error(result.error))
-      })
-    })
-    contents.send(MARKDOWN_CHANNELS.readTextRequest)
-  })
-  readTextInFlight.set(wcId, request)
-  return request
-}
-
-/**
- * Save the live document to `filePath` with no dialog — the MCP close path
- * ("save before closing") and any agent that needs a silent write. Pointing the
- * view's save target at `filePath` first keeps `resolveSaveTarget` from ever
- * opening the save dialog, so the renderer's normal save (assets, manifest and
- * rewrite handling included) runs unattended.
- */
-export function markdownSaveToPath(contents: WebContents, filePath: string): Promise<void> {
-  if (contents.isDestroyed()) return Promise.reject(new Error('the document is no longer open'))
-  const wcId = contents.id
-  const previousPath = savePathByWc.get(wcId)
-  const previousOpenPath = openPathByWc.get(wcId)
-  savePathByWc.set(wcId, filePath)
-  const allowed = allowedByWc.get(wcId) ?? new Set<string>()
-  allowed.add(filePath)
-  allowedByWc.set(wcId, allowed)
-  return new Promise<void>((resolve, reject) => {
-    const restore = (): void => {
-      if (previousPath === undefined) savePathByWc.delete(wcId)
-      else savePathByWc.set(wcId, previousPath)
-      if (previousOpenPath === undefined) openPathByWc.delete(wcId)
-      else openPathByWc.set(wcId, previousOpenPath)
-    }
-    const timer = setTimeout(() => {
-      saveWaiters.delete(wcId)
-      restore()
-      reject(new Error('timed out saving the document'))
-    }, 120_000)
-    saveWaiters.set(wcId, (ok) => {
-      clearTimeout(timer)
-      if (ok) resolve()
-      else {
-        restore()
-        reject(new Error('could not save the document'))
-      }
-    })
-    contents.send(MARKDOWN_CHANNELS.saveRequest, 'save')
-  })
-}
-
 async function writeTextAtomic(path: string, text: string): Promise<void> {
   await atomicWriteFile(path, Buffer.from(text, 'utf8'))
 }
@@ -636,23 +520,9 @@ async function writeTextAtomic(path: string, text: string): Promise<void> {
 async function resolveSaveTarget(
   e: Electron.IpcMainInvokeEvent,
   mode: SaveMode,
-  suggestedName?: string,
 ): Promise<string | null | 'canceled'> {
   const current = savePathByWc.get(e.sender.id)
   if (mode === 'save' && current) return current
-  // AI auto-naming: silent first save of an untitled document
-  if (mode === 'save' && !current && suggestedName) {
-    const base = suggestedName
-      .replace(/[/\\:*?"<>|]/g, '_')
-      .slice(0, 80)
-      .trim()
-    if (base) {
-      const dir = configuredDefaultSaveDir(app)
-      let target = join(dir, `${base}.md`)
-      for (let n = 1; existsSync(target); n++) target = join(dir, `${base}-${n}.md`)
-      return target
-    }
-  }
   const win =
     BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
   const defaultPath = current
@@ -671,8 +541,8 @@ const DISPLAY_IMAGE_EXTS = new Set(Object.keys(EXPORT_IMAGE_MIME_BY_EXT))
 
 /**
  * `![x](https://…)` for the DOCX export: downloaded here so the renderer's
- * origin restrictions do not apply; the SSRF guard keeps the model-writable
- * URL off private hosts.
+ * origin restrictions do not apply; the SSRF guard keeps document-supplied
+ * URLs off private hosts.
  */
 async function readRemoteImage(url: string): Promise<ImageData | null> {
   try {
@@ -785,9 +655,7 @@ function registerMarkdownIpc(): void {
         ? await pendingOwnedAssetsForDocument(pathAtRequest)
         : []
       try {
-        const suggestedName =
-          typeof request.suggestedName === 'string' ? request.suggestedName : undefined
-        const target = await resolveSaveTarget(e, mode, suggestedName)
+        const target = await resolveSaveTarget(e, mode)
         if (target === 'canceled') return done({ ok: true, canceled: true })
         if (!target) return done({ ok: false, error: 'markdown: no save target' })
         const currentPath = pathAtRequest
@@ -879,23 +747,6 @@ function registerMarkdownIpc(): void {
       if (data.base64.length > Math.ceil(MAX_PASTED_IMAGE_BYTES / 3) * 4) return null
       return writeImageIntoOwnedAssets(docPath, `image.${ext}`, Buffer.from(data.base64, 'base64'))
     },
-  )
-
-  // markdown-owned (like docs:ai-generate-image): the shared ai:* handlers are
-  // shell-registered, but image generation is gated per app
-  ipcMain.handle(
-    MARKDOWN_CHANNELS.aiGenerateImage,
-    (e, op: { prompt?: unknown; aspectRatio?: unknown }) =>
-      generateImageTool(
-        join(app.getPath('userData'), 'ai-settings.json'),
-        {
-          prompt: String(op?.prompt ?? ''),
-          aspectRatio: op?.aspectRatio ? String(op.aspectRatio) : undefined,
-        },
-        // markdown keeps pasted/picked images as doc-relative assets, so the
-        // open document's own directory is the media root
-        { mediaRoots: documentMediaRoots(markdownFilePath(e.sender.id), undefined) },
-      ),
   )
 
   ipcMain.handle(MARKDOWN_CHANNELS.saveImageAs, async (e, src: unknown) => {
@@ -1074,17 +925,6 @@ function registerMarkdownIpc(): void {
     const waiter = closeSaveWaiters.get(e.sender.id)
     closeSaveWaiters.delete(e.sender.id)
     waiter?.(ok === true)
-  })
-
-  ipcMain.on(MARKDOWN_CHANNELS.readTextResult, (e, result: unknown) => {
-    const waiter = readTextWaiters.get(e.sender.id)
-    readTextWaiters.delete(e.sender.id)
-    if (!waiter) return
-    if (result && typeof result === 'object' && 'text' in result) {
-      waiter({ text: String((result as { text: unknown }).text) })
-    } else {
-      waiter({ error: 'the document could not be read' })
-    }
   })
 
   // safety net for menu saves the renderer declined without invoking save()
