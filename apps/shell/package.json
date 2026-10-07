@@ -1,11 +1,11 @@
 {
   "name": "@genoffice/shell",
-  "productName": "GenOffice",
+  "productName": "Hyper-Files",
   "version": "0.11.0",
-  "license": "Apache-2.0",
-  "homepage": "https://github.com/genspark-ai/genoffice",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://github.com/omar-184/Hyper-Files",
   "private": true,
-  "description": "Unified GenOffice shell: one app hosting the docs and sheets modules behind a home/launcher window",
+  "description": "Hyper-Files shell: one app hosting every editor behind a home/launcher window",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev --watch",
@@ -41,5 +41,5 @@
     "vite": "^7.3.1",
     "vitest": "^4.1.11"
   },
-  "author": "GenOffice"
+  "author": "Hyper-Files"
 }

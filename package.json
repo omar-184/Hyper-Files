@@ -1,16 +1,16 @@
 {
-  "name": "genoffice",
+  "name": "hyper-files",
   "version": "0.1.0",
   "private": true,
-  "description": "AI-native office suite (docs, sheets, slides, pdf, markdown, html)",
-  "license": "Apache-2.0",
+  "description": "Offline PDF and office suite for Windows (docs, sheets, slides, pdf, markdown, html)",
+  "license": "AGPL-3.0-only",
   "engines": {
     "node": ">=22.12.0",
     "npm": ">=10"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/genspark-ai/genoffice.git"
+    "url": "git+https://github.com/omar-184/Hyper-Files.git"
   },
   "workspaces": [
     "apps/*",
