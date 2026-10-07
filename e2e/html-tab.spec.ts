@@ -20,15 +20,6 @@ test.describe('html editor', () => {
       const editorPage = await waitForPageWithUrl(app, '://html/')
       await expect(editorPage.locator('.ribbon-body')).toBeVisible()
       await expect(editorPage.locator('.preview-frame')).toBeVisible()
-      // blank document: the AI panel offers the design / write intent cards and swaps its starters
-      const copilot = editorPage.locator('.copilot')
-      if (!(await copilot.isVisible())) await editorPage.locator('.ai-rail').click()
-      const cards = copilot.getByRole('radio')
-      await expect(cards).toHaveCount(2)
-      await expect(cards.first()).toHaveAttribute('aria-checked', 'true')
-      await cards.nth(1).click()
-      await expect(cards.nth(1)).toHaveAttribute('aria-checked', 'true')
-      await expect(copilot.locator('.ai-starter').first()).toHaveText(/Write an article/)
       // preview-only by default; the source pane stays mounted but hidden
       await expect(editorPage.locator('.pane-source')).toBeHidden()
       await editorPage.locator('.rb-view', { hasText: /Source/ }).click()
@@ -184,7 +175,7 @@ test.describe('html editor', () => {
     }
   })
 
-  test('preview inspector: click selects, double-click edits text, toolbar deletes, Ask AI drafts', async () => {
+  test('preview inspector: click selects, double-click edits text, toolbar deletes, styles apply', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'genoffice-html-'))
     const htmlPath = join(dir, 'inspect.html')
     const source =
@@ -309,27 +300,6 @@ test.describe('html editor', () => {
       await frame.locator('body').dispatchEvent('click')
       await expect(float).toBeHidden()
       await expect(editorPage.locator('.hx-panel')).toHaveCount(0)
-
-      // the floating toolbar's Ask AI (the single canvas entry) opens the element popover;
-      // "Add to queue" parks the instruction in the AI panel
-      await frame.locator('h1#title').click()
-      await expect(editorPage.locator('.hx-panel-tag')).toHaveText('<h1>')
-      await float.getByRole('button', { name: /Ask AI/ }).click()
-      const askPop = editorPage.locator('.ai-ask-pop')
-      await expect(askPop).toBeVisible()
-      await expect(askPop.locator('.ai-ask-pop-sub')).toContainText('<h1>')
-      await askPop.locator('.ai-ask-pop-input').fill('make it shorter')
-      await askPop.locator('.ai-ask-confirm').click()
-      await expect(askPop).toBeHidden()
-      const queueRow = editorPage.locator('.copilot .ai-queue-row')
-      await expect(queueRow).toHaveCount(1)
-      await expect(queueRow).toContainText('make it shorter')
-      await expect(frame.locator('[data-gx-inspector-pin]')).toHaveText('1')
-      // the pin reopens the instruction for editing; removing it clears the queue
-      await frame.locator('[data-gx-inspector-pin]').click()
-      await expect(askPop.locator('.ai-ask-pop-input')).toHaveValue('make it shorter')
-      await askPop.locator('.ai-ask-cancel').click()
-      await expect(queueRow).toHaveCount(0)
 
       // Present → In this tab hides the editing chrome and links work; Exit returns to Edit
       await editorPage

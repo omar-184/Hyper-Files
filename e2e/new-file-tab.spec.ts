@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchShell, closeAndSaveVideo, waitForPageWithUrl, screenshotPath } from './helpers'
 
 test.describe('new file from home', () => {
-  test('AI Docs quick card opens a docs editor tab', async () => {
+  test('Docs quick card opens a docs editor tab', async () => {
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'new-doc-tab' })
     const { app, page } = launched
     try {

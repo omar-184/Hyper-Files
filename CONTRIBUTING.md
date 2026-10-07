@@ -1,4 +1,4 @@
-# Contributing to GenOffice
+# Contributing to Hyper-Files
 
 Thanks for your interest in contributing. This document covers the local
 setup, the checks a change must pass, and the conventions used in this
@@ -6,19 +6,9 @@ repository.
 
 ## How changes land here
 
-This GitHub repository is a mirror: development happens in a private tree,
-and `main` here advances through single squashed snapshot commits
-(`Sync snapshot (<date>)`). That is why every file in a sync shows the same
-last-commit message, and why nobody — maintainers included — pushes to
-`main` directly.
-
-External pull requests are welcome and are reviewed here. Once a change is
-accepted, a maintainer imports it into the private tree with your authorship
-preserved as a `Co-authored-by:` trailer, and it ships to `main` in the next
-snapshot; your PR is then closed with a note pointing at the snapshot that
-carried it. GitHub will show the PR as "closed" rather than "merged" — the
-code and the attribution still land. Issues and feature requests are handled
-directly on this repository as usual.
+Work happens on branches and lands on `main` through pull requests; nobody
+pushes to `main` directly. Issues and feature requests are welcome on this
+repository.
 
 ## Repository layout
 
@@ -26,7 +16,7 @@ directly on this repository as usual.
   Each app is an npm workspace with its own `src/main` (Electron main
   process), `src/renderer` (React UI), and `tests/`.
 - `packages/*` — pure TypeScript engine and shared packages (no Electron
-  dependency, unit-tested): docx/pptx engines, AI agent core, providers,
+  dependency, unit-tested): docx/pptx engines,
   i18n, UI kit.
 - `apps/sheets/native/xlsx-engine` — Rust xlsx engine (runs as a sidecar process) for xlsx import/export.
 
@@ -45,16 +35,10 @@ All pure TypeScript, no Electron dependency, unit-tested (except the UI kit):
   the app's own Chromium, reduced in-browser to a document intent tree, and
   written as native OOXML with the `docx` library; only visuals with no Word
   counterpart are screenshotted. Drives the HTML app's Export as Word.
-- `packages/file-parse` — text extraction for AI attachments (office formats,
-  text formats).
-- `packages/agent-core` — the AI agent loop and skill composition shared by
-  every app.
-- `packages/ai-provider` — provider abstraction and streaming for the model
-  backends.
-- `packages/ai-search` — Genspark auth + web/image search tools.
-- `packages/i18n`, `packages/ui`, `packages/project-store`,
-  `packages/electron-utils` — shared i18n core, React UI kit, recent-files
-  store, and Electron main-process helpers.
+- `packages/file-parse` — text extraction for Home file search (office
+  formats, text formats).
+- `packages/i18n`, `packages/ui`, `packages/electron-utils` — shared i18n
+  core, React UI kit, and Electron main-process helpers.
 
 ### Architecture notes (docx round trip)
 
@@ -62,7 +46,7 @@ All pure TypeScript, no Electron dependency, unit-tested (except the UI kit):
 open docx ─► archive original by hash (never touched)
           ─► docx-engine parses word/document.xml top-level elements (w:p / w:tbl / …)
           ─► Block tree, each block anchored by docxIndex + original XML slice
-          ─► Tiptap streaming editor (manual + AI editing, dirty tracking)
+          ─► Tiptap editor (dirty tracking)
 save      ─► dirty blocks → OOXML fragments (referencing existing styles only)
           ─► splice into original document.xml (untouched blocks keep original bytes)
           ─► repack zip; all other entries copied byte-for-byte
@@ -149,21 +133,13 @@ or copy an existing `target/release/xlsx-sidecar.exe` to
 None are required — the apps run with all of these unset. They exist for
 testing and local overrides:
 
-| Variable                                                                                          | Effect                                                                           |
-| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `BUILD_DIR`                                                                                       | Override the electron-builder output directory (default `apps/shell/release`)    |
-| `GENOFFICE_USER_DATA`                                                                             | Override the Electron userData directory (test isolation)                        |
-| `GENOFFICE_LANG`                                                                                  | Force the UI language instead of following the OS locale                         |
-| `GENOFFICE_FAKE_UPDATE`                                                                           | Exercise the updater UI without a real release feed                              |
-| `GENOFFICE_CLOUD_SLIDE`, `GENOFFICE_CLOUD_SLIDE_TIER`                                             | Route slide generation through the cloud endpoint                                |
-| `GSK_API_KEY`, `GSK_CLI_PATH`                                                                     | Genspark credentials / CLI location for the built-in AI provider                 |
-| `AI_SEARCH_DISABLE_GSK`, `SERPER_API_KEY`, `SERPLY_API_KEY`, `TAVILY_API_KEY`, `PARALLEL_API_KEY` | Disable the gsk search backend / supply a Serper, Serply, Tavily or Parallel key |
-| `XLSX_SIDECAR_PATH`, `XLSX_OPEN_PATH`, `XLSX_DEBUG_PORT`                                          | Point at a locally built xlsx sidecar and its debug port                         |
-| `*_DEV_PORT`, `*_RENDERER_URL`                                                                    | Per-app Vite dev server ports and renderer URLs (set by `npm run dev`)           |
-
-AI features degrade rather than break without credentials: requests surface an
-inline sign-in prompt, and web search falls back to keyless backends (Parallel's
-free Search MCP, then DuckDuckGo).
+| Variable                                                 | Effect                                                                        |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `BUILD_DIR`                                              | Override the electron-builder output directory (default `apps/shell/release`) |
+| `GENOFFICE_USER_DATA`                                    | Override the Electron userData directory (test isolation)                     |
+| `GENOFFICE_LANG`                                         | Force the UI language instead of following the OS locale                      |
+| `XLSX_SIDECAR_PATH`, `XLSX_OPEN_PATH`, `XLSX_DEBUG_PORT` | Point at a locally built xlsx sidecar and its debug port                      |
+| `*_DEV_PORT`, `*_RENDERER_URL`                           | Per-app Vite dev server ports and renderer URLs (set by `npm run dev`)        |
 
 ## Coding conventions
 
@@ -202,15 +178,9 @@ public issue — follow [SECURITY.md](SECURITY.md).
 All community spaces follow the
 [Contributor Covenant](CODE_OF_CONDUCT.md); participation implies acceptance.
 
-## License and CLA
+## License
 
-There is no CLA (contributor license agreement), and we do not plan to add
-one. By contributing, you agree that your contributions are licensed under
-the [Apache License 2.0](LICENSE) that covers this project — inbound =
-outbound, per Apache-2.0 §5. Because community contributions keep their
-Apache-2.0 terms, the open-source core cannot be retroactively relicensed.
-
-The `ee/` directory is reserved for future enterprise modules under a
-[separate license](ee/LICENSE) and does not accept external contributions —
-pull requests from outside the maintainer team must not modify files under
-`ee/` (enforced via [CODEOWNERS](.github/CODEOWNERS)).
+There is no CLA (contributor license agreement). Hyper-Files is licensed under
+the [GNU AGPL-3.0](LICENSE); by contributing, you agree that your
+contributions are licensed under the same terms. Code imported from GenOffice
+keeps its Apache-2.0 notices (see [NOTICE](NOTICE)).

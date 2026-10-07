@@ -142,11 +142,19 @@ test('context menu offers spelling suggestions and applies one', async () => {
     await expect(editor.locator('.ctx-menu')).toHaveCount(1)
     await editor.keyboard.press('Escape')
     // positive control for the popup counter: a surface without a React menu
-    // (the AI pane input) still gets the native one
-    const aiInput = editor.locator('textarea').first()
-    await aiInput.click({ button: 'right' })
+    // (a plain textarea outside the page) still gets the native one
+    await editor.evaluate(() => {
+      const probe = document.createElement('textarea')
+      probe.className = 'e2e-native-menu-probe'
+      probe.style.cssText =
+        'position:fixed;right:8px;bottom:8px;width:120px;height:40px;z-index:99999'
+      document.body.appendChild(probe)
+    })
+    const probe = editor.locator('textarea.e2e-native-menu-probe')
+    await probe.click({ button: 'right' })
     await expect.poll(nativePopups, POLL).toBe(1)
     await editor.keyboard.press('Escape')
+    await probe.evaluate((el) => el.remove())
 
     // Add to Dictionary must clear the existing squiggle without the user
     // typing. Done before the replace/undo below: an undo re-renders the

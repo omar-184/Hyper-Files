@@ -46,7 +46,7 @@
   --shadow-btn-hover: 0 2px 8px rgb(35 36 37 / 15%);
   --shadow-menu: 0 8px 24px rgb(0 0 0 / 18%);
 
-  /* AI panel (canonical names from the former per-app copies) */
+  /* Shared component tokens (canonical names from the former per-app copies) */
   --gs-font-sans:
     'Arial', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
     sans-serif;

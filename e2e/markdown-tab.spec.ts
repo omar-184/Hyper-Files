@@ -180,36 +180,6 @@ test.describe('markdown editor', () => {
     }
   })
 
-  test('ribbon AI preset button opens the panel and sends the instruction', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'genoffice-md-'))
-    const mdPath = join(dir, 'summary.md')
-    await writeFile(mdPath, '# Topic\n\nSome content worth summarizing.\n')
-
-    const launched = await launchShell({
-      onboardingSeen: true,
-      videoDir: 'markdown-ai-preset',
-      openFile: mdPath,
-    })
-    const { app } = launched
-    try {
-      const editorPage = await waitForPageWithUrl(app, '://markdown/')
-      await expect(editorPage.locator('.doc-editor h1')).toHaveText('Topic')
-
-      const summarizeBtn = editorPage.locator('.rb-big.ai-entry', {
-        hasText: /AI Summarize/,
-      })
-      await expect(summarizeBtn).toBeEnabled()
-      await summarizeBtn.click()
-
-      await expect(editorPage.locator('.copilot')).toBeVisible()
-      // the preset lands as a sent user message (the model reply itself needs credentials)
-      await expect(editorPage.locator('.ai-msg-user')).toContainText(/Summarize/)
-      await editorPage.screenshot({ path: screenshotPath('markdown-ai-preset') })
-    } finally {
-      await closeAndSaveVideo(launched, 'markdown-ai-preset')
-    }
-  })
-
   test('ribbon bold serializes as GFM; quick-access save and undo work', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'genoffice-md-'))
     const mdPath = join(dir, 'style.md')

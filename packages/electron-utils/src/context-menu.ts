@@ -1,5 +1,5 @@
-/// Native right-click menu for surfaces without a self-drawn one (AI panel,
-/// inputs, chrome). Renderer-drawn menus call preventDefault() on the DOM
+/// Native right-click menu for surfaces without a self-drawn one (inputs,
+/// chrome). Renderer-drawn menus call preventDefault() on the DOM
 /// contextmenu event, which suppresses this webContents event entirely
 /// (verified on Electron 41), so the two never stack.
 import type { App, ContextMenuParams, MenuItemConstructorOptions, WebContents } from 'electron'
