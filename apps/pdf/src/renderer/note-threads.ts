@@ -234,7 +234,7 @@ export function buildNoteThreads(
 }
 
 /**
- * Threads as the UI and AI tools see them: saved notes queued for deletion are dropped
+ * Threads as the UI sees them: saved notes queued for deletion are dropped
  * and pending content edits are overlaid on `item.contents` only — `item.saved` keeps
  * the on-disk text that replies and the edits themselves match against at save.
  */

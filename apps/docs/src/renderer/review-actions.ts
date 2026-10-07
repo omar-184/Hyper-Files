@@ -5,7 +5,7 @@
  * ReviewContext built fresh per call so state never goes stale.
  */
 import type { Editor } from '@tiptap/core'
-import { TextSelection } from '@tiptap/pm/state'
+import { TextSelection, type Transaction } from '@tiptap/pm/state'
 import { nextNoteId, parseDocx, type CommentInfo, type NoteInfo } from '@genoffice/docx-engine'
 import type { Dispatch, SetStateAction } from 'react'
 import { fetchDocBytes } from './doc-bytes'
@@ -29,7 +29,6 @@ import {
 } from './editor/compare'
 import { pendingCommentPluginKey } from './editor/extensions'
 import type { InkAnnotation } from './editor/ink'
-import { renumber } from './ai/note-ops'
 import {
   TRACK_IGNORE,
   acceptAllRevisions,
@@ -71,6 +70,17 @@ export interface ReviewContext {
 }
 
 // ---- References: footnotes / endnotes ----
+
+/** Rewrite every reference mark of `kind` in `tr` to its 1-based document-order number. */
+function renumber(tr: Transaction, kind: 'footnote' | 'endnote'): void {
+  let num = 0
+  tr.doc.descendants((node, pos) => {
+    if (node.type.name !== 'docNoteRef' || node.attrs.kind !== kind) return true
+    num++
+    if (node.attrs.num !== num) tr.setNodeMarkup(pos, undefined, { ...node.attrs, num })
+    return false
+  })
+}
 
 /** dialog submit: create a new note (+ caret marker) or update an existing one */
 export function submitNote(ctx: ReviewContext, text: string): void {

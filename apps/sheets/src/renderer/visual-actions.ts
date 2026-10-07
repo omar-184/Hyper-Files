@@ -19,7 +19,6 @@ import type {
   EditChartOperation,
   EditShapeOperation,
 } from '@genoffice/xlsx-gateway/domain/workbook-dsl'
-import type { ChangePlan } from '@genoffice/xlsx-gateway/domain/workbook.types'
 import { IRenderManagerService, Vector2 } from '@univerjs/engine-render'
 import { SheetSkeletonManagerService } from '@univerjs/preset-sheets-core'
 import type { WorkbookVisualObject } from '../shared/desktop-api'
@@ -68,7 +67,6 @@ export interface VisualActionContext {
   shapeEditRef: { current: (visualId: string, changes: ShapeEditChanges) => void }
   setMessage: (message: string) => void
   setRevision: (revision: number) => void
-  setPreview: (plan: ChangePlan | null) => void
   setPendingEdits: (count: number) => void
   pivotContext: () => PivotActionContext
   queueDemoVisualInstall: (runtime: UniverRuntime) => void
@@ -159,7 +157,6 @@ function insertDemoChartFromSelection(
     })
     const receipt = ctx.adapterRef.current.apply(plan)
     ctx.setRevision(receipt.revision)
-    ctx.setPreview(null)
     ctx.queueDemoVisualInstall(runtime)
     ctx.setMessage(t('appChartInsertedDemo'))
   } catch (error: unknown) {

@@ -15,12 +15,10 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { BrowserWindow, WebContentsView, app, dialog, ipcMain, shell } from 'electron'
 import type { WebContents } from 'electron'
 import {
-  buildPrintableHtml,
   configuredDefaultSaveDir,
   contextMenuLabels,
   installContextMenu,
   installNavigationGuard,
-  printHtmlToPdf,
   safeExternalUrl,
   showOpenDialogWithMemory,
   installRendererProtocol,
@@ -28,7 +26,6 @@ import {
   rendererUrl,
 } from '@genoffice/electron-utils'
 import { createI18n, getUiLang } from '@genoffice/i18n'
-import { generateImageTool, documentMediaRoots } from '@genoffice/ai-search'
 import { PDF_CHANNELS } from '../shared/ipc'
 import { buildExportImagePaths, hasValidExportPageNumbers } from './export-images'
 import type {
@@ -58,8 +55,6 @@ import type {
   SavePdfResult,
   CropPagesRequest,
   CropPagesResult,
-  CreateDocumentRequest,
-  CreateDocumentResult,
   TextEditValidation,
   ValidateTextEditsRequest,
 } from '../shared/ipc'
@@ -516,85 +511,12 @@ interface RuntimePaths {
   rendererFile?: string
   /** Shell router used to open generated PDFs in a new GenOffice tab. */
   openGeneratedPath?: (path: string) => boolean
-  /** Host-owned cross-app document creator (the shell routes DOCX into Docs). */
-  createDocument?: (request: CreateDocumentRequest) => Promise<CreateDocumentResult>
 }
 
 let runtime: RuntimePaths = { preloadPath: '' }
 
 export function configurePdfRuntime(paths: RuntimePaths): void {
   runtime = paths
-}
-
-const MAX_CREATE_DOCUMENT_TITLE_CHARS = 200
-const MAX_CREATE_DOCUMENT_CONTENT_CHARS = 2_000_000
-
-function parseCreateDocumentRequest(request: unknown): CreateDocumentRequest | null {
-  if (!request || typeof request !== 'object') return null
-  const { type, title, content } = request as Record<string, unknown>
-  if (type !== 'docx' && type !== 'pdf' && type !== 'md') return null
-  if (
-    typeof title !== 'string' ||
-    title.trim() === '' ||
-    title.length > MAX_CREATE_DOCUMENT_TITLE_CHARS
-  )
-    return null
-  if (
-    typeof content !== 'string' ||
-    content.trim() === '' ||
-    content.length > MAX_CREATE_DOCUMENT_CONTENT_CHARS
-  )
-    return null
-  return { type, title: title.trim(), content }
-}
-
-function sanitizeGeneratedDocumentTitle(title: string): string {
-  const cleaned = title
-    // eslint-disable-next-line no-control-regex -- generated file names must reject controls
-    .replace(/[/\\:*?"<>|\u0000-\u001f]/g, '_')
-    .trim()
-    .slice(0, 80)
-    .trim()
-  return cleaned && cleaned !== '.' && cleaned !== '..' ? cleaned : 'Untitled'
-}
-
-function uniqueGeneratedTextPath(dir: string, title: string, ext: 'md' | 'html'): string {
-  const stem = sanitizeGeneratedDocumentTitle(title)
-  let candidate = join(dir, `${stem}.${ext}`)
-  for (let i = 2; existsSync(candidate); i += 1) candidate = join(dir, `${stem}-${i}.${ext}`)
-  return candidate
-}
-
-async function createStandaloneDocument(
-  request: CreateDocumentRequest,
-): Promise<CreateDocumentResult> {
-  if (request.type === 'docx') {
-    return {
-      ok: false,
-      error: 'Creating DOCX files requires the GenOffice shell or Docs app.',
-    }
-  }
-  const title = sanitizeGeneratedDocumentTitle(request.title)
-  try {
-    if (request.type === 'pdf') {
-      const bytes = await printHtmlToPdf(
-        buildPrintableHtml(title, request.content),
-        () =>
-          new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } }),
-      )
-      const path = uniqueGeneratedPdfPath(configuredDefaultSaveDir(app), `${title}.pdf`)
-      await writeFile(path, bytes)
-      openGeneratedPdf(path)
-      return { ok: true, path }
-    }
-    // md / html: the source is the file; standalone has no sibling editor to open it in
-    const path = uniqueGeneratedTextPath(configuredDefaultSaveDir(app), title, request.type)
-    await writeFile(path, request.content, 'utf8')
-    shell.showItemInFolder(path)
-    return { ok: true, path }
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) }
-  }
 }
 
 function openGeneratedPdf(path: string): void {
@@ -645,7 +567,7 @@ export function clearPdfDirty(webContentsId: number): void {
 
 /** Paths of shell-created blank PDFs still carrying their untitled name; only these may auto-rename */
 const untitledPdfPaths = new Set<string>()
-/** Shell hook fired after an auto-rename so the tab title / recents / project mapping follow the file */
+/** Shell hook fired after an auto-rename so the tab title / recents follow the file */
 let pdfRenamedHook: ((wc: WebContents, oldPath: string, newPath: string) => void) | null = null
 
 /** Called by the shell right after "New PDF" writes the blank file to disk */
@@ -972,24 +894,6 @@ function registerPdfIpc(): void {
     return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
   })
 
-  ipcMain.handle(
-    PDF_CHANNELS.createDocument,
-    async (e, request: unknown): Promise<CreateDocumentResult> => {
-      if (!allowedByWc.has(e.sender.id)) {
-        return { ok: false, error: 'pdf: sender is not a registered PDF view' }
-      }
-      const parsed = parseCreateDocumentRequest(request)
-      if (!parsed) return { ok: false, error: 'pdf: invalid create-document request' }
-      const create = runtime.createDocument
-      if (!create) return { ok: false, error: 'pdf: document creation is unavailable in this host' }
-      try {
-        return await create(parsed)
-      } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) }
-      }
-    },
-  )
-
   ipcMain.handle(PDF_CHANNELS.save, async (e, request: SavePdfRequest): Promise<SavePdfResult> => {
     const path = request?.path
     if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
@@ -1094,14 +998,6 @@ function registerPdfIpc(): void {
       redactionFlows.delete(e.sender.id)
       setPdfSaveAsInFlight(e.sender, false)
     }
-  })
-
-  ipcMain.handle(PDF_CHANNELS.isUntitled, (e, path: unknown): boolean => {
-    return (
-      typeof path === 'string' &&
-      !!allowedByWc.get(e.sender.id)?.has(path) &&
-      untitledPdfPaths.has(path)
-    )
   })
 
   ipcMain.handle(
@@ -1569,25 +1465,6 @@ function registerPdfIpc(): void {
     },
   )
 
-  // pdf-owned (unlike ai:image-search / ai:fetch-image, which the shell registers app-wide):
-  // slides' ai:generate-image is only registered once a slides view exists, so pdf needs its own
-  ipcMain.handle(PDF_CHANNELS.generateImage, (e, op: { prompt?: unknown; aspectRatio?: unknown }) =>
-    generateImageTool(
-      join(app.getPath('userData'), 'ai-settings.json'),
-      {
-        prompt: String(op?.prompt ?? ''),
-        aspectRatio: op?.aspectRatio ? String(op.aspectRatio) : undefined,
-      },
-      {
-        // pdf keeps its media (exported/edited images) beside the open file
-        mediaRoots: documentMediaRoots(
-          openPathByWc.get(e.sender.id),
-          join(app.getPath('temp'), 'genoffice-pasted'),
-        ),
-      },
-    ),
-  )
-
   ipcMain.handle(PDF_CHANNELS.listSignatures, () => withSignatures(async (list) => list))
 
   ipcMain.handle(PDF_CHANNELS.addSignature, (_e, data: unknown) =>
@@ -1688,7 +1565,6 @@ export function startPdfStandalone(): void {
     preloadPath: join(__dirname, '../preload/index.js'),
     rendererUrl: process.env.ELECTRON_RENDERER_URL,
     rendererFile: join(__dirname, '../renderer/index.html'),
-    createDocument: createStandaloneDocument,
   })
   void app.whenReady().then(() => {
     installRendererProtocol({ pdf: join(__dirname, '../renderer') })

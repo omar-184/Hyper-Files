@@ -1,4 +1,3 @@
-import { aiStrings } from './strings-ai'
 import { appStrings } from './strings-app'
 import { editorStrings } from './strings-editor'
 import { ribbonStrings } from './strings-ribbon'
@@ -11,7 +10,6 @@ export const strings = {
     ...ribbonStrings.zh,
     ...tableStrings.zh,
     ...editorStrings.zh,
-    ...aiStrings.zh,
     ...zoteroStrings.zh,
   },
   en: {
@@ -19,7 +17,6 @@ export const strings = {
     ...ribbonStrings.en,
     ...tableStrings.en,
     ...editorStrings.en,
-    ...aiStrings.en,
     ...zoteroStrings.en,
   },
   ja: {
@@ -27,7 +24,6 @@ export const strings = {
     ...ribbonStrings.ja,
     ...tableStrings.ja,
     ...editorStrings.ja,
-    ...aiStrings.ja,
     ...zoteroStrings.ja,
   },
   ko: {
@@ -35,7 +31,6 @@ export const strings = {
     ...ribbonStrings.ko,
     ...tableStrings.ko,
     ...editorStrings.ko,
-    ...aiStrings.ko,
     ...zoteroStrings.ko,
   },
   fr: {
@@ -43,7 +38,6 @@ export const strings = {
     ...ribbonStrings.fr,
     ...tableStrings.fr,
     ...editorStrings.fr,
-    ...aiStrings.fr,
     ...zoteroStrings.fr,
   },
   de: {
@@ -51,7 +45,6 @@ export const strings = {
     ...ribbonStrings.de,
     ...tableStrings.de,
     ...editorStrings.de,
-    ...aiStrings.de,
     ...zoteroStrings.de,
   },
   es: {
@@ -59,7 +52,6 @@ export const strings = {
     ...ribbonStrings.es,
     ...tableStrings.es,
     ...editorStrings.es,
-    ...aiStrings.es,
     ...zoteroStrings.es,
   },
   th: {
@@ -67,7 +59,6 @@ export const strings = {
     ...ribbonStrings.th,
     ...tableStrings.th,
     ...editorStrings.th,
-    ...aiStrings.th,
     ...zoteroStrings.th,
   },
   id: {
@@ -75,7 +66,6 @@ export const strings = {
     ...ribbonStrings.id,
     ...tableStrings.id,
     ...editorStrings.id,
-    ...aiStrings.id,
     ...zoteroStrings.id,
   },
   ru: {
@@ -83,7 +73,6 @@ export const strings = {
     ...ribbonStrings.ru,
     ...tableStrings.ru,
     ...editorStrings.ru,
-    ...aiStrings.ru,
     ...zoteroStrings.ru,
   },
   ar: {
@@ -91,7 +80,6 @@ export const strings = {
     ...ribbonStrings.ar,
     ...tableStrings.ar,
     ...editorStrings.ar,
-    ...aiStrings.ar,
     ...zoteroStrings.ar,
   },
   pt: {
@@ -99,7 +87,6 @@ export const strings = {
     ...ribbonStrings.pt,
     ...tableStrings.pt,
     ...editorStrings.pt,
-    ...aiStrings.pt,
     ...zoteroStrings.pt,
   },
   it: {
@@ -107,7 +94,6 @@ export const strings = {
     ...ribbonStrings.it,
     ...tableStrings.it,
     ...editorStrings.it,
-    ...aiStrings.it,
     ...zoteroStrings.it,
   },
   pl: {
@@ -115,7 +101,6 @@ export const strings = {
     ...ribbonStrings.pl,
     ...tableStrings.pl,
     ...editorStrings.pl,
-    ...aiStrings.pl,
     ...zoteroStrings.pl,
   },
   cs: {
@@ -123,7 +108,6 @@ export const strings = {
     ...ribbonStrings.cs,
     ...tableStrings.cs,
     ...editorStrings.cs,
-    ...aiStrings.cs,
     ...zoteroStrings.cs,
   },
   nl: {
@@ -131,7 +115,6 @@ export const strings = {
     ...ribbonStrings.nl,
     ...tableStrings.nl,
     ...editorStrings.nl,
-    ...aiStrings.nl,
     ...zoteroStrings.nl,
   },
   ms: {
@@ -139,7 +122,6 @@ export const strings = {
     ...ribbonStrings.ms,
     ...tableStrings.ms,
     ...editorStrings.ms,
-    ...aiStrings.ms,
     ...zoteroStrings.ms,
   },
   he: {
@@ -147,7 +129,6 @@ export const strings = {
     ...ribbonStrings.he,
     ...tableStrings.he,
     ...editorStrings.he,
-    ...aiStrings.he,
     ...zoteroStrings.he,
   },
   hi: {
@@ -155,7 +136,6 @@ export const strings = {
     ...ribbonStrings.hi,
     ...tableStrings.hi,
     ...editorStrings.hi,
-    ...aiStrings.hi,
     ...zoteroStrings.hi,
   },
 
@@ -164,7 +144,6 @@ export const strings = {
     ...ribbonStrings.vi,
     ...tableStrings.vi,
     ...editorStrings.vi,
-    ...aiStrings.vi,
     ...zoteroStrings.vi,
   },
   'zh-TW': {
@@ -172,7 +151,6 @@ export const strings = {
     ...ribbonStrings['zh-TW'],
     ...tableStrings['zh-TW'],
     ...editorStrings['zh-TW'],
-    ...aiStrings['zh-TW'],
     ...zoteroStrings['zh-TW'],
   },
 }

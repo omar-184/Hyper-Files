@@ -1,6 +1,5 @@
-import type { AiPanelPrefs } from '@genoffice/ui'
 /**
- * slides main-process <-> renderer IPC contract (Phase 3: open/save/edit, AI not included yet).
+ * slides main-process <-> renderer IPC contract (open/save/edit).
  *
  * Architecture: pptx parsing/saving needs node:crypto/Buffer and can only run in the main
  * process (Node). The main process holds the parsed deck (with originalXml/archive) and sends
@@ -13,49 +12,12 @@ import type { CustGeomPathCmd, SlideComment, SectionInfo } from '@genoffice/pptx
 import type { FontSizeStep } from '@genoffice/pptx-ops/font-size'
 // the font catalog's shape is the store's to declare, not a copy kept in step by hand
 import type { CatalogEntry as FontCatalogEntry } from '@genoffice/electron-utils/font-store'
-import type { LayoutSkeleton } from '../renderer/ai/layout-skeleton'
-import type {
-  AiSettings,
-  AiStreamChunk,
-  AiStreamRequest,
-  GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
-
-import type {
-  EditRun,
-  EditParagraph,
-  ScriptBoxOp,
-  ScriptStylePatch,
-  ScriptEditOp,
-  ApplyEditScriptOp,
-  LinkTargetOp,
-} from '@genoffice/pptx-ops'
+import type { EditRun, EditParagraph, LinkTargetOp } from '@genoffice/pptx-ops'
 
 // edit payload types moved to the op package; re-exported so IPC consumers keep one import site
-export type {
-  EditRun,
-  EditParagraph,
-  ScriptBoxOp,
-  ScriptStylePatch,
-  ScriptEditOp,
-  ApplyEditScriptOp,
-  LinkTargetOp,
-}
+export type { EditRun, EditParagraph, LinkTargetOp }
 
 export type { SlideComment, SectionInfo } from '@genoffice/pptx-engine'
-
-// Canonical definitions of AI-related types live in @genoffice/ai-provider / @genoffice/agent-core (shared with docs)
-export type {
-  AiProviderConfig,
-  AiProviderId,
-  AiProviderMeta,
-  AiSettings,
-  AiStreamChunk,
-  AiStreamRequest,
-  GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
-export { AI_PROVIDERS } from '@genoffice/ai-provider/browser'
-export type { AgentToolCall, AgentToolDef } from '@genoffice/agent-core'
 
 export type UiTheme = 'light' | 'dark' | 'system'
 
@@ -97,99 +59,10 @@ export interface OpenResult {
   defaultFont?: string
 }
 
-// ---- Chat attachments (local files fed to the agent via tools; structure copied from apps/docs) ----
-
-/** Image attachment extensions: no text extraction; read as base64 on send and passed to the model as multimodal images with the user message */
-export const ATTACHMENT_IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
-
-export interface AttachmentMeta {
-  /** Absolute local path; files never leave this machine */
-  path: string
-  name: string
-  /** Lowercase extension, without the dot */
-  ext: string
-  sizeBytes: number
-}
-
-export interface AttachmentAddResult {
-  accepted: AttachmentMeta[]
-  /** Per-file rejection reason (too large / unsupported type / unreadable) */
-  rejected: string[]
-}
-
-export interface AttachmentReadResult {
-  ok: boolean
-  error?: string
-  name?: string
-  /** Total character count of the extracted text */
-  totalChars?: number
-  /** The requested slice */
-  text?: string
-  offset?: number
-}
-
-/** Image attachment raw-byte read (multimodal input, slides:files-read-image) */
-export interface AttachmentImageResult {
-  ok: boolean
-  /** raw base64 (without the data: prefix) */
-  base64?: string
-  mime?: string
-  error?: string
-}
-
-/** Attachment bridge (window.desktop): same names/signatures as docs' DesktopApi attachment subset, so files-skill can be copied wholesale */
-export interface DesktopFilesApi {
-  /** Multi-select attachment file dialog */
-  pickAttachments(): Promise<AttachmentAddResult | null>
-  /** Validate dragged-in paths and return attachment metadata */
-  addAttachmentPaths(paths: string[]): Promise<AttachmentAddResult>
-  /** Save a clipboard-pasted image (no local path) to a temp file and add it as an attachment */
-  addPastedImage(data: ArrayBuffer, ext: string): Promise<AttachmentAddResult>
-  /** Read one slice of an attachment's extracted text */
-  readAttachment(path: string, offset: number, maxChars: number): Promise<AttachmentReadResult>
-  /** Read an image attachment as base64 for multimodal (≤5MB) */
-  readAttachmentImage(path: string): Promise<AttachmentImageResult>
+/** Native helpers exposed as window.desktop */
+export interface DesktopApi {
   /** Absolute path of a File dropped on the window (Electron webUtils) */
   getPathForFile(file: File): string
-}
-
-/** A raw op transaction from the AI batch surface (ops are validated by the registry; coordinates are document-space EMU). */
-export interface ApplyTxnOp {
-  ops: unknown[]
-  /** atomic (default): all-or-nothing. per_op: independent, failures skip. */
-  isolation?: 'atomic' | 'per_op'
-  /** Validate and return the plan without touching the deck. */
-  dryRun?: boolean
-}
-
-export interface ApplyTxnResult {
-  applied: boolean
-  dryRun?: boolean
-  /** dry-run: one line per validated op */
-  plan?: string[]
-  failures?: Array<{ index: number; error: string }>
-  /** compact journal echo: op name, target, ids minted by additive ops */
-  records?: Array<{ op: string; target?: string; created?: string[] }>
-  /** full deck after a mutation (a transaction may touch any slide) */
-  slides?: RenderSlide[]
-}
-
-/** The whole edit script as one atomic transaction (surface px; the main-process shim converts). */
-/**
- * A run that ended without a usable reply. These never reach the chat history —
- * agent-core rolls a failed turn out of the model context, so storing it there
- * would feed it back on the next reopen. This lands in a separate log instead,
- * which is the only trace left of a model that loops or a stream that dies.
- */
-export interface AiRunFailure {
-  kind: 'error' | 'stopped'
-  /** What was sent to the model, so the log alone explains what triggered it */
-  instruction: string
-  /** Whatever the model had streamed before it ended (truncated by the main process) */
-  streamed: string
-  error?: string
-  tools?: string[]
-  durationMs?: number
 }
 
 /**
@@ -1288,10 +1161,6 @@ export interface SlidesApi {
   /** shell-wide AutoSave default (see useAutoSavePref) */
   getAutoSaveDefault: () => Promise<AutoSaveDefault>
   onAutoSaveDefaultChanged: (handler: (value: AutoSaveDefault) => void) => () => void
-  /** AI panel text size + chat-input spellcheck (Settings → General in the shell) */
-  getAiPanelPrefs: () => Promise<AiPanelPrefs>
-  setAiPanelPrefs(patch: Partial<AiPanelPrefs>): Promise<AiPanelPrefs>
-  onAiPanelPrefsChanged: (handler: (prefs: AiPanelPrefs) => void) => () => void
   /** press on the shell chrome (tab strip is a sibling WebContentsView whose
    *  clicks produce no DOM event here) — dismiss open popovers */
   onChromePressed: (handler: () => void) => () => void
@@ -1329,46 +1198,6 @@ export interface SlidesApi {
   headlessExportDone: (result: { ok: boolean; error?: string }) => void
   /** New blank presentation (single blank 16:9 page, untitled) */
   newBlank: (fitWidthPx: number) => Promise<OpenResult>
-  /** Land generated pages: each pageMarkers entry is a marker (cloudpptx:<path>) redeemable for a one-slide pptx.
-   *  mode="append" merges the new pages onto the existing deck (appendedFrom = existing page count);
-   *  mode="replace_at" redoes page atIndex in place from a single marker (other pages untouched, undoable, replacedIndex = that page's index);
-   *  mode="insert_at" inserts a new page at atIndex from a single marker (later pages shift back, undoable, insertedIndex = that page's index);
-   *  when the pipeline fails it falls back to element-level mode, fallbackReason explains why;
-   *  deckName = the deck name AI derived from user input, used as the filename when saving a new draft (falls back to timestamp naming) */
-  landGeneratedPages: (
-    pageMarkers: string[],
-    fitWidthPx: number,
-    mode?: 'replace' | 'append' | 'replace_at' | 'insert_at',
-    atIndex?: number,
-    deckName?: string,
-  ) => Promise<
-    | (OpenResult & {
-        appendedFrom?: number
-        replacedIndex?: number
-        insertedIndex?: number
-        fallbackReason?: string
-        imageFailures?: { page: number; url: string }[]
-      })
-    | { error: string }
-  >
-  /** Whether cloud single-page generation (gsk slide_generate) is available (GENOFFICE_CLOUD_SLIDE=1 + gsk login) */
-  cloudGenStatus: () => Promise<{ enabled: boolean }>
-  /** Abort every in-flight cloud page generation of this window (AI panel stop) */
-  cloudPageCancel: () => Promise<void>
-  /** Cloud single-page generation: brief → one-slide pptx temp file; the marker goes into a landGeneratedPages pageMarkers slot */
-  cloudGeneratePage: (op: {
-    brief: string
-    title?: string
-    styleSkill?: string
-    deckContext?: Record<string, unknown>
-    images?: { url: string; caption?: string }[]
-    width?: number
-    height?: number
-  }) => Promise<{ ok: boolean; marker?: string; error?: string }>
-  /** Local single-page generation: a JSON slide spec (LLM output) built directly into a one-slide pptx; same marker kind as the cloud path */
-  localGeneratePage: (op: {
-    specJson: string
-  }) => Promise<{ ok: boolean; marker?: string; error?: string; imageFailures?: string[] }>
   editText: (op: EditTextOp) => Promise<RenderSlide | null>
   /** Change font/size on selected elements wholesale (elements without text ignored; returns null if all ignored) */
   setElementFont: (op: SetElementFontOp) => Promise<RenderSlide | null>
@@ -1626,17 +1455,9 @@ export interface SlidesApi {
   /** System clipboard while text-editing (webContents.cut/copy/paste, for menu command echo) */
   nativeClipboard: (op: 'cut' | 'copy' | 'paste') => Promise<void>
   /** Nestable history transaction; all edits between begin/end become one undo step.
-      The outermost end registers an AI rollback point and returns its id (null when nothing changed). */
+      The outermost end returns whether it collapsed any edits. */
   beginHistoryBatch: () => Promise<boolean>
-  endHistoryBatch: () => Promise<number | null>
-  /** Apply an edit script's collected primitives as ONE atomic op transaction (the executor rolls back on any failure); returns the rebuilt slide or a guided error */
-  applyEditScript: (
-    op: ApplyEditScriptOp,
-  ) => Promise<{ slide: RenderSlide } | { error: string } | null>
-  /** AI batch surface: apply raw ops as one transaction (atomic/per_op, dry-run supported) */
-  applyTxn: (op: ApplyTxnOp) => Promise<ApplyTxnResult | null>
-  /** Roll the deck back to an AI rollback point; returns the restored full RenderSlide array, null when the id is unknown */
-  aiSnapshotRestore: (id: number) => Promise<RenderSlide[] | null>
+  endHistoryBatch: () => Promise<boolean>
   /** Undo/redo (main-process snapshot history): returns the restored full RenderSlide array, null when nothing to undo */
   undo: () => Promise<RenderSlide[] | null>
   redo: () => Promise<RenderSlide[] | null>
@@ -1702,108 +1523,6 @@ export interface SlidesApi {
   onOpened: (handler: (result: OpenResult) => void) => () => void
   /** The file was renamed externally (shell Home list rename) — pushes the new path, the renderer updates the title bar */
   onRenamed: (handler: (newPath: string) => void) => () => void
-  getAiSettings: () => Promise<AiSettings>
-  setAiSettings: (settings: AiSettings) => Promise<void>
-  aiStream: (request: AiStreamRequest) => Promise<void>
-  aiStreamCancel: (requestId: string) => Promise<void>
-  /** Genspark account status (gsk login state); with withEmail also fetches the email (needs a network request, slower) */
-  aiGskStatus: (withEmail?: boolean) => Promise<GenSparkAccountStatus>
-  /** Open the browser to log into Genspark (fire-and-forget; aiGskStatus turns logged-in once done) */
-  aiGskLogin: () => Promise<void>
-  /** Record a run that ended without a usable reply, for post-mortem (fire-and-forget, never throws) */
-  aiLogRunFailure: (entry: AiRunFailure) => Promise<void>
-  webSearch: (
-    query: string,
-    maxResults?: number,
-  ) => Promise<{
-    results: Array<{ title: string; url: string; snippet: string }>
-    answer?: string
-    method: string
-    /** failure reason when method === 'error' */
-    error?: string
-  }>
-  imageSearch: (
-    query: string,
-    maxResults?: number,
-  ) => Promise<{
-    images: Array<{
-      title: string
-      imageUrl: string
-      sourceUrl: string
-      source: string
-      width?: number
-      height?: number
-    }>
-    method: string
-    /** failure reason when method === 'error' */
-    error?: string
-  }>
-  insertImageUrl: (op: {
-    slideIndex: number
-    url?: string
-    /** raw base64 of a user attachment (attachment:// reference) — no network fetch */
-    base64?: string
-    ext?: string
-    xPx: number
-    yPx: number
-    wPx: number
-    hPx: number
-    fitWidthPx: number
-  }) => Promise<{ slide: RenderSlide; sourceId: string } | null>
-  /** Download a URL and swap it into an existing picture in place (frame/z-order/effects survive) */
-  replacePictureUrl: (op: {
-    slideIndex: number
-    sourceId: string
-    url?: string
-    /** raw base64 of a user attachment (attachment:// reference) — no network fetch */
-    base64?: string
-    ext?: string
-    keepSrcRect?: boolean
-  }) => Promise<RenderSlide | null>
-  /** gsk (Genspark) AI image generation/editing, returns the image URL (error prompts login when logged out) */
-  generateImage: (op: {
-    prompt: string
-    model?: string
-    referenceImageUrls?: string[]
-    aspectRatio?: string
-    imageSize?: string
-    transparentBackground?: boolean
-  }) => Promise<{ url?: string; error?: string }>
-  /** gsk (Genspark) media analysis: image/audio/video content understanding, returns analysis text */
-  analyzeMedia: (op: {
-    mediaUrls: string[]
-    requirements: string
-  }) => Promise<{ text?: string; error?: string }>
-  /** gsk availability: installed and logged in (for UI/tools to prompt login) */
-  gskStatus: () => Promise<{ available: boolean; email?: string }>
-  onAiStream: (handler: (chunk: AiStreamChunk) => void) => () => void
-  /** Style Skill sidecar: write styleSkill to a same-named .styleskill.json next to the draft */
-  saveStyleSidecar: (data: {
-    topic: string
-    styleSkill: string
-    createdAt: string
-  }) => Promise<{ ok: boolean }>
-  /** Store styleSkill in userData/style-templates/<name>.json */
-  saveStyleTemplate: (
-    name: string,
-    data: {
-      topic: string
-      styleSkill: string
-      createdAt: string
-      /** Deck chrome skeleton extracted at save time (layout-skeleton.ts); absent in older templates */
-      layout?: LayoutSkeleton
-    },
-  ) => Promise<{ ok: boolean; error?: string }>
-  /** List saved Style templates */
-  listStyleTemplates: () => Promise<Array<{ name: string; topic: string; createdAt: string }>>
-  /** Load a given Style template's content */
-  loadStyleTemplate: (name: string) => Promise<{
-    ok: boolean
-    styleSkill?: string
-    topic?: string
-    layout?: LayoutSkeleton
-    error?: string
-  }>
   /** New blank page (with a specific layout): inserted after slide sourceIndex, rels pointing at the chosen layout */
   addSlideWithLayout: (
     op: AddSlideWithLayoutOp,
@@ -1848,6 +1567,6 @@ export interface SlidesApi {
 declare global {
   interface Window {
     slidesApi: SlidesApi
-    desktop: DesktopFilesApi
+    desktop: DesktopApi
   }
 }

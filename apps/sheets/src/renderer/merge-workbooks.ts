@@ -313,16 +313,3 @@ export async function mergeWorkbooksIntoCurrent(deps: MergeWorkbooksDeps): Promi
     setMessage(error instanceof Error ? error.message : t('appMergeWorkbooksFailed'))
   }
 }
-
-/** AI entry point: open explicit attachment paths and run the shared core. */
-export async function mergeAttachedWorkbooks(
-  deps: MergeWorkbooksDeps,
-  paths: string[],
-): Promise<MergeSourcesResult> {
-  if (workbookStructureLocked(deps.lazyWorkbookRef.current)) {
-    throw new Error(t('appMergeWorkbooksLocked'))
-  }
-  const sources = await window.desktopApi.openWorkbooksForMerge(paths)
-  if (!sources || sources.length === 0) throw new Error(t('appMergeWorkbooksFailed'))
-  return mergeSourcesIntoCurrent(deps, sources)
-}

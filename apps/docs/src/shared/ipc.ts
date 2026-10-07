@@ -33,83 +33,10 @@ export interface PickImageResult {
   name: string
 }
 
-// ---- AI provider settings/config/streaming: canonical types live in @genoffice/ai-provider ----
-
-import type {
-  AiChatRequest,
-  AiChatResponse,
-  AiSettings,
-  AiStreamChunk,
-  AiStreamRequest,
-  GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
 import type { HeadlessExportTarget } from '@genoffice/electron-utils/headless-export'
 import type { FaceVerticalMetrics } from '@genoffice/font-metrics'
-import type { AiPanelPrefs } from '@genoffice/ui'
 
 export type { FaceVerticalMetrics }
-
-export type {
-  AiChatRequest,
-  AiChatResponse,
-  AiProviderConfig,
-  AiProviderId,
-  AiProviderMeta,
-  AiSettings,
-  AiStreamChunk,
-  AiStreamRequest,
-  GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
-export { AI_PROVIDERS } from '@genoffice/ai-provider/browser'
-
-// ---- agent protocol: canonical types live in @genoffice/agent-core ----
-
-export type {
-  AgentMessage,
-  AgentToolCall,
-  AgentToolDef,
-  AgentToolResult,
-} from '@genoffice/agent-core'
-
-// ---- chat attachments (local files fed to the agent via tools) ----
-
-/** Image attachment extensions: no text extraction; read as base64 on send and passed to the model as a multimodal image with the user message */
-export const ATTACHMENT_IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
-
-export interface AttachmentMeta {
-  /** absolute local path; the file never leaves the machine */
-  path: string
-  name: string
-  /** lowercased extension without the dot */
-  ext: string
-  sizeBytes: number
-}
-
-export interface AttachmentAddResult {
-  accepted: AttachmentMeta[]
-  /** per-file rejection messages (too large / unsupported type / unreadable) */
-  rejected: string[]
-}
-
-export interface AttachmentReadResult {
-  ok: boolean
-  error?: string
-  name?: string
-  /** total characters of the extracted text */
-  totalChars?: number
-  /** requested slice */
-  text?: string
-  offset?: number
-}
-
-/** an image attachment read as raw bytes for multimodal input (files:read-image) */
-export interface AttachmentImageResult {
-  ok: boolean
-  /** raw base64 (no data: URL prefix) */
-  base64?: string
-  mime?: string
-  error?: string
-}
 
 /** an open docs tab, for View → Switch Tab */
 export interface DocsTabInfo {
@@ -133,7 +60,6 @@ export type MenuCommand =
   | 'zoom-set'
   | 'zoom-page-width'
   | 'zoom-whole-page'
-  | 'toggle-ai'
   | 'toggle-dark'
   | 'insert-table'
   | 'insert-image'
@@ -185,7 +111,6 @@ export type MenuCommand =
   | 'table-repeat-header'
   | 'table-gridlines'
   | 'table-properties'
-  | 'ai-proofread'
   | 'shortcuts'
 
 export type UiTheme = 'light' | 'dark' | 'system'
@@ -200,30 +125,6 @@ export type DocTheme = 'follow' | 'light' | 'dark'
 export interface AutoSaveDefault {
   on: boolean
   updatedAt: number
-}
-
-/** target file type of the AI create_document tool */
-export type CreateDocumentType = 'docx' | 'pdf' | 'md' | 'html'
-
-export interface CreateDocumentRequest {
-  type: CreateDocumentType
-  /** file name stem (sanitized main-side) */
-  title: string
-  /** docx/pdf: restricted HTML; md: Markdown source; html: a complete HTML document */
-  content: string
-}
-
-export interface CreateDocumentResult {
-  ok: boolean
-  /** the created file, when it is written directly (pdf/md); docx opens as a new tab that saves itself */
-  path?: string
-  error?: string
-}
-
-/** AI-authored content queued for a docs tab spawned by create_document */
-export interface AiDocContent {
-  title: string
-  html: string
 }
 
 export type ZoteroCommand =
@@ -249,37 +150,6 @@ export interface ZoteroRendererResponse {
   ok: boolean
   result?: unknown
   error?: string
-}
-
-/**
- * MCP bridge: an editor command pushed from the shell main process into a docs
- * tab so an external agent drives the *visible* editor instead of writing a file
- * behind it. `insert_content` / `replace_blocks` / `apply_ops` / `read_document`
- * reuse the built-in agent's tool executors; `save_document` writes the live
- * document to an explicit path.
- */
-export type McpEditorCommand =
-  'insert_content' | 'replace_blocks' | 'apply_ops' | 'read_document' | 'save_document'
-
-export interface McpCommandMessage {
-  requestId: string
-  command: McpEditorCommand
-  payload: unknown
-}
-
-export interface McpCommandResult {
-  requestId: string
-  ok: boolean
-  result?: unknown
-  error?: string
-}
-
-export interface McpSaveResult {
-  ok: boolean
-  path?: string
-  error?: string
-  passwordIntentPending?: boolean
-  dataUrl?: string
 }
 
 /** Chromium's misspelling data for a claimed body right-click (`seq` = the claim it answers) */
@@ -317,10 +187,6 @@ export interface DesktopApi {
   /** shell-wide AutoSave default (see useAutoSavePref) */
   getAutoSaveDefault(): Promise<AutoSaveDefault>
   onAutoSaveDefaultChanged(handler: (value: AutoSaveDefault) => void): () => void
-  /** AI panel text size + chat-input spellcheck (Settings → General in the shell) */
-  getAiPanelPrefs(): Promise<AiPanelPrefs>
-  setAiPanelPrefs(patch: Partial<AiPanelPrefs>): Promise<AiPanelPrefs>
-  onAiPanelPrefsChanged(handler: (prefs: AiPanelPrefs) => void): () => void
   /** press on the shell chrome (tab strip is a sibling WebContentsView whose
    *  clicks produce no DOM event here) — dismiss open popovers */
   onChromePressed(handler: () => void): () => void
@@ -346,14 +212,10 @@ export interface DesktopApi {
   consumePendingOpenDocx(): Promise<OpenDocxResult>
   /** returns true when this tab was created via "New Document" and should start blank */
   consumeNewBlankDoc(): Promise<boolean>
-  /** AI-authored content queued for this tab by create_document; one-shot, null when none */
-  consumeAiDocContent(): Promise<AiDocContent | null>
   /** Headless export mode: the path and format this hidden renderer must export, null in normal use */
   consumeHeadlessExport(): Promise<HeadlessExportTarget | null>
   /** Headless export mode: report the export outcome so the main process can quit */
   headlessExportDone(result: { ok: boolean; error?: string }): void
-  /** AI create_document: build a new standalone file and open it in a new tab */
-  createDocument(request: CreateDocumentRequest): Promise<CreateDocumentResult>
   /** receive documents opened from Finder/Explorer while the app is running */
   onOpenDocx(handler: (result: Exclude<OpenDocxResult, null>) => void): () => void
   /** File was renamed externally (renamed in the shell Home list) — pushes old and new paths; renderer syncs its save path and title bar */
@@ -426,21 +288,10 @@ export interface DesktopApi {
     passwordIntentPending?: boolean
     dataUrl?: string
   }>
-  /** MCP-driven output: write the current document to an explicit absolute path
-   *  with no dialog; refuses to replace an existing file unless overwrite is true */
-  saveDocxTo(path: string, data: ArrayBuffer, overwrite: boolean): Promise<McpSaveResult>
-  /** MCP bridge: receive an editor command pushed by the shell main process */
-  onMcpCommand(handler: (message: McpCommandMessage) => void): () => void
-  /** MCP bridge: report a command's outcome back to the shell main process */
-  reportMcpResult(result: McpCommandResult): void
-  /** MCP bridge: announce that this tab's editor is ready for commands */
-  signalMcpReady(): void
   getRecentFiles(): Promise<string[]>
   pickImage(): Promise<PickImageResult | null>
   /** vertical metrics of an installed family (exact name match), null when missing */
   fontMetrics(family: string): Promise<FaceVerticalMetrics | null>
-  getAiSettings(): Promise<AiSettings>
-  setAiSettings(settings: AiSettings): Promise<void>
   /** system print dialog for the current window; ok=false without error = canceled.
    *  scale: print scale inverting the preview's print zoom (print-zoom.ts) */
   print(scale?: number): Promise<{ ok: boolean; error?: string }>
@@ -484,66 +335,13 @@ export interface DesktopApi {
   ): Promise<{ ok: boolean; path?: string; error?: string }>
   /** Save a picture the renderer displays (data URL) through a Save dialog */
   saveImageAs(src: string): Promise<{ ok: boolean; path?: string; error?: string }>
-  /** Native context menu "View Image" on a chrome surface such as the AI panel */
+  /** Native context menu "View Image" on a chrome surface */
   onViewImage(handler: (src: string) => void): () => void
-  aiChat(request: AiChatRequest): Promise<AiChatResponse>
-  /** start a streaming AI call; deltas arrive via onAiStream with the same requestId */
-  aiStream(request: AiStreamRequest): Promise<void>
-  aiStreamCancel(requestId: string): Promise<void>
-  /** Genspark account status (gsk login state); withEmail also returns the email (needs a network request, slower) */
-  aiGskStatus(withEmail?: boolean): Promise<GenSparkAccountStatus>
-  /** Open the browser to log in to Genspark (fire-and-forget; aiGskStatus flips to logged-in when done) */
-  aiGskLogin(): Promise<void>
-  webSearch(
-    query: string,
-    maxResults?: number,
-  ): Promise<{
-    results: Array<{ title: string; url: string; snippet: string }>
-    answer?: string
-    method: string
-    /** failure reason when method === 'error' */
-    error?: string
-  }>
-  imageSearch(
-    query: string,
-    maxResults?: number,
-  ): Promise<{
-    images: Array<{
-      title: string
-      imageUrl: string
-      sourceUrl: string
-      source: string
-      width?: number
-      height?: number
-    }>
-    method: string
-    /** failure reason when method === 'error' */
-    error?: string
-  }>
-  /** media understanding (image/audio/video) via the configured media provider; returns analysis text */
-  analyzeMedia(op: {
-    mediaUrls: string[]
-    requirements: string
-  }): Promise<{ text?: string; error?: string }>
-  fetchImage(url: string): Promise<{ base64: string; mime: string } | null>
-  /** AI image generation via the Genspark cloud channel (requires login + cloud tools) */
-  aiGenerateImage(op: {
-    prompt: string
-    aspectRatio?: string
-  }): Promise<{ url?: string; error?: string }>
-  /** file picker for chat attachments (multi-select) */
-  pickAttachments(): Promise<AttachmentAddResult | null>
-  /** validate dropped paths and return attachment metadata */
-  addAttachmentPaths(paths: string[]): Promise<AttachmentAddResult>
-  /** persist a pasted clipboard image (no local path) to a temp file and add it as an attachment */
-  addPastedImage(data: ArrayBuffer, ext: string): Promise<AttachmentAddResult>
   /** copy an embedded picture to the OS clipboard as a real bitmap + <img>
    *  html (r136: copying an image exported only the protected placeholder) */
   copyImageToClipboard(dataUrl: string, metaJson?: string): Promise<boolean>
-  /** read a slice of the extracted text of an attachment */
-  readAttachment(path: string, offset: number, maxChars: number): Promise<AttachmentReadResult>
-  /** read an image attachment as base64 for multimodal input (≤5MB) */
-  readAttachmentImage(path: string): Promise<AttachmentImageResult>
+  /** download a pasted web image (bitmap-less HTML paste) as base64; null on failure */
+  fetchImage(url: string): Promise<{ base64: string; mime: string } | null>
   /** absolute path of a File dropped onto the window (Electron webUtils) */
   getPathForFile(file: File): string
   /** View → New Tab: open another docs tab, optionally loading the same document */
@@ -551,8 +349,6 @@ export interface DesktopApi {
   /** all open docs tabs, for View → Switch Tab */
   listDocsTabs(): Promise<DocsTabInfo[]>
   focusDocsTab(id: string): Promise<void>
-  /** subscribe to AI stream chunks; returns unsubscribe */
-  onAiStream(handler: (chunk: AiStreamChunk) => void): () => void
   /** subscribe to native menu commands; returns unsubscribe */
   onMenuCommand(handler: (command: MenuCommand, payload?: string) => void): () => void
   /** Close guard: main process queries pre-close state (dirty flag + autosave switch; if autosave is on, save silently without a dialog) */
@@ -562,7 +358,7 @@ export interface DesktopApi {
   onCloseSaveRequest(handler: () => void): () => void
   reportCloseSaveResult(ok: boolean): void
   /** keep the native View menu's checkbox items in sync with renderer state */
-  reportViewMenuState(state: { aiSidebar: boolean; darkCanvas: boolean }): void
+  reportViewMenuState(state: { darkCanvas: boolean }): void
 }
 
 /** mirrors VIEW_IMAGE_CHANNEL in @genoffice/electron-utils (kept literal so the preload stays free of main-only deps) */

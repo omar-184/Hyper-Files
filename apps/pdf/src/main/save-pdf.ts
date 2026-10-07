@@ -165,7 +165,7 @@ const SUBTYPE: Record<MarkupInput['type'], string> = {
 }
 
 /**
- * Markup inputs arrive from the renderer/AI layer: reject colors outside 0-1,
+ * Markup inputs arrive from the renderer: reject colors outside 0-1,
  * empty quad lists, and non-finite quad coordinates before they reach the
  * appearance stream (Math.min(...[]) is Infinity, NaN poisons BBox/Rect).
  */

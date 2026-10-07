@@ -21,7 +21,7 @@ import {
   insertRowAt,
   pctOf,
   reflowColumns,
-} from '../ai/table-ops'
+} from './table-grid'
 
 /** Word's Table menu operations that prosemirror-tables has no command for.
  *  Structural edits rebuild the whole table node from a placed-cell grid: a

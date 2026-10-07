@@ -6,7 +6,6 @@
  * Async display metadata (validated text bounds, ghost PNGs) is not an edit.
  */
 import type { EditSnapshot } from '../edit-state'
-import { opUsage } from '../../shared/op-docs'
 
 export class GuidedError extends Error {}
 
@@ -111,9 +110,7 @@ export function planEditOps(ops: Op[], ctx: OpContext, newId: () => string): Pla
       records.push(def.additive ? { op, created: [op.id as string] } : { op })
       for (const b of def.touches) touched.add(b)
     } catch (e) {
-      const usage = opUsage(raw.op)
-      const msg = e instanceof Error ? e.message : String(e)
-      failures.push({ index, op: raw, error: usage ? `${msg}\n${usage}` : msg })
+      failures.push({ index, op: raw, error: e instanceof Error ? e.message : String(e) })
     }
   })
   return failures.length > 0

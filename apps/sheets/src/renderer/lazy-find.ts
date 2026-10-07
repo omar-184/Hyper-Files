@@ -26,7 +26,7 @@ import {
 import { IUniverInstanceService } from '@univerjs/core'
 import { FormulaDataModel } from '@univerjs/preset-sheets-core'
 import { Subject, type Subscription } from 'rxjs'
-import { FILE_READ_BATCH_CELLS, MAX_SCAN_CELLS } from './ai/workbook-search'
+import { FILE_READ_BATCH_CELLS, MAX_SCAN_CELLS } from './workbook-search'
 import { t } from './i18n/locale'
 import { installSparseFind, type SpillLookup } from './sparse-find'
 import { netAxisDelta } from './view-transform'

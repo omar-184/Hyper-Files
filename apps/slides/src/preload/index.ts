@@ -1,15 +1,10 @@
-import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import type { RenderSlide } from '@genoffice/pptx-render'
-import type { ProjectApi } from '@genoffice/project-store'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
 import type {
   AddChartOp,
   AddElementOp,
-  AiRunFailure,
-  ApplyEditScriptOp,
-  ApplyTxnOp,
   AddImageBytesOp,
   AddInkOp,
   AddMediaBytesOp,
@@ -29,7 +24,6 @@ import type {
   AddTableOp,
   HeaderFooterOp,
   SetLinkOp,
-  AiSettings,
   CopyElementsOp,
   PasteElementsOp,
   DuplicateElementsOp,
@@ -58,14 +52,12 @@ import type {
   RemoveSectionSlidesOp,
   MoveSectionOp,
   MoveSlideOp,
-  AiStreamChunk,
-  AiStreamRequest,
   AudienceNavAction,
   ShowInkEvent,
   ShowSyncState,
   DeleteElementOp,
   DeleteElementsOp,
-  DesktopFilesApi,
+  DesktopApi,
   EditBackgroundOp,
   EditFillOp,
   EditFillImageOp,
@@ -120,13 +112,6 @@ const api: SlidesApi = {
     ipcRenderer.on('app:auto-save-default-changed', listener)
     return () => ipcRenderer.removeListener('app:auto-save-default-changed', listener)
   },
-  getAiPanelPrefs: () => ipcRenderer.invoke('app:get-ai-panel-prefs'),
-  setAiPanelPrefs: (patch) => ipcRenderer.invoke('app:set-ai-panel-prefs', patch),
-  onAiPanelPrefsChanged: (handler) => {
-    const listener = (_event: IpcRendererEvent, prefs: AiPanelPrefs) => handler(prefs)
-    ipcRenderer.on('app:ai-panel-prefs-changed', listener)
-    return () => ipcRenderer.removeListener('app:ai-panel-prefs-changed', listener)
-  },
   onChromePressed: (handler) => {
     const listener = () => handler()
     ipcRenderer.on('app:chrome-pressed', listener)
@@ -151,34 +136,6 @@ const api: SlidesApi = {
   headlessExportDone: (result: { ok: boolean; error?: string }) =>
     ipcRenderer.send('slides:headless-export-done', result),
   newBlank: (fitWidthPx) => ipcRenderer.invoke('slides:new-blank', fitWidthPx),
-  landGeneratedPages: (
-    pageMarkers: string[],
-    fitWidthPx: number,
-    mode?: 'replace' | 'append' | 'replace_at' | 'insert_at',
-    atIndex?: number,
-    deckName?: string,
-  ) =>
-    ipcRenderer.invoke(
-      'slides:land-generated-pages',
-      pageMarkers,
-      fitWidthPx,
-      mode,
-      atIndex,
-      deckName,
-    ),
-  cloudGenStatus: () => ipcRenderer.invoke('slides:cloud-gen-status'),
-  cloudPageCancel: () => ipcRenderer.invoke('slides:cloud-page-cancel'),
-  cloudGeneratePage: (op: {
-    brief: string
-    title?: string
-    styleSkill?: string
-    deckContext?: Record<string, unknown>
-    images?: { url: string; caption?: string }[]
-    width?: number
-    height?: number
-  }) => ipcRenderer.invoke('slides:cloud-page-generate', op),
-  localGeneratePage: (op: { specJson: string }) =>
-    ipcRenderer.invoke('slides:local-page-generate', op),
   editText: (op: EditTextOp) => ipcRenderer.invoke('slides:edit-text', op),
   setElementFont: (op: SetElementFontOp) => ipcRenderer.invoke('slides:set-element-font', op),
   setElementParagraphFormat: (op: SetElementParagraphFormatOp) =>
@@ -334,9 +291,6 @@ const api: SlidesApi = {
     ipcRenderer.invoke('slides:native-clipboard', op),
   beginHistoryBatch: () => ipcRenderer.invoke('slides:history-batch-begin'),
   endHistoryBatch: () => ipcRenderer.invoke('slides:history-batch-end'),
-  applyEditScript: (op: ApplyEditScriptOp) => ipcRenderer.invoke('slides:apply-edit-script', op),
-  applyTxn: (op: ApplyTxnOp) => ipcRenderer.invoke('slides:apply-txn', op),
-  aiSnapshotRestore: (id: number) => ipcRenderer.invoke('slides:ai-snapshot-restore', id),
   undo: () => ipcRenderer.invoke('slides:undo'),
   redo: () => ipcRenderer.invoke('slides:redo'),
   pickExportDir: () => ipcRenderer.invoke('slides:pick-export-dir'),
@@ -388,62 +342,6 @@ const api: SlidesApi = {
     ipcRenderer.on('slides:renamed', listener)
     return () => ipcRenderer.removeListener('slides:renamed', listener)
   },
-  getAiSettings: () => ipcRenderer.invoke('ai:get-settings'),
-  setAiSettings: (settings: AiSettings) => ipcRenderer.invoke('ai:set-settings', settings),
-  aiStream: (request: AiStreamRequest) => ipcRenderer.invoke('ai:stream', request),
-  aiStreamCancel: (requestId: string) => ipcRenderer.invoke('ai:stream-cancel', requestId),
-  aiGskStatus: (withEmail?: boolean) => ipcRenderer.invoke('ai:gsk-status', withEmail),
-  aiGskLogin: () => ipcRenderer.invoke('ai:gsk-login'),
-  aiLogRunFailure: (entry: AiRunFailure) => ipcRenderer.invoke('ai:log-run-failure', entry),
-  webSearch: (query: string, maxResults?: number) =>
-    ipcRenderer.invoke('ai:web-search', query, maxResults),
-  imageSearch: (query: string, maxResults?: number) =>
-    ipcRenderer.invoke('ai:image-search', query, maxResults),
-  insertImageUrl: (op: {
-    slideIndex: number
-    url?: string
-    /** raw base64 of a user attachment (attachment:// reference) — no network fetch */
-    base64?: string
-    ext?: string
-    xPx: number
-    yPx: number
-    wPx: number
-    hPx: number
-    fitWidthPx: number
-  }) => ipcRenderer.invoke('ai:insert-image-url', op),
-  replacePictureUrl: (op: {
-    slideIndex: number
-    sourceId: string
-    url?: string
-    /** raw base64 of a user attachment (attachment:// reference) — no network fetch */
-    base64?: string
-    ext?: string
-    keepSrcRect?: boolean
-  }) => ipcRenderer.invoke('ai:replace-picture-url', op),
-  generateImage: (op: {
-    prompt: string
-    model?: string
-    referenceImageUrls?: string[]
-    aspectRatio?: string
-    imageSize?: string
-    transparentBackground?: boolean
-  }) => ipcRenderer.invoke('ai:generate-image', op),
-  analyzeMedia: (op: { mediaUrls: string[]; requirements: string }) =>
-    ipcRenderer.invoke('ai:analyze-media', op),
-  gskStatus: () => ipcRenderer.invoke('ai:gsk-status'),
-  onAiStream: (handler: (chunk: AiStreamChunk) => void) => {
-    const listener = (_e: IpcRendererEvent, chunk: AiStreamChunk) => handler(chunk)
-    ipcRenderer.on('ai:stream-chunk', listener)
-    return () => ipcRenderer.removeListener('ai:stream-chunk', listener)
-  },
-  saveStyleSidecar: (data: { topic: string; styleSkill: string; createdAt: string }) =>
-    ipcRenderer.invoke('ai:save-sidecar', data),
-  saveStyleTemplate: (
-    name: string,
-    data: { topic: string; styleSkill: string; createdAt: string; layout?: unknown },
-  ) => ipcRenderer.invoke('ai:save-style-template', name, data),
-  listStyleTemplates: () => ipcRenderer.invoke('ai:list-style-templates'),
-  loadStyleTemplate: (name: string) => ipcRenderer.invoke('ai:load-style-template', name),
   presenterStart: () => ipcRenderer.invoke('slides:presenter-start'),
   presenterSync: (state: ShowSyncState) => ipcRenderer.send('slides:presenter-sync', state),
   presenterInk: (ev: ShowInkEvent) => ipcRenderer.send('slides:presenter-ink', ev),
@@ -470,27 +368,10 @@ const api: SlidesApi = {
 
 contextBridge.exposeInMainWorld('slidesApi', api)
 
-// Chat attachment bridge: method names/signatures match the window.desktop attachment subset in docs, so the renderer's files-skill is copied over wholesale
-const filesApi: DesktopFilesApi = {
-  pickAttachments: () => ipcRenderer.invoke('slides:files-pick'),
-  addAttachmentPaths: (paths: string[]) => ipcRenderer.invoke('slides:files-add', paths),
-  addPastedImage: (data: ArrayBuffer, ext: string) =>
-    ipcRenderer.invoke('slides:files-add-pasted-image', data, ext),
-  readAttachment: (path: string, offset: number, maxChars: number) =>
-    ipcRenderer.invoke('slides:files-read', path, offset, maxChars),
-  readAttachmentImage: (path: string) => ipcRenderer.invoke('slides:files-read-image', path),
+const desktopApi: DesktopApi = {
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 }
-
-contextBridge.exposeInMainWorld('desktop', filesApi)
-
-const projectApi: ProjectApi = {
-  resolveChat: (args) => ipcRenderer.invoke('project:resolveChat', args),
-  appendChat: (args) => ipcRenderer.invoke('project:appendChat', args),
-  loadChat: (args) => ipcRenderer.invoke('project:loadChat', args),
-  rebindChat: (args) => ipcRenderer.invoke('project:rebindChat', args),
-}
-contextBridge.exposeInMainWorld('projectApi', projectApi)
+contextBridge.exposeInMainWorld('desktop', desktopApi)
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

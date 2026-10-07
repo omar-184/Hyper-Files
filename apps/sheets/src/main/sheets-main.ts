@@ -20,9 +20,7 @@ import {
   dialog,
   ipcMain,
   Menu,
-  net,
   screen,
-  session as electronSession,
   shell,
   systemPreferences,
   WebContentsView,
@@ -37,14 +35,11 @@ import type {
 import { z } from 'zod'
 import {
   appMenuLabels,
-  buildPrintableHtml,
   configuredDefaultSaveDir,
   contextMenuLabels,
-  fetchRemoteImage,
   installContextMenu,
   installNavigationGuard,
   isHeadlessMode,
-  printHtmlToPdf,
   safeExternalUrl,
   showOpenDialogWithMemory,
   showSaveDialogWithMemory,
@@ -54,48 +49,12 @@ import {
   installRendererProtocol,
   registerRendererScheme,
   rendererUrl,
-  writeJsonAtomic,
 } from '@genoffice/electron-utils'
 import { createI18n, getUiLang, type Lang, normalizeLang, setUiLang } from '@genoffice/i18n'
-import { ProjectStore } from '@genoffice/project-store'
-
-import {
-  AiCreditsError,
-  AiTimeoutError,
-  isAiNetworkError,
-  isAiOverloadedError,
-  chatForProvider,
-  defaultAiSettings,
-  activeProvider,
-  maxOutputTokensOf,
-  resolveAiSettings,
-  setAiUserAgent,
-  setRescueFetch,
-  streamForProvider,
-  type AiProviderId,
-  type AiSettings,
-  type AiStreamChunk,
-  type GenSparkAccountStatus,
-  type LegacyAiSettings,
-} from '@genoffice/ai-provider'
-import { shutdownCodexAppServers } from '@genoffice/ai-provider/codex-app-server'
 import {
   csvToXlsxBufferForOpen,
   decodeCsvBuffer,
-  sheetCsvToXlsxBuffer,
 } from '@genoffice/xlsx-gateway/gateway/csv-import'
-import {
-  ensureGenofficeLogin,
-  gskApiKey,
-  gskLoginInfo,
-  hasGskAuth,
-  setGskProxyUrl,
-  webSearchTool,
-  imageSearchTool,
-  generateImageTool,
-  localMediaRoots,
-} from '@genoffice/ai-search'
-import { parseFileToText } from '@genoffice/file-parse'
 import type { CellEdit, SheetStructuralOps } from '@genoffice/xlsx-gateway/gateway/xlsx-gateway'
 import {
   readArchiveEntryText,
@@ -103,18 +62,8 @@ import {
 } from '@genoffice/xlsx-gateway/gateway/xlsx-package-io'
 import { parsePivotDefinition } from '@genoffice/xlsx-gateway/gateway/xlsx-pivot'
 import type { SheetEditPlan } from '@genoffice/xlsx-gateway/gateway/xlsx-sheets'
-import type {
-  AttachmentAddResult,
-  AttachmentImageResult,
-  AttachmentMeta,
-  AttachmentReadResult,
-  WorkbookFile,
-} from '../shared/desktop-api'
+import type { WorkbookFile } from '../shared/desktop-api'
 import {
-  ATTACHMENT_IMAGE_EXTS,
-  aiChatRequestSchema,
-  aiSettingsInputSchema,
-  aiStreamRequestSchema,
   workbookFileSchema,
   workbookFormulaCellsRequestSchema,
   workbookFormulaCellsResultSchema,
@@ -129,7 +78,6 @@ import {
   screenCaptureResultSchema,
   screenSourcesResultSchema,
   workbookPivotDefinitionSchema,
-  workbookCreateDocumentRequestSchema,
   workbookExportCsvRequestSchema,
   workbookExportPdfRequestSchema,
   workbookRangeRequestSchema,
@@ -139,7 +87,6 @@ import {
   saveEditsChunkArraySchema,
   workbookSaveEditsChunkSchema,
   workbookSaveRequestSchema,
-  type WorkbookCreateDocumentResult,
   type WorkbookSaveRequest,
 } from '../shared/desktop-api'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
@@ -152,11 +99,7 @@ import {
   setSystemShortDate,
   shortDatePatternForSystemLocale,
 } from '@genoffice/xlsx-gateway/shared/short-date'
-import {
-  cleanupExpiredPastedFiles,
-  cleanupImportTempDirectory,
-  cleanupSessionResources,
-} from './temp-files'
+import { cleanupImportTempDirectory, cleanupSessionResources } from './temp-files'
 import { XlsxSidecarClient } from './xlsx-sidecar-client'
 import { sessionAfterRename } from './session-rename'
 
@@ -164,8 +107,7 @@ import { sessionAfterRename } from './session-rename'
  * Sheets main-process logic as an embeddable module: no top-level lifecycle.
  * Standalone mode (apps/sheets entry) calls startSheetsStandalone(); the
  * unified shell calls configureSheetsRuntime() + createSheetsWindow() and
- * owns the app lifecycle. AI IPC is registered separately so the shell can
- * substitute its single unified handler set (same channel names as docs).
+ * owns the app lifecycle.
  */
 
 const tMain = createI18n({
@@ -173,22 +115,7 @@ const tMain = createI18n({
     filterSpreadsheets: '电子表格',
     filterXlsx: 'Excel 工作簿',
     filterXlsm: 'Excel 启用宏的工作簿',
-    dlgAddAttachment: '添加附件',
-    filterSupported: '支持的文件',
-    filterAll: '所有文件',
-    errUnsupportedExt: '暂不支持 .{ext} 类型',
-    errNotFile: '不是文件',
-    errTooLarge: '超过 {mb}MB 上限',
-    errImageTooLarge: '图片超过 5MB 上限',
-    errUnreadable: '无法读取',
     errFileTooLarge: '文件超过大小上限',
-    errParseFailed: '文件解析失败',
-    errImageNoText: '图片附件不提供文本,已作为图像随用户消息发送,直接看图即可',
-    errNotImage: '不是支持的图片类型',
-    errGskNotLoggedIn: '未登录 Genspark:请点击下方「登录 Genspark」完成登录后重试',
-    errNoApiKey: '未配置 {provider} 的 API Key',
-    errAiBusy: 'AI 服务当前繁忙，请稍后重试',
-    errNoModel: '未配置模型名称',
     errImgAbsPath: '图片路径必须是绝对路径。',
     errImgNotFound: '找不到图片文件: {path}',
     errImgTooLarge20: '图片超过 20MB,不支持插入。',
@@ -230,23 +157,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Spreadsheets',
     filterXlsx: 'Excel Workbooks',
     filterXlsm: 'Excel Macro-Enabled Workbooks',
-    dlgAddAttachment: 'Add Attachments',
-    filterSupported: 'Supported Files',
-    filterAll: 'All Files',
-    errUnsupportedExt: '.{ext} files are not supported',
-    errNotFile: 'not a file',
-    errTooLarge: 'exceeds the {mb}MB limit',
-    errImageTooLarge: 'image exceeds the 5MB limit',
-    errUnreadable: 'cannot be read',
     errFileTooLarge: 'File exceeds the size limit',
-    errParseFailed: 'Failed to parse file',
-    errImageNoText: 'Image attachments have no text; the image is sent along with the user message',
-    errNotImage: 'not a supported image type',
-    errGskNotLoggedIn:
-      'Not signed in to Genspark: click “Sign in to Genspark” below, sign in, then retry',
-    errNoApiKey: 'No API key configured for {provider}',
-    errAiBusy: 'The AI service is busy right now — please try again in a moment',
-    errNoModel: 'No model name configured',
     errImgAbsPath: 'Image path must be absolute.',
     errImgNotFound: 'Image file not found: {path}',
     errImgTooLarge20: 'Image exceeds 20MB and cannot be inserted.',
@@ -290,24 +201,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Bảng tính',
     filterXlsx: 'Sổ làm việc Excel',
     filterXlsm: 'Sổ làm việc Excel hỗ trợ Macro',
-    dlgAddAttachment: 'Thêm tệp đính kèm',
-    filterSupported: 'Các tệp được hỗ trợ',
-    filterAll: 'Tất cả các tệp',
-    errUnsupportedExt: 'Tệp .{ext} không được hỗ trợ',
-    errNotFile: 'không phải là tệp',
-    errTooLarge: 'vượt quá giới hạn {mb}MB',
-    errImageTooLarge: 'hình ảnh vượt quá giới hạn 5MB',
-    errUnreadable: 'không thể đọc được',
     errFileTooLarge: 'Tệp vượt quá giới hạn kích thước',
-    errParseFailed: 'Không thể phân tích tệp',
-    errImageNoText:
-      'Tệp đính kèm hình ảnh không có văn bản; hình ảnh được gửi cùng với tin nhắn của người dùng',
-    errNotImage: 'loại hình ảnh không được hỗ trợ',
-    errGskNotLoggedIn:
-      'Chưa đăng nhập vào Genspark: nhấp vào “Đăng nhập vào Genspark” bên dưới, đăng nhập, sau đó thử lại',
-    errNoApiKey: 'Chưa cấu hình khóa API cho {provider}',
-    errAiBusy: 'Dịch vụ AI hiện đang bận — vui lòng thử lại sau giây lát',
-    errNoModel: 'Chưa cấu hình tên mô hình',
     errImgAbsPath: 'Đường dẫn hình ảnh phải là đường dẫn tuyệt đối.',
     errImgNotFound: 'Không tìm thấy tệp hình ảnh: {path}',
     errImgTooLarge20: 'Hình ảnh vượt quá 20MB và không thể chèn.',
@@ -352,24 +246,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'スプレッドシート',
     filterXlsx: 'Excel ブック',
     filterXlsm: 'Excel マクロ有効ブック',
-    dlgAddAttachment: '添付ファイルを追加',
-    filterSupported: 'サポートされているファイル',
-    filterAll: 'すべてのファイル',
-    errUnsupportedExt: '.{ext} 形式には対応していません',
-    errNotFile: 'ファイルではありません',
-    errTooLarge: '{mb}MB の上限を超えています',
-    errImageTooLarge: '画像が 5MB の上限を超えています',
-    errUnreadable: '読み取れません',
     errFileTooLarge: 'ファイルがサイズ上限を超えています',
-    errParseFailed: 'ファイルの解析に失敗しました',
-    errImageNoText:
-      '画像添付にはテキストがありません。画像はユーザー メッセージと一緒に送信されるため、そのまま画像をご確認ください',
-    errNotImage: 'サポートされていない画像形式です',
-    errGskNotLoggedIn:
-      'Genspark にサインインしていません。下の「Genspark にサインイン」からサインインして再試行してください',
-    errNoApiKey: '{provider} の API キーが設定されていません',
-    errAiBusy: 'AI サービスが混み合っています。しばらくしてからもう一度お試しください',
-    errNoModel: 'モデル名が設定されていません',
     errImgAbsPath: '画像パスは絶対パスで指定してください。',
     errImgNotFound: '画像ファイルが見つかりません: {path}',
     errImgTooLarge20: '画像が 20MB を超えているため挿入できません。',
@@ -415,24 +292,7 @@ const tMain = createI18n({
     filterSpreadsheets: '스프레드시트',
     filterXlsx: 'Excel 통합 문서',
     filterXlsm: 'Excel 매크로 사용 통합 문서',
-    dlgAddAttachment: '첨부 파일 추가',
-    filterSupported: '지원되는 파일',
-    filterAll: '모든 파일',
-    errUnsupportedExt: '.{ext} 형식은 지원되지 않습니다',
-    errNotFile: '파일이 아닙니다',
-    errTooLarge: '{mb}MB 제한을 초과했습니다',
-    errImageTooLarge: '이미지가 5MB 제한을 초과했습니다',
-    errUnreadable: '읽을 수 없습니다',
     errFileTooLarge: '파일이 크기 제한을 초과했습니다',
-    errParseFailed: '파일을 구문 분석하지 못했습니다',
-    errImageNoText:
-      '이미지 첨부에는 텍스트가 없습니다. 이미지는 사용자 메시지와 함께 전송되므로 이미지를 직접 확인하세요',
-    errNotImage: '지원되는 이미지 형식이 아닙니다',
-    errGskNotLoggedIn:
-      'Genspark에 로그인되어 있지 않습니다. 아래 "Genspark 로그인"을 눌러 로그인한 뒤 다시 시도하세요',
-    errNoApiKey: '{provider}의 API 키가 설정되지 않았습니다',
-    errAiBusy: 'AI 서비스가 혼잡합니다. 잠시 후 다시 시도해 주세요',
-    errNoModel: '모델 이름이 설정되지 않았습니다',
     errImgAbsPath: '이미지 경로는 절대 경로여야 합니다.',
     errImgNotFound: '이미지 파일을 찾을 수 없습니다: {path}',
     errImgTooLarge20: '이미지가 20MB를 초과하여 삽입할 수 없습니다.',
@@ -478,24 +338,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Feuilles de calcul',
     filterXlsx: 'Classeurs Excel',
     filterXlsm: 'Classeurs Excel prenant en charge les macros',
-    dlgAddAttachment: 'Ajouter des pièces jointes',
-    filterSupported: 'Fichiers pris en charge',
-    filterAll: 'Tous les fichiers',
-    errUnsupportedExt: 'Les fichiers .{ext} ne sont pas pris en charge',
-    errNotFile: "n'est pas un fichier",
-    errTooLarge: 'dépasse la limite de {mb} Mo',
-    errImageTooLarge: "l'image dépasse la limite de 5 Mo",
-    errUnreadable: 'illisible',
     errFileTooLarge: 'Le fichier dépasse la taille limite',
-    errParseFailed: "Échec de l'analyse du fichier",
-    errImageNoText:
-      "Les images jointes n'ont pas de texte ; l'image est envoyée avec le message de l'utilisateur",
-    errNotImage: "type d'image non pris en charge",
-    errGskNotLoggedIn:
-      'Non connecté à Genspark : cliquez sur « Se connecter à Genspark » ci-dessous, connectez-vous puis réessayez',
-    errNoApiKey: 'Aucune clé API configurée pour {provider}',
-    errAiBusy: "Le service d'IA est actuellement surchargé — réessayez dans un instant",
-    errNoModel: 'Aucun nom de modèle configuré',
     errImgAbsPath: "Le chemin de l'image doit être absolu.",
     errImgNotFound: 'Fichier image introuvable : {path}',
     errImgTooLarge20: "L'image dépasse 20 Mo et ne peut pas être insérée.",
@@ -542,24 +385,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Tabellenkalkulationen',
     filterXlsx: 'Excel-Arbeitsmappen',
     filterXlsm: 'Excel-Arbeitsmappen mit Makros',
-    dlgAddAttachment: 'Anlagen hinzufügen',
-    filterSupported: 'Unterstützte Dateien',
-    filterAll: 'Alle Dateien',
-    errUnsupportedExt: '.{ext}-Dateien werden nicht unterstützt',
-    errNotFile: 'keine Datei',
-    errTooLarge: 'überschreitet das Limit von {mb} MB',
-    errImageTooLarge: 'Bild überschreitet das Limit von 5 MB',
-    errUnreadable: 'kann nicht gelesen werden',
     errFileTooLarge: 'Datei überschreitet die Größenbeschränkung',
-    errParseFailed: 'Datei konnte nicht analysiert werden',
-    errImageNoText:
-      'Bildanlagen enthalten keinen Text; das Bild wird zusammen mit der Benutzernachricht gesendet',
-    errNotImage: 'kein unterstützter Bildtyp',
-    errGskNotLoggedIn:
-      'Nicht bei Genspark angemeldet: Klicken Sie unten auf „Bei Genspark anmelden“, melden Sie sich an und versuchen Sie es erneut',
-    errNoApiKey: 'Kein API-Schlüssel für {provider} konfiguriert',
-    errAiBusy: 'Der KI-Dienst ist derzeit überlastet — bitte gleich erneut versuchen',
-    errNoModel: 'Kein Modellname konfiguriert',
     errImgAbsPath: 'Der Bildpfad muss absolut sein.',
     errImgNotFound: 'Bilddatei nicht gefunden: {path}',
     errImgTooLarge20: 'Das Bild überschreitet 20 MB und kann nicht eingefügt werden.',
@@ -605,25 +431,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Hojas de cálculo',
     filterXlsx: 'Libros de Excel',
     filterXlsm: 'Libros de Excel habilitados para macros',
-    dlgAddAttachment: 'Agregar datos adjuntos',
-    filterSupported: 'Archivos compatibles',
-    filterAll: 'Todos los archivos',
-    errUnsupportedExt: 'Los archivos .{ext} no son compatibles',
-    errNotFile: 'no es un archivo',
-    errTooLarge: 'supera el límite de {mb} MB',
-    errImageTooLarge: 'la imagen supera el límite de 5 MB',
-    errUnreadable: 'no se puede leer',
     errFileTooLarge: 'El archivo supera el límite de tamaño',
-    errParseFailed: 'No se pudo analizar el archivo',
-    errImageNoText:
-      'Las imágenes adjuntas no tienen texto; la imagen se envía junto con el mensaje del usuario',
-    errNotImage: 'no es un tipo de imagen compatible',
-    errGskNotLoggedIn:
-      'No has iniciado sesión en Genspark: pulsa «Iniciar sesión en Genspark» abajo, inicia sesión y vuelve a intentarlo',
-    errNoApiKey: 'No hay clave de API configurada para {provider}',
-    errAiBusy:
-      'El servicio de IA está saturado en este momento; inténtalo de nuevo en unos instantes',
-    errNoModel: 'No hay nombre de modelo configurado',
     errImgAbsPath: 'La ruta de la imagen debe ser absoluta.',
     errImgNotFound: 'No se encontró el archivo de imagen: {path}',
     errImgTooLarge20: 'La imagen supera los 20 MB y no se puede insertar.',
@@ -668,24 +476,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'สเปรดชีต',
     filterXlsx: 'เวิร์กบุ๊ก Excel',
     filterXlsm: 'เวิร์กบุ๊ก Excel ที่เปิดใช้งานแมโคร',
-    dlgAddAttachment: 'เพิ่มสิ่งที่แนบ',
-    filterSupported: 'ไฟล์ที่รองรับ',
-    filterAll: 'ไฟล์ทั้งหมด',
-    errUnsupportedExt: 'ไม่รองรับไฟล์ชนิด .{ext}',
-    errNotFile: 'ไม่ใช่ไฟล์',
-    errTooLarge: 'เกินขีดจำกัด {mb}MB',
-    errImageTooLarge: 'รูปภาพเกินขีดจำกัด 5MB',
-    errUnreadable: 'อ่านไม่ได้',
     errFileTooLarge: 'ไฟล์มีขนาดเกินขีดจำกัด',
-    errParseFailed: 'แยกวิเคราะห์ไฟล์ไม่สำเร็จ',
-    errImageNoText:
-      'รูปภาพแนบไม่มีข้อความ รูปภาพจะถูกส่งไปพร้อมข้อความของผู้ใช้ ให้ดูที่รูปภาพโดยตรง',
-    errNotImage: 'ไม่ใช่ชนิดรูปภาพที่รองรับ',
-    errGskNotLoggedIn:
-      'ยังไม่ได้ลงชื่อเข้าใช้ Genspark: แตะ “ลงชื่อเข้าใช้ Genspark” ด้านล่าง แล้วลองอีกครั้ง',
-    errNoApiKey: 'ยังไม่ได้ตั้งค่า API Key ของ {provider}',
-    errAiBusy: 'บริการ AI มีผู้ใช้งานจำนวนมากในขณะนี้ โปรดลองอีกครั้งในอีกสักครู่',
-    errNoModel: 'ยังไม่ได้กำหนดชื่อโมเดล',
     errImgAbsPath: 'เส้นทางรูปภาพต้องเป็นเส้นทางแบบสัมบูรณ์',
     errImgNotFound: 'ไม่พบไฟล์รูปภาพ: {path}',
     errImgTooLarge20: 'รูปภาพเกิน 20MB ไม่สามารถแทรกได้',
@@ -730,22 +521,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Lembar bentang',
     filterXlsx: 'Buku kerja Excel',
     filterXlsm: 'Buku kerja Excel dengan makro aktif',
-    dlgAddAttachment: 'Tambahkan lampiran',
-    filterSupported: 'File yang didukung',
-    filterAll: 'Semua file',
-    errUnsupportedExt: 'File .{ext} tidak didukung',
-    errNotFile: 'bukan file',
-    errTooLarge: 'melebihi batas {mb}MB',
-    errImageTooLarge: 'gambar melebihi batas 5MB',
-    errUnreadable: 'tidak dapat dibaca',
     errFileTooLarge: 'File melebihi batas ukuran',
-    errParseFailed: 'Gagal mengurai file',
-    errImageNoText: 'Lampiran gambar tidak memiliki teks; gambar dikirim bersama pesan pengguna',
-    errNotImage: 'bukan jenis gambar yang didukung',
-    errGskNotLoggedIn: 'Belum masuk ke Genspark: klik “Masuk ke Genspark” di bawah, lalu coba lagi',
-    errNoApiKey: 'API Key untuk {provider} belum dikonfigurasi',
-    errAiBusy: 'Layanan AI sedang sibuk — silakan coba lagi sebentar lagi',
-    errNoModel: 'Nama model belum dikonfigurasi',
     errImgAbsPath: 'Jalur gambar harus berupa jalur absolut.',
     errImgNotFound: 'File gambar tidak ditemukan: {path}',
     errImgTooLarge20: 'Gambar melebihi 20MB dan tidak dapat disisipkan.',
@@ -790,24 +566,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Электронные таблицы',
     filterXlsx: 'Книги Excel',
     filterXlsm: 'Книги Excel с поддержкой макросов',
-    dlgAddAttachment: 'Добавить вложения',
-    filterSupported: 'Поддерживаемые файлы',
-    filterAll: 'Все файлы',
-    errUnsupportedExt: 'Файлы .{ext} не поддерживаются',
-    errNotFile: 'не является файлом',
-    errTooLarge: 'превышает лимит {mb} МБ',
-    errImageTooLarge: 'изображение превышает лимит 5 МБ',
-    errUnreadable: 'не удаётся прочитать',
     errFileTooLarge: 'Файл превышает предельный размер',
-    errParseFailed: 'Не удалось разобрать файл',
-    errImageNoText:
-      'Вложенные изображения не содержат текста; изображение отправляется вместе с сообщением пользователя',
-    errNotImage: 'неподдерживаемый тип изображения',
-    errGskNotLoggedIn:
-      'Вы не вошли в Genspark: нажмите «Войти в Genspark» ниже, войдите и повторите попытку',
-    errNoApiKey: 'API-ключ для {provider} не настроен',
-    errAiBusy: 'Сервис ИИ сейчас перегружен — повторите попытку чуть позже',
-    errNoModel: 'Имя модели не настроено',
     errImgAbsPath: 'Путь к изображению должен быть абсолютным.',
     errImgNotFound: 'Файл изображения не найден: {path}',
     errImgTooLarge20: 'Изображение превышает 20 МБ и не может быть вставлено.',
@@ -852,23 +611,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'جداول البيانات',
     filterXlsx: 'مصنفات Excel',
     filterXlsm: 'مصنفات Excel ممكّنة بوحدات الماكرو',
-    dlgAddAttachment: 'إضافة مرفقات',
-    filterSupported: 'الملفات المدعومة',
-    filterAll: 'كل الملفات',
-    errUnsupportedExt: 'ملفات .{ext} غير مدعومة',
-    errNotFile: 'ليس ملفًا',
-    errTooLarge: 'يتجاوز الحد البالغ {mb} ميغابايت',
-    errImageTooLarge: 'الصورة تتجاوز الحد البالغ 5 ميغابايت',
-    errUnreadable: 'تعذّرت قراءته',
     errFileTooLarge: 'الملف يتجاوز حد الحجم',
-    errParseFailed: 'فشل تحليل الملف',
-    errImageNoText: 'مرفقات الصور لا تحتوي على نص؛ تُرسل الصورة مع رسالة المستخدم',
-    errNotImage: 'نوع صورة غير مدعوم',
-    errGskNotLoggedIn:
-      'لم تسجّل الدخول إلى Genspark: انقر على «تسجيل الدخول إلى Genspark» أدناه ثم أعد المحاولة',
-    errNoApiKey: 'لم يتم تكوين مفتاح API لـ {provider}',
-    errAiBusy: 'خدمة الذكاء الاصطناعي مشغولة حاليًا — يرجى المحاولة مرة أخرى بعد قليل',
-    errNoModel: 'لم يتم تكوين اسم النموذج',
     errImgAbsPath: 'يجب أن يكون مسار الصورة مسارًا مطلقًا.',
     errImgNotFound: 'لم يتم العثور على ملف الصورة: {path}',
     errImgTooLarge20: 'الصورة تتجاوز 20 ميغابايت ولا يمكن إدراجها.',
@@ -911,24 +654,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Planilhas',
     filterXlsx: 'Pastas de Trabalho do Excel',
     filterXlsm: 'Pastas de Trabalho Habilitadas para Macro do Excel',
-    dlgAddAttachment: 'Adicionar Anexos',
-    filterSupported: 'Arquivos Compatíveis',
-    filterAll: 'Todos os Arquivos',
-    errUnsupportedExt: 'arquivos .{ext} não são suportados',
-    errNotFile: 'não é um arquivo',
-    errTooLarge: 'excede o limite de {mb}MB',
-    errImageTooLarge: 'a imagem excede o limite de 5MB',
-    errUnreadable: 'não é possível ler',
     errFileTooLarge: 'O arquivo excede o limite de tamanho',
-    errParseFailed: 'Falha ao analisar o arquivo',
-    errImageNoText:
-      'Anexos de imagem não têm texto; a imagem é enviada junto com a mensagem do usuário',
-    errNotImage: 'não é um tipo de imagem suportado',
-    errGskNotLoggedIn:
-      'Não conectado ao Genspark: clique em “Entrar no Genspark” abaixo, entre e tente novamente',
-    errNoApiKey: 'Nenhuma chave de API configurada para {provider}',
-    errAiBusy: 'O serviço de IA está sobrecarregado no momento — tente novamente em instantes',
-    errNoModel: 'Nenhum nome de modelo configurado',
     errImgAbsPath: 'O caminho da imagem deve ser absoluto.',
     errImgNotFound: 'Arquivo de imagem não encontrado: {path}',
     errImgTooLarge20: 'A imagem excede 20MB e não pode ser inserida.',
@@ -973,24 +699,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Fogli di calcolo',
     filterXlsx: 'Cartelle di lavoro di Excel',
     filterXlsm: 'Cartelle di lavoro di Excel con attivazione macro',
-    dlgAddAttachment: 'Aggiungi allegati',
-    filterSupported: 'File supportati',
-    filterAll: 'Tutti i file',
-    errUnsupportedExt: 'i file .{ext} non sono supportati',
-    errNotFile: 'non è un file',
-    errTooLarge: 'supera il limite di {mb} MB',
-    errImageTooLarge: "l'immagine supera il limite di 5 MB",
-    errUnreadable: 'impossibile leggere',
     errFileTooLarge: 'Il file supera il limite di dimensione',
-    errParseFailed: 'Impossibile analizzare il file',
-    errImageNoText:
-      "Gli allegati immagine non hanno testo; l'immagine viene inviata insieme al messaggio dell'utente",
-    errNotImage: 'tipo di immagine non supportato',
-    errGskNotLoggedIn:
-      'Accesso a Genspark non effettuato: fai clic su “Accedi a Genspark” qui sotto, accedi e riprova',
-    errNoApiKey: 'Nessuna chiave API configurata per {provider}',
-    errAiBusy: 'Il servizio IA è momentaneamente sovraccarico — riprova tra poco',
-    errNoModel: 'Nessun nome di modello configurato',
     errImgAbsPath: "Il percorso dell'immagine deve essere assoluto.",
     errImgNotFound: 'File immagine non trovato: {path}',
     errImgTooLarge20: "L'immagine supera i 20 MB e non può essere inserita.",
@@ -1036,24 +745,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Arkusze kalkulacyjne',
     filterXlsx: 'Skoroszyty programu Excel',
     filterXlsm: 'Skoroszyty programu Excel z obsługą makr',
-    dlgAddAttachment: 'Dodaj załączniki',
-    filterSupported: 'Obsługiwane pliki',
-    filterAll: 'Wszystkie pliki',
-    errUnsupportedExt: 'pliki .{ext} nie są obsługiwane',
-    errNotFile: 'to nie jest plik',
-    errTooLarge: 'przekracza limit {mb} MB',
-    errImageTooLarge: 'obraz przekracza limit 5 MB',
-    errUnreadable: 'nie można odczytać',
     errFileTooLarge: 'Plik przekracza limit rozmiaru',
-    errParseFailed: 'Nie udało się przeanalizować pliku',
-    errImageNoText:
-      'Załączniki graficzne nie zawierają tekstu; obraz jest wysyłany razem z wiadomością użytkownika',
-    errNotImage: 'nieobsługiwany typ obrazu',
-    errGskNotLoggedIn:
-      'Nie zalogowano do Genspark: kliknij „Zaloguj się do Genspark” poniżej, zaloguj się i spróbuj ponownie',
-    errNoApiKey: 'Nie skonfigurowano klucza API dla {provider}',
-    errAiBusy: 'Usługa AI jest obecnie przeciążona — spróbuj ponownie za chwilę',
-    errNoModel: 'Nie skonfigurowano nazwy modelu',
     errImgAbsPath: 'Ścieżka obrazu musi być bezwzględna.',
     errImgNotFound: 'Nie znaleziono pliku obrazu: {path}',
     errImgTooLarge20: 'Obraz przekracza 20 MB i nie może zostać wstawiony.',
@@ -1098,24 +790,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Tabulky',
     filterXlsx: 'Sešity Excelu',
     filterXlsm: 'Sešity Excelu s podporou maker',
-    dlgAddAttachment: 'Přidat přílohy',
-    filterSupported: 'Podporované soubory',
-    filterAll: 'Všechny soubory',
-    errUnsupportedExt: 'soubory .{ext} nejsou podporovány',
-    errNotFile: 'není soubor',
-    errTooLarge: 'překračuje limit {mb} MB',
-    errImageTooLarge: 'obrázek překračuje limit 5 MB',
-    errUnreadable: 'nelze přečíst',
     errFileTooLarge: 'Soubor překračuje limit velikosti',
-    errParseFailed: 'Soubor se nepodařilo zpracovat',
-    errImageNoText:
-      'Obrázkové přílohy neobsahují text; obrázek se odesílá spolu se zprávou uživatele',
-    errNotImage: 'nepodporovaný typ obrázku',
-    errGskNotLoggedIn:
-      'Nejste přihlášeni ke Genspark: klikněte níže na „Přihlásit se ke Genspark“, přihlaste se a zkuste to znovu',
-    errNoApiKey: 'Pro {provider} není nakonfigurován žádný klíč API',
-    errAiBusy: 'Služba AI je momentálně zaneprázdněna — zkuste to prosím za chvíli znovu',
-    errNoModel: 'Není nakonfigurován název modelu',
     errImgAbsPath: 'Cesta k obrázku musí být absolutní.',
     errImgNotFound: 'Soubor obrázku nebyl nalezen: {path}',
     errImgTooLarge20: 'Obrázek překračuje 20 MB a nelze ho vložit.',
@@ -1160,24 +835,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Spreadsheets',
     filterXlsx: 'Excel-werkmappen',
     filterXlsm: "Excel-werkmappen met macro's",
-    dlgAddAttachment: 'Bijlagen toevoegen',
-    filterSupported: 'Ondersteunde bestanden',
-    filterAll: 'Alle bestanden',
-    errUnsupportedExt: '.{ext}-bestanden worden niet ondersteund',
-    errNotFile: 'geen bestand',
-    errTooLarge: 'overschrijdt de limiet van {mb} MB',
-    errImageTooLarge: 'afbeelding overschrijdt de limiet van 5 MB',
-    errUnreadable: 'kan niet worden gelezen',
     errFileTooLarge: 'Bestand overschrijdt de maximale grootte',
-    errParseFailed: 'Kan bestand niet parseren',
-    errImageNoText:
-      'Afbeeldingsbijlagen bevatten geen tekst; de afbeelding wordt samen met het gebruikersbericht verzonden',
-    errNotImage: 'geen ondersteund afbeeldingstype',
-    errGskNotLoggedIn:
-      'Niet aangemeld bij Genspark: klik hieronder op “Aanmelden bij Genspark”, meld u aan en probeer het opnieuw',
-    errNoApiKey: 'Geen API-sleutel geconfigureerd voor {provider}',
-    errAiBusy: 'De AI-service is momenteel overbelast — probeer het zo opnieuw',
-    errNoModel: 'Geen modelnaam geconfigureerd',
     errImgAbsPath: 'Het afbeeldingspad moet absoluut zijn.',
     errImgNotFound: 'Afbeeldingsbestand niet gevonden: {path}',
     errImgTooLarge20: 'De afbeelding is groter dan 20 MB en kan niet worden ingevoegd.',
@@ -1223,23 +881,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'Hamparan',
     filterXlsx: 'Buku Kerja Excel',
     filterXlsm: 'Buku Kerja Excel Didayakan Makro',
-    dlgAddAttachment: 'Tambah Lampiran',
-    filterSupported: 'Fail yang Disokong',
-    filterAll: 'Semua Fail',
-    errUnsupportedExt: 'fail .{ext} tidak disokong',
-    errNotFile: 'bukan fail',
-    errTooLarge: 'melebihi had {mb}MB',
-    errImageTooLarge: 'imej melebihi had 5MB',
-    errUnreadable: 'tidak dapat dibaca',
     errFileTooLarge: 'Fail melebihi had saiz',
-    errParseFailed: 'Gagal menghurai fail',
-    errImageNoText: 'Lampiran imej tiada teks; imej dihantar bersama mesej pengguna',
-    errNotImage: 'bukan jenis imej yang disokong',
-    errGskNotLoggedIn:
-      'Belum log masuk ke Genspark: klik “Log masuk ke Genspark” di bawah, kemudian cuba lagi',
-    errNoApiKey: 'Kunci API untuk {provider} belum dikonfigurasikan',
-    errAiBusy: 'Perkhidmatan AI sedang sibuk — sila cuba lagi sebentar lagi',
-    errNoModel: 'Nama model belum dikonfigurasikan',
     errImgAbsPath: 'Laluan imej mestilah laluan mutlak.',
     errImgNotFound: 'Fail imej tidak ditemui: {path}',
     errImgTooLarge20: 'Imej melebihi 20MB dan tidak boleh disisipkan.',
@@ -1285,22 +927,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'גיליונות אלקטרוניים',
     filterXlsx: 'חוברות עבודה של Excel',
     filterXlsm: 'חוברות עבודה של Excel מותאמות מאקרו',
-    dlgAddAttachment: 'הוספת קבצים מצורפים',
-    filterSupported: 'קבצים נתמכים',
-    filterAll: 'כל הקבצים',
-    errUnsupportedExt: 'קובצי .{ext} אינם נתמכים',
-    errNotFile: 'אינו קובץ',
-    errTooLarge: 'חורג מהמגבלה של {mb}MB',
-    errImageTooLarge: 'התמונה חורגת מהמגבלה של 5MB',
-    errUnreadable: 'לא ניתן לקרוא',
     errFileTooLarge: 'הקובץ חורג ממגבלת הגודל',
-    errParseFailed: 'ניתוח הקובץ נכשל',
-    errImageNoText: 'קבצים מצורפים מסוג תמונה אינם מכילים טקסט; התמונה נשלחת יחד עם הודעת המשתמש',
-    errNotImage: 'סוג תמונה שאינו נתמך',
-    errGskNotLoggedIn: 'לא מחובר ל-Genspark: לחץ על "התחבר ל-Genspark" למטה, התחבר ונסה שוב',
-    errNoApiKey: 'לא הוגדר מפתח API עבור {provider}',
-    errAiBusy: 'שירות ה-AI עמוס כרגע — נסו שוב בעוד רגע',
-    errNoModel: 'לא הוגדר שם מודל',
     errImgAbsPath: 'נתיב התמונה חייב להיות מוחלט.',
     errImgNotFound: 'קובץ התמונה לא נמצא: {path}',
     errImgTooLarge20: 'התמונה חורגת מ-20MB ולא ניתן להוסיף אותה.',
@@ -1343,23 +970,7 @@ const tMain = createI18n({
     filterSpreadsheets: 'स्प्रेडशीट',
     filterXlsx: 'Excel कार्यपुस्तिकाएँ',
     filterXlsm: 'Excel मैक्रो-सक्षम कार्यपुस्तिकाएँ',
-    dlgAddAttachment: 'अनुलग्नक जोड़ें',
-    filterSupported: 'समर्थित फ़ाइलें',
-    filterAll: 'सभी फ़ाइलें',
-    errUnsupportedExt: '.{ext} फ़ाइलें समर्थित नहीं हैं',
-    errNotFile: 'फ़ाइल नहीं है',
-    errTooLarge: '{mb}MB की सीमा से अधिक है',
-    errImageTooLarge: 'छवि 5MB की सीमा से अधिक है',
-    errUnreadable: 'पढ़ा नहीं जा सकता',
     errFileTooLarge: 'फ़ाइल आकार सीमा से अधिक है',
-    errParseFailed: 'फ़ाइल पार्स करने में विफल',
-    errImageNoText: 'छवि अनुलग्नक में टेक्स्ट नहीं होता; छवि उपयोगकर्ता संदेश के साथ भेजी जाती है',
-    errNotImage: 'समर्थित छवि प्रकार नहीं है',
-    errGskNotLoggedIn:
-      'Genspark में साइन इन नहीं है: नीचे “Genspark में साइन इन करें” पर क्लिक करें, साइन इन करें और फिर से कोशिश करें',
-    errNoApiKey: '{provider} के लिए कोई API कुंजी कॉन्फ़िगर नहीं है',
-    errAiBusy: 'AI सेवा अभी व्यस्त है — कृपया थोड़ी देर बाद फिर से प्रयास करें',
-    errNoModel: 'कोई मॉडल नाम कॉन्फ़िगर नहीं है',
     errImgAbsPath: 'छवि पथ निरपेक्ष होना चाहिए।',
     errImgNotFound: 'छवि फ़ाइल नहीं मिली: {path}',
     errImgTooLarge20: 'छवि 20MB से अधिक है और सम्मिलित नहीं की जा सकती।',
@@ -1405,22 +1016,7 @@ const tMain = createI18n({
     filterSpreadsheets: '電子試算表',
     filterXlsx: 'Excel 活頁簿',
     filterXlsm: 'Excel 啟用巨集的活頁簿',
-    dlgAddAttachment: '新增附件',
-    filterSupported: '支援的檔案',
-    filterAll: '所有檔案',
-    errUnsupportedExt: '暫不支援 .{ext} 類型',
-    errNotFile: '不是檔案',
-    errTooLarge: '超過 {mb}MB 上限',
-    errImageTooLarge: '圖片超過 5MB 上限',
-    errUnreadable: '無法讀取',
     errFileTooLarge: '檔案超過大小上限',
-    errParseFailed: '檔案解析失敗',
-    errImageNoText: '圖片附件不提供文字,已作為影像隨使用者訊息傳送,直接看圖即可',
-    errNotImage: '不是支援的圖片類型',
-    errGskNotLoggedIn: '未登入 Genspark:請點擊下方「登入 Genspark」完成登入後重試',
-    errNoApiKey: '未設定 {provider} 的 API Key',
-    errAiBusy: 'AI 服務目前繁忙，請稍後重試',
-    errNoModel: '未設定模型名稱',
     errImgAbsPath: '圖片路徑必須是絕對路徑。',
     errImgNotFound: '找不到圖片檔案: {path}',
     errImgTooLarge20: '圖片超過 20MB,不支援插入。',
@@ -1509,14 +1105,6 @@ interface SessionInfo {
 
 // ---- runtime configuration (paths differ when bundled into the shell) ----
 
-/** AI create_document content the sheets app cannot build itself — the shell
- * routes it into the docs-owned creation flow (docx opens a fresh docs tab). */
-export interface SheetsAiHostDocumentRequest {
-  type: 'docx' | 'pdf' | 'md' | 'html'
-  title: string
-  content: string
-}
-
 interface SheetsRuntimeConfig {
   /** absolute path to the sheets preload bundle */
   preloadPath: string
@@ -1526,24 +1114,21 @@ interface SheetsRuntimeConfig {
   rendererFile: string
   /** absolute path to the Rust xlsx-sidecar binary */
   sidecarPath?: string | undefined
-  /** Shell router used to open exported/AI-generated files in a new GenOffice tab. */
+  /** Shell router used to open exported files in a new GenOffice tab. */
   openGeneratedPath?: (path: string) => boolean
-  /** Host-owned cross-app document creator (the shell routes docx/pdf/md into Docs). */
-  createDocument?: (request: SheetsAiHostDocumentRequest) => Promise<WorkbookCreateDocumentResult>
 }
 
 let runtime: SheetsRuntimeConfig = {
   preloadPath: join(__dirname, '../preload/index.js'),
   rendererUrl: process.env.ELECTRON_RENDERER_URL,
   rendererFile: join(__dirname, '../renderer/index.html'),
-  createDocument: createStandaloneSheetsDocument,
 }
 
 export function configureSheetsRuntime(config: SheetsRuntimeConfig): void {
   runtime = config
 }
 
-/** After writing an exported/AI-generated file: open it in the right tab
+/** After writing an exported file: open it in the right tab
  * (shell) or reveal it in the folder (standalone). Tab-opening failure must
  * not report the write itself as failed — the file is already persisted. */
 function openGeneratedFile(path: string): void {
@@ -1556,58 +1141,6 @@ function openGeneratedFile(path: string): void {
     console.warn('[sheets] Failed to open generated file:', err)
   }
   shell.showItemInFolder(path)
-}
-
-/** Pick a safe file-name stem for an AI-created file (mirrors docs' sanitizeAiDocFileBase). */
-export function sanitizeGeneratedFileBase(title: string): string {
-  const cleaned = String(title ?? '')
-    // eslint-disable-next-line no-control-regex -- generated file names must reject controls
-    .replace(/[/\\:*?"<>|\u0000-\u001f]/g, '_')
-    .trim()
-    .slice(0, 80)
-    .trim()
-  return cleaned && cleaned !== '.' && cleaned !== '..' ? cleaned : 'Untitled'
-}
-
-/** first free path for fileName inside dir: name.ext, name-2.ext, name-3.ext… */
-export function uniquePathIn(dir: string, fileName: string): string {
-  const dot = fileName.lastIndexOf('.')
-  const base = dot > 0 ? fileName.slice(0, dot) : fileName
-  const ext = dot > 0 ? fileName.slice(dot) : ''
-  let candidate = join(dir, fileName)
-  for (let i = 2; existsSync(candidate); i++) candidate = join(dir, `${base}-${i}${ext}`)
-  return candidate
-}
-
-/** Standalone-window fallback for AI docx/pdf/md/html creation (mirrors pdf-main's
- * createStandaloneDocument): pdf renders in a hidden sandboxed window, md/html
- * write the source as-is; docx needs the Docs app and is refused. */
-async function createStandaloneSheetsDocument(
-  request: SheetsAiHostDocumentRequest,
-): Promise<WorkbookCreateDocumentResult> {
-  if (request.type === 'docx') {
-    return { ok: false, error: 'Creating DOCX files requires the GenOffice shell or Docs app.' }
-  }
-  const title = sanitizeGeneratedFileBase(request.title)
-  try {
-    if (request.type === 'pdf') {
-      const bytes = await printHtmlToPdf(
-        buildPrintableHtml(title, request.content),
-        () =>
-          new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } }),
-      )
-      const path = uniquePathIn(configuredDefaultSaveDir(app), `${title}.pdf`)
-      await writeFile(path, bytes)
-      openGeneratedFile(path)
-      return { ok: true, path }
-    }
-    const path = uniquePathIn(configuredDefaultSaveDir(app), `${title}.${request.type}`)
-    await writeFile(path, request.content, 'utf8')
-    openGeneratedFile(path)
-    return { ok: true, path }
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) }
-  }
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -1638,7 +1171,6 @@ interface SheetsTabSession {
   readonly webContents: WebContents
   readonly client: XlsxSidecarClient
   readonly sessions: Map<string, SessionInfo>
-  readonly aiStreams: Map<string, AbortController>
   /// Chunked uploads of large saves' cell edits, pending their save request.
   readonly saveTransfers: SaveEditsTransferStore
 }
@@ -1646,38 +1178,15 @@ interface SheetsTabSession {
 /** per-tab session state, keyed by webContents.id — replaces the old single-window closures
  * that `registerIpcHandlers`/`validateSender` used to capture, which broke as soon as a second
  * tab (or a closed-then-reopened tab) registered and overwrote the previous closure. */
-/// Same ceiling as local add_image (readLocalImage's 20MB check)
-const MAX_REMOTE_IMAGE_BYTES = 20 * 1024 * 1024
 /** Max .csv/.tsv bytes converted on open: stops a 500MB text file OOMing main before sidecar limits. */
 const MAX_DELIMITED_IMPORT_BYTES = 32 * 1024 * 1024
 
 const sheetsTabs = new Map<number, SheetsTabSession>()
 let activeSheetsWebContents: WebContents | null = null
-let pastedTempCleanupStarted = false
-
-function startPastedTempCleanup(): void {
-  if (pastedTempCleanupStarted) return
-  pastedTempCleanupStarted = true
-  void cleanupExpiredPastedFiles(app.getPath('temp'))
-}
-
 function sessionFor(event: IpcMainInvokeEvent): SheetsTabSession {
   const entry = sheetsTabs.get(event.sender.id)
   if (!entry) throw new Error('Untrusted IPC sender.')
   return entry
-}
-
-/**
- * Local media roots for a sheets renderer: the directories of the workbooks its
- * tab has open, plus the directory sheets stages pasted images in. A tab can
- * hold several workbook sessions, so every open one contributes its directory —
- * a tool call naming a file the user put next to the workbook they are editing
- * is the legitimate case, and nothing else is readable.
- */
-function sheetsMediaRoots(wcId: number): string[] {
-  const tab = sheetsTabs.get(wcId)
-  const workbookDirs = tab ? [...tab.sessions.values()].map((s) => dirname(s.path)) : []
-  return localMediaRoots(...workbookDirs, join(app.getPath('temp'), 'genoffice-pasted'))
 }
 
 /// A save request referencing a chunked edit transfer gets the accumulated
@@ -1735,7 +1244,6 @@ function broadcastSidecarCrash(client: XlsxSidecarClient): void {
 }
 
 function registerSheetsSession(webContents: WebContents, client: XlsxSidecarClient): void {
-  startPastedTempCleanup()
   if (!crashNotifiedClients.has(client)) {
     crashNotifiedClients.add(client)
     client.onProcessExit(() => broadcastSidecarCrash(client))
@@ -1744,7 +1252,6 @@ function registerSheetsSession(webContents: WebContents, client: XlsxSidecarClie
     webContents,
     client,
     sessions: new Map(),
-    aiStreams: new Map(),
     saveTransfers: new SaveEditsTransferStore(),
   })
   activeSheetsWebContents = webContents
@@ -1779,13 +1286,6 @@ export function setActiveSheetsWebContents(wc: WebContents | null): void {
  *  Home list) — sync the matching session's path in that tab (later saves write
  *  the new file) and push the renderer to update the title-bar file name. */
 export function sheetsFileRenamed(wc: WebContents, oldPath: string, newPath: string): void {
-  // A user-chosen name always wins: the file no longer qualifies for auto-rename.
-  // A move that keeps the untitled name (folder tree), including the "(2)"
-  // suffix a keep-both move adds, does not count as choosing one.
-  const stem = (p: string) => basename(p).replace(/ \(\d+\)(?=\.[^.]+$)/, '')
-  if (untitledWorkbookPaths.delete(oldPath) && stem(newPath) === stem(oldPath)) {
-    untitledWorkbookPaths.add(newPath)
-  }
   const entry = sheetsTabs.get(wc.id)
   if (!entry) return
   let matched = false
@@ -1812,16 +1312,6 @@ export function sheetsFileRenamed(wc: WebContents, oldPath: string, newPath: str
     matched = true
   }
   if (matched) wc.send(IPC_CHANNELS.workbookRenamed, basename(newPath))
-}
-
-/**
- * Workbooks the shell pre-created on disk with the localized untitled name
- * ("New Spreadsheet"). Only these ever qualify for the content-derived
- * auto-rename after an AI run; any manual rename removes the mark.
- */
-const untitledWorkbookPaths = new Set<string>()
-export function markSheetsUntitledPath(path: string): void {
-  untitledWorkbookPaths.add(path)
 }
 
 /**
@@ -1860,32 +1350,6 @@ export function unmarkSheetsUnsavedNew(openPath: string): void {
   unsavedNewWorkbooks.delete(openPath)
 }
 
-const mcpWritablePaths = new Map<number, Set<string>>()
-
-/** MCP save_session: the shell resolved this path for the tab, so a dialog-free save may write it */
-export function authorizeMcpSheetWrite(wcId: number, filePath: string): void {
-  const set = mcpWritablePaths.get(wcId) ?? new Set<string>()
-  set.add(filePath)
-  mcpWritablePaths.set(wcId, set)
-}
-
-function canMcpSheetWrite(wcId: number, filePath: string): boolean {
-  return mcpWritablePaths.get(wcId)?.has(filePath) === true
-}
-
-/** Sanitize an AI-provided sheet name into a safe filename base: strip illegal path chars, collapse whitespace, cap length; null if invalid. (Mirrors slides' draft naming.) */
-function sanitizeAutoRenameBase(raw: string): string | null {
-  const cleaned = raw
-    // eslint-disable-next-line no-control-regex -- stripping control chars is the point here
-    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/^\.+|\.+$/g, '')
-    .trim()
-  if (!cleaned) return null
-  return cleaned.length > 40 ? cleaned.slice(0, 40).trim() : cleaned
-}
-
 /** shell hook: a tab opened a workbook (dialog or queued path) — used for tab titles/dedupe */
 let workbookOpenedHook: ((wc: WebContents, path: string) => void) | null = null
 export function setSheetsWorkbookOpenedHook(
@@ -1905,8 +1369,6 @@ export function sendSheetsMenuAction(
 export function nudgeQueuedWorkbook(contents: WebContents): void {
   contents.send(IPC_CHANNELS.menuAction, 'open')
 }
-
-// ---- AI settings persistence (main process avoids renderer CORS for the chat/stream proxy) ----
 
 function userDataPath(...parts: string[]): string {
   return join(app.getPath('userData'), ...parts)
@@ -2066,8 +1528,6 @@ function readJson<T>(path: string, fallback: T): T {
   return fallback
 }
 
-const SETTINGS_PATH = () => userDataPath('ai-settings.json')
-
 // Dev-only automation hooks: a fixed CDP port for driving the app from test
 // scripts, and a workbook path that bypasses the native file dialog.
 const debugPort = app.isPackaged ? undefined : process.env.XLSX_DEBUG_PORT
@@ -2160,9 +1620,7 @@ const sidecarOpenResultSchema = workbookFileSchema.omit({
   readOnly: true,
 })
 
-export async function createSheetsWindow(
-  options: { includeAiHandlers?: boolean } = {},
-): Promise<BrowserWindow> {
+export async function createSheetsWindow(): Promise<BrowserWindow> {
   const client = sidecar ?? new XlsxSidecarClient(resolveSidecarPath())
   sidecar = client
   client.start()
@@ -2185,8 +1643,6 @@ export async function createSheetsWindow(
   })
   mainWindow = window
   registerSheetsIpc()
-  if (options.includeAiHandlers ?? true) registerSheetsAiIpc()
-  if (options.includeAiHandlers ?? true) registerProjectIpc()
   registerSheetsSession(window.webContents, client)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
@@ -2291,7 +1747,7 @@ export async function exportSheetsPdfHeadless(
 
 /** tab-mode equivalent of createSheetsWindow: same runtime/IPC wiring, no BrowserWindow of its own. */
 export function createSheetsView(
-  options: { includeAiHandlers?: boolean; openingWorkbook?: boolean } = {},
+  options: { openingWorkbook?: boolean } = {},
 ): WebContentsView {
   const client = sidecar ?? new XlsxSidecarClient(resolveSidecarPath())
   sidecar = client
@@ -2306,7 +1762,6 @@ export function createSheetsView(
     },
   })
   registerSheetsIpc()
-  if (options.includeAiHandlers ?? true) registerSheetsAiIpc()
   registerSheetsSession(view.webContents, client)
   view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   view.webContents.on('will-navigate', (event) => event.preventDefault())
@@ -2324,141 +1779,6 @@ export function createSheetsView(
     }),
   )
   return view
-}
-
-// ---- Chat attachments: local files parsed and fed to the agent (copied from
-// the apps/docs docs-main attachment pipeline) ----
-
-const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024
-/** Plain-text extensions, read as UTF-8 */
-const ATTACHMENT_TEXT_EXTS = new Set([
-  'txt',
-  'md',
-  'markdown',
-  'csv',
-  'tsv',
-  'json',
-  'yaml',
-  'yml',
-  'xml',
-  'html',
-  'htm',
-  'log',
-  'js',
-  'ts',
-  'tsx',
-  'jsx',
-  'py',
-  'java',
-  'c',
-  'h',
-  'cpp',
-  'go',
-  'rs',
-  'rb',
-  'sh',
-  'sql',
-  'css',
-])
-/** office/pdf formats extract text via @genoffice/file-parse; images skip text
- * extraction and go multimodal (sheets:files-read-image) */
-const ATTACHMENT_EXTS = new Set([
-  ...ATTACHMENT_TEXT_EXTS,
-  'doc',
-  'docx',
-  'pdf',
-  'pptx',
-  'ppt',
-  'xlsx',
-  'xlsm',
-  'xls',
-  ...ATTACHMENT_IMAGE_EXTS,
-])
-
-const ATTACHMENT_IMAGE_MIME: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-}
-/** Multimodal cap per image attachment (protects the context window) */
-const ATTACHMENT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
-
-/** Extracted-text cache keyed by path; invalidated when mtime+size change */
-const attachmentTextCache = new Map<string, { stamp: string; text: string }>()
-
-function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: string } {
-  const name = basename(filePath)
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
-  if (!ATTACHMENT_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
-  try {
-    const stat = statSync(filePath)
-    if (!stat.isFile()) return { error: `${name}: ${tm('errNotFile')}` }
-    if (stat.size > ATTACHMENT_MAX_BYTES) {
-      return {
-        error: `${name}: ${tm('errTooLarge', { mb: Math.round(ATTACHMENT_MAX_BYTES / 1024 / 1024) })}`,
-      }
-    }
-    if (ATTACHMENT_IMAGE_EXTS.has(ext) && stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
-      return { error: `${name}: ${tm('errImageTooLarge')}` }
-    }
-    return { meta: { path: filePath, name, ext, sizeBytes: stat.size } }
-  } catch {
-    return { error: `${name}: ${tm('errUnreadable')}` }
-  }
-}
-
-function collectAttachments(paths: string[]): AttachmentAddResult {
-  const accepted: AttachmentMeta[] = []
-  const rejected: string[] = []
-  for (const p of paths) {
-    const { meta, error } = statAttachment(p)
-    if (meta) accepted.push(meta)
-    else if (error) rejected.push(error)
-  }
-  return { accepted, rejected }
-}
-
-/** Persists clipboard-pasted image bytes to a temp file (screenshots/bitmaps
- * without a local path); returns null for non-images or empty data */
-let pastedImageSeq = 0
-function savePastedImage(data: unknown, ext: unknown): string | null {
-  const cleanExt = typeof ext === 'string' ? ext.toLowerCase() : ''
-  if (!ATTACHMENT_IMAGE_EXTS.has(cleanExt)) return null
-  const bytes =
-    data instanceof ArrayBuffer
-      ? Buffer.from(data)
-      : ArrayBuffer.isView(data)
-        ? Buffer.from(data.buffer, data.byteOffset, data.byteLength)
-        : null
-  if (!bytes || bytes.byteLength === 0) return null
-  const dir = join(app.getPath('temp'), 'genoffice-pasted')
-  mkdirSync(dir, { recursive: true })
-  const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-')
-  const filePath = join(dir, `pasted-${stamp}-${++pastedImageSeq}.${cleanExt}`)
-  writeFileSync(filePath, bytes)
-  return filePath
-}
-
-/** Attachment text extraction via @genoffice/file-parse (docx/pdf/pptx/xlsx/plain text) */
-async function extractAttachmentText(filePath: string): Promise<string> {
-  const stat = statSync(filePath)
-  const stamp = `${stat.mtimeMs}:${stat.size}`
-  const cached = attachmentTextCache.get(filePath)
-  if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > ATTACHMENT_MAX_BYTES) throw new Error(tm('errFileTooLarge'))
-  const parsed = await parseFileToText(filePath)
-  if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
-    throw new Error(parsed.error ?? tm('errParseFailed'))
-  }
-  attachmentTextCache.set(filePath, { stamp, text: parsed.text })
-  // The cache is bounded (keeping a few recent files is enough)
-  if (attachmentTextCache.size > 8) {
-    const oldest = attachmentTextCache.keys().next().value
-    if (oldest) attachmentTextCache.delete(oldest)
-  }
-  return parsed.text
 }
 
 // Close guard: the renderer mirrors its pending-save count here, used to show a
@@ -2563,22 +1883,6 @@ let coreIpcRegistered = false
 export function registerSheetsIpc(): void {
   if (coreIpcRegistered) return
   coreIpcRegistered = true
-
-  // Registered here (not in registerSheetsAiIpc, skipped in shell mode):
-  // slides' ai:generate-image only exists once a slides view opens, so sheets
-  // owns its channel the way pdf does.
-  ipcMain.handle(
-    IPC_CHANNELS.aiGenerateImage,
-    (event, op: { prompt?: unknown; aspectRatio?: unknown }) =>
-      generateImageTool(
-        SETTINGS_PATH(),
-        {
-          prompt: String(op?.prompt ?? ''),
-          ...(op?.aspectRatio ? { aspectRatio: String(op.aspectRatio) } : {}),
-        },
-        { mediaRoots: sheetsMediaRoots(event.sender.id) },
-      ),
-  )
 
   ipcMain.on(IPC_CHANNELS.recoveryPromptReply, (event, restore: unknown) => {
     recoveryPromptWaiters.get(event.sender.id)?.(restore === true ? 'restore' : 'discard')
@@ -2809,17 +2113,6 @@ export function registerSheetsIpc(): void {
     })
     if (selection.canceled || selection.filePaths.length === 0) return null
     return openMergeSources(event, selection.filePaths)
-  })
-
-  const MERGE_SOURCE_EXTS = WORKBOOK_EXTS
-  ipcMain.handle(IPC_CHANNELS.openWorkbooksForMerge, async (event, input: unknown) => {
-    const paths = z.array(z.string().min(1)).min(1).max(20).parse(input)
-    for (const path of paths) {
-      const ext = path.slice(path.lastIndexOf('.') + 1).toLowerCase()
-      if (!MERGE_SOURCE_EXTS.has(ext)) throw new Error(`Unsupported merge source: ${ext}`)
-      if (!existsSync(path)) throw new Error('Merge source not found.')
-    }
-    return openMergeSources(event, paths)
   })
 
   ipcMain.handle(IPC_CHANNELS.readWorkbookRange, async (event, input: unknown) => {
@@ -3111,49 +2404,6 @@ export function registerSheetsIpc(): void {
     return { canceled: false, path: targetPath }
   })
 
-  // AI create_document: dialog-free — the file lands in the default save
-  // folder under a unique sanitized name and opens in a new tab. xlsx/csv
-  // write the renderer-serialized worksheet data here (xlsx through the same
-  // CSV→xlsx conversion as CSV imports, values only); docx/pdf/md go through
-  // the host-owned creator (the shell routes them into the docs flow, #960).
-  ipcMain.handle(
-    IPC_CHANNELS.createDocument,
-    async (event, input: unknown): Promise<WorkbookCreateDocumentResult> => {
-      sessionFor(event)
-      const request = workbookCreateDocumentRequestSchema.parse(input)
-      try {
-        if (request.type === 'csv') {
-          const filePath = uniquePathIn(
-            configuredDefaultSaveDir(app),
-            `${sanitizeGeneratedFileBase(request.title)}.csv`,
-          )
-          // UTF-8 BOM so Excel decodes the reopened file correctly (same as exportCsv)
-          await atomicWriteFile(
-            filePath,
-            Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(request.content, 'utf8')]),
-          )
-          openGeneratedFile(filePath)
-          return { ok: true, path: filePath }
-        }
-        if (request.type === 'xlsx') {
-          const buffer = await sheetCsvToXlsxBuffer(request.content, request.sheetName ?? 'Sheet1')
-          const filePath = uniquePathIn(
-            configuredDefaultSaveDir(app),
-            `${sanitizeGeneratedFileBase(request.title)}.xlsx`,
-          )
-          await atomicWriteFile(filePath, buffer)
-          openGeneratedFile(filePath)
-          return { ok: true, path: filePath }
-        }
-        const create = runtime.createDocument
-        if (!create) return { ok: false, error: 'Document creation is unavailable in this host.' }
-        return await create({ type: request.type, title: request.title, content: request.content })
-      } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) }
-      }
-    },
-  )
-
   // First Save of a CSV session: Excel's "keep this format?" question. The
   // renderer remembers the answer for the file, so it is asked once.
   ipcMain.handle(IPC_CHANNELS.csvSaveConfirm, async (event) => {
@@ -3186,24 +2436,8 @@ export function registerSheetsIpc(): void {
     // original .csv afterwards.
     const csvInPlace = request.mode === 'save' && session.csvSourcePath !== undefined
     let targetPath = session.path
-    // MCP explicit-path save (planning/mcp-server.md): dialog-free Save As to
-    // an exact path with a clobber guard — docs:save-to parity. Only the xlsx
-    // pipeline is reachable this way (.xlsm/.csv need their interactive flows).
-    if (request.targetPath !== undefined) {
-      if (request.mode !== 'save-as') throw new Error('An explicit save path needs Save As.')
-      if (!isAbsolute(request.targetPath)) throw new Error('Save path must be absolute.')
-      targetPath = /\.xlsx$/i.test(request.targetPath)
-        ? request.targetPath
-        : `${request.targetPath}.xlsx`
-      // only a target the MCP layer resolved for this tab may be written without a dialog
-      if (!canMcpSheetWrite(event.sender.id, targetPath)) {
-        throw new Error('save target was not authorized')
-      }
-      if (existsSync(targetPath) && request.overwrite !== true) {
-        throw new Error(`file already exists: ${targetPath}`)
-      }
-    } else if (request.mode === 'save' && request.quiet && session.unsavedNew) {
-      // AutoSave / AI-run autosave of a workbook the user has not named yet:
+    if (request.mode === 'save' && request.quiet && session.unsavedNew) {
+      // AutoSave of a workbook the user has not named yet:
       // no dialog mid-flow, the edits land in the backing temp file and the
       // session stays an unsaved new one (Ctrl+S still asks where to save)
       targetPath = session.path
@@ -3435,58 +2669,6 @@ export function registerSheetsIpc(): void {
     })
   })
 
-  // Content-derived naming for AI-generated workbooks (sheets' analog of slides'
-  // deckName): the renderer proposes a base name after an AI run lands; the file
-  // is renamed only while it still carries the shell's auto-created untitled name.
-  ipcMain.handle(
-    IPC_CHANNELS.autoRenameWorkbook,
-    (event, sessionId: unknown, baseName: unknown) => {
-      const entry = sessionFor(event)
-      const validatedSessionId = z.string().uuid().parse(sessionId)
-      const session = entry.sessions.get(validatedSessionId)
-      if (!session || !untitledWorkbookPaths.has(session.path)) return { renamed: false }
-      const base = sanitizeAutoRenameBase(z.string().min(1).max(100).parse(baseName))
-      if (!base) return { renamed: false }
-      // An unsaved new workbook has no user-visible file to rename — it sits in
-      // a temp directory that closing the tab discards. Retarget the suggested
-      // Save As name instead, so the AI-derived name is what the first save
-      // offers, and leave the mark in place for a later run. No rename on disk
-      // and no open hook: the temp path must not reach the title or recents.
-      if (session.suggestSaveAs !== undefined) {
-        const suggestDir = dirname(session.suggestSaveAs)
-        let suggested = join(suggestDir, `${base}.xlsx`)
-        const taken = (p: string) =>
-          p !== session.suggestSaveAs && (existsSync(p) || sheetsSuggestedPathTaken(p))
-        for (let i = 2; taken(suggested) && i < 100; i++) {
-          suggested = join(suggestDir, `${base}-${i}.xlsx`)
-        }
-        if (suggested === session.suggestSaveAs || taken(suggested)) return { renamed: false }
-        // a failed move leaves the copy valid under the old name; a crash can still restore it
-        if (session.unsavedNew && !retargetUnsavedNewRecovery(session.suggestSaveAs, suggested))
-          return { renamed: false }
-        entry.sessions.set(validatedSessionId, { ...session, suggestSaveAs: suggested })
-        event.sender.send(IPC_CHANNELS.workbookRenamed, basename(suggested))
-        return { renamed: true, name: basename(suggested) }
-      }
-      const dir = dirname(session.path)
-      let target = join(dir, `${base}.xlsx`)
-      for (let i = 2; existsSync(target) && i < 100; i++) target = join(dir, `${base}-${i}.xlsx`)
-      if (existsSync(target) || target === session.path) return { renamed: false }
-      try {
-        renameSync(session.path, target)
-      } catch (err) {
-        console.warn('[sheets] auto-rename failed:', err)
-        return { renamed: false }
-      }
-      untitledWorkbookPaths.delete(session.path)
-      entry.sessions.set(validatedSessionId, { ...session, path: target })
-      event.sender.send(IPC_CHANNELS.workbookRenamed, basename(target))
-      // Same contract as open/save: shell updates the tab title and recents
-      workbookOpenedHook?.(event.sender, target)
-      return { renamed: true, name: basename(target) }
-    },
-  )
-
   ipcMain.handle(IPC_CHANNELS.openExternal, async (event, url: unknown) => {
     sessionFor(event)
     const validatedUrl = safeExternalUrl(url)
@@ -3495,441 +2677,6 @@ export function registerSheetsIpc(): void {
     }
     await shell.openExternal(validatedUrl)
   })
-
-  // ── Chat attachments (same structure as the docs/slides files:* pipeline) ──
-
-  ipcMain.handle(IPC_CHANNELS.filesPick, async (event): Promise<AttachmentAddResult | null> => {
-    sessionFor(event)
-    const selection = await openFileDialog(event, {
-      title: tm('dlgAddAttachment'),
-      filters: [
-        { name: tm('filterSupported'), extensions: [...ATTACHMENT_EXTS] },
-        { name: tm('filterAll'), extensions: ['*'] },
-      ],
-      properties: ['openFile', 'multiSelections'],
-    })
-    if (selection.canceled || selection.filePaths.length === 0) return null
-    return collectAttachments(selection.filePaths)
-  })
-
-  ipcMain.handle(IPC_CHANNELS.filesAdd, (event, paths: unknown): AttachmentAddResult => {
-    sessionFor(event)
-    return collectAttachments(z.array(z.string().min(1).max(1024)).max(50).parse(paths))
-  })
-
-  ipcMain.handle(
-    IPC_CHANNELS.filesRead,
-    async (
-      event,
-      filePath: unknown,
-      offset: unknown,
-      maxChars: unknown,
-    ): Promise<AttachmentReadResult> => {
-      sessionFor(event)
-      const validatedPath = z.string().min(1).max(1024).parse(filePath)
-      const name = basename(validatedPath)
-      const ext = name.split('.').pop()?.toLowerCase() ?? ''
-      if (!ATTACHMENT_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
-      if (ATTACHMENT_IMAGE_EXTS.has(ext)) {
-        return { ok: false, error: tm('errImageNoText') }
-      }
-      try {
-        const text = await extractAttachmentText(validatedPath)
-        const start = Math.max(0, Math.floor(Number(offset)) || 0)
-        const size = Math.min(Math.max(1, Math.floor(Number(maxChars)) || 1), 48_000)
-        return {
-          ok: true,
-          name,
-          totalChars: text.length,
-          offset: start,
-          text: text.slice(start, start + size),
-        }
-      } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) }
-      }
-    },
-  )
-
-  // Image attachments read raw bytes → base64; the renderer puts them into the
-  // user message's images for multimodal input
-  ipcMain.handle(IPC_CHANNELS.filesReadImage, (event, filePath: unknown): AttachmentImageResult => {
-    sessionFor(event)
-    const validatedPath = z.string().min(1).max(1024).parse(filePath)
-    const name = basename(validatedPath)
-    const ext = name.split('.').pop()?.toLowerCase() ?? ''
-    const mime = ATTACHMENT_IMAGE_MIME[ext]
-    if (!mime) return { ok: false, error: `${name}: ${tm('errNotImage')}` }
-    try {
-      const stat = statSync(validatedPath)
-      if (stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
-        return { ok: false, error: `${name}: ${tm('errImageTooLarge')}` }
-      }
-      return { ok: true, base64: readFileSync(validatedPath).toString('base64'), mime }
-    } catch {
-      return { ok: false, error: `${name}: ${tm('errUnreadable')}` }
-    }
-  })
-
-  // Clipboard-pasted images (screenshots and other bitmaps without a local
-  // path): persisted to a temp file, then go through the regular attachment flow
-  ipcMain.handle(
-    IPC_CHANNELS.filesAddPastedImage,
-    (event, data: unknown, ext: unknown): AttachmentAddResult => {
-      sessionFor(event)
-      const filePath = savePastedImage(data, ext)
-      return filePath
-        ? collectAttachments([filePath])
-        : { accepted: [], rejected: [tm('errNotImage')] }
-    },
-  )
-}
-
-let aiIpcRegistered = false
-
-export function registerSheetsAiIpc(): void {
-  if (aiIpcRegistered) return
-  aiIpcRegistered = true
-  app.once('before-quit', shutdownCodexAppServers)
-
-  // Node fetch (undici) direct connections get reset under VPN/tun setups; retry over Chromium's stack
-  setRescueFetch((url, init) => net.fetch(url, init))
-  setAiUserAgent(`GenOffice/${app.getVersion()}`)
-
-  ipcMain.handle(IPC_CHANNELS.aiGetSettings, (event): AiSettings => {
-    sessionFor(event)
-    const stored = readJson<Partial<AiSettings> & LegacyAiSettings>(SETTINGS_PATH(), {})
-    const settings = resolveAiSettings(stored, defaultAiSettings())
-    // a stored BYOK provider is honored when usable; half-filled configs fall back to genspark
-    settings.provider = activeProvider(settings)
-    return settings
-  })
-
-  // Genspark account (gsk login state): the auth source for AI features; the
-  // frontend uses it to guide sign-in when logged out
-  ipcMain.handle(
-    IPC_CHANNELS.aiGskStatus,
-    async (_event, withEmail?: unknown): Promise<GenSparkAccountStatus> => {
-      if (!hasGskAuth()) return { loggedIn: false }
-      if (!withEmail) return { loggedIn: true }
-      const info = await gskLoginInfo()
-      return info?.email ? { loggedIn: true, email: info.email } : { loggedIn: true }
-    },
-  )
-
-  ipcMain.handle(IPC_CHANNELS.aiGskLogin, () => {
-    ensureGenofficeLogin((url) => void shell.openExternal(url))
-  })
-
-  ipcMain.handle(IPC_CHANNELS.aiSetSettings, async (event, input: unknown) => {
-    sessionFor(event)
-    const settings = aiSettingsInputSchema.parse(input)
-    writeJsonAtomic(SETTINGS_PATH(), settings)
-  })
-
-  ipcMain.handle(IPC_CHANNELS.aiChat, async (event, input: unknown) => {
-    sessionFor(event)
-    const request = aiChatRequestSchema.parse(input)
-    const provider = request.settings.provider as AiProviderId
-    let config = request.settings.providers[provider]
-    if (provider === 'genspark' && config && !config.apiKey) {
-      config = { ...config, apiKey: gskApiKey() }
-    }
-    if (!config || (provider !== 'codex' && !config.apiKey)) {
-      return {
-        ok: false,
-        error: provider === 'genspark' ? tm('errGskNotLoggedIn') : tm('errNoApiKey', { provider }),
-      }
-    }
-    if (provider !== 'codex' && !config.model) return { ok: false, error: tm('errNoModel') }
-    try {
-      const result = await chatForProvider(provider, config, request.system, request.user)
-      // the one-shot path reports HTTP failures as ok:false with the raw body —
-      // replace capacity/rate-limit dumps with the localized "busy" message
-      if (!result.ok && isAiOverloadedError(result.error)) {
-        return { ok: false, error: tm('errAiBusy') }
-      }
-      return result
-    } catch (err) {
-      return { ok: false, error: isAiOverloadedError(err) ? tm('errAiBusy') : String(err) }
-    }
-  })
-
-  ipcMain.handle(IPC_CHANNELS.aiStream, async (event, input: unknown) => {
-    const entry = sessionFor(event)
-    const request = aiStreamRequestSchema.parse(input)
-    const { requestId, system, messages } = request
-    const tools = request.tools ?? []
-    const maxTokens = request.maxTokens ?? maxOutputTokensOf(request.settings)
-    const provider = request.settings.provider as AiProviderId
-    let config = request.settings.providers[provider]
-    // Genspark's key never enters the settings file; it is read from the gsk
-    // login state per request
-    if (provider === 'genspark' && config && !config.apiKey) {
-      config = { ...config, apiKey: gskApiKey() }
-    }
-    const send = (chunk: AiStreamChunk) => {
-      if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.aiStreamChunk, chunk)
-    }
-    if (!config || (provider !== 'codex' && !config.apiKey)) {
-      send({
-        requestId,
-        type: 'error',
-        error: provider === 'genspark' ? tm('errGskNotLoggedIn') : tm('errNoApiKey', { provider }),
-      })
-      return
-    }
-    if (provider !== 'codex' && !config.model) {
-      send({ requestId, type: 'error', error: tm('errNoModel') })
-      return
-    }
-    const controller = new AbortController()
-    entry.aiStreams.set(requestId, controller)
-    // wire-activity keepalive: lets the renderer's silence watchdog tell a slow turn from a dead one
-    let lastPing = 0
-    const ping = () => {
-      const now = Date.now()
-      if (now - lastPing < 5_000) return
-      lastPing = now
-      send({ requestId, type: 'ping' })
-    }
-    try {
-      let stopReason: string | undefined
-      await streamForProvider(provider, config, system, messages, tools, maxTokens, {
-        ...(request.sessionId ? { sessionId: request.sessionId } : {}),
-        signal: controller.signal,
-        onDelta: (text) => send({ requestId, type: 'delta', text }),
-        onReasoningDelta: (text) => send({ requestId, type: 'reasoning', text }),
-        onToolCall: (toolCall) => send({ requestId, type: 'tool-call', toolCall }),
-        onActivity: ping,
-        onStopReason: (reason) => {
-          stopReason = reason
-        },
-      })
-      // sheets tsconfig sets exactOptionalPropertyTypes: an explicit
-      // `stopReason: undefined` is not assignable to AiStreamChunk, so only
-      // include the property when a reason was actually reported.
-      send(
-        stopReason === undefined
-          ? { requestId, type: 'done' }
-          : { requestId, type: 'done', stopReason },
-      )
-    } catch (err) {
-      if (controller.signal.aborted) {
-        send({ requestId, type: 'done' })
-      } else {
-        send({
-          requestId,
-          type: 'error',
-          error: err instanceof Error ? err.message : String(err),
-          ...(err instanceof AiTimeoutError
-            ? { errorCode: 'timeout' as const }
-            : err instanceof AiCreditsError
-              ? { errorCode: 'credits' as const }
-              : isAiNetworkError(err)
-                ? { errorCode: 'network' as const }
-                : isAiOverloadedError(err)
-                  ? { errorCode: 'overloaded' as const }
-                  : {}),
-        })
-      }
-    } finally {
-      entry.aiStreams.delete(requestId)
-    }
-  })
-
-  ipcMain.handle(IPC_CHANNELS.aiStreamCancel, (event, requestId: unknown) => {
-    const entry = sessionFor(event)
-    entry.aiStreams.get(z.string().min(1).parse(requestId))?.abort()
-  })
-
-  // Shared search tools (content + images): Serper with DuckDuckGo fallback
-  // (same source as slides/docs)
-  ipcMain.handle('ai:web-search', async (_event, query: unknown, maxResults?: unknown) => {
-    try {
-      return await webSearchTool(
-        SETTINGS_PATH(),
-        z.string().parse(query),
-        typeof maxResults === 'number' ? maxResults : 6,
-      )
-    } catch (err) {
-      return { results: [], method: 'error', error: String(err) }
-    }
-  })
-  ipcMain.handle('ai:image-search', async (_event, query: unknown, maxResults?: unknown) => {
-    try {
-      return await imageSearchTool(
-        SETTINGS_PATH(),
-        z.string().parse(query),
-        typeof maxResults === 'number' ? maxResults : 8,
-      )
-    } catch (err) {
-      return { images: [], method: 'error', error: String(err) }
-    }
-  })
-
-  // Standalone parity with docs-main's shell-wide handler: AI-supplied URLs are
-  // prompt-injectable, so fetchRemoteImage refuses non-http schemes and
-  // private/link-local targets and validates every redirect hop. Size-capped to
-  // match the local add_image limit.
-  ipcMain.handle(
-    'ai:fetch-image',
-    async (_event, url: unknown): Promise<{ base64: string; mime: string } | null> => {
-      try {
-        const resp = await fetchRemoteImage(z.string().parse(url))
-        if (!resp || !resp.ok || !resp.body) return null
-        const declared = Number(resp.headers.get('content-length') ?? 0)
-        if (declared > MAX_REMOTE_IMAGE_BYTES) return null
-        // Stream with a running cap: a missing/understated Content-Length must
-        // not let a prompt-injected URL buffer unbounded bytes before a
-        // post-hoc size check
-        const reader = resp.body.getReader()
-        const chunks: Buffer[] = []
-        let received = 0
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          received += value.byteLength
-          if (received > MAX_REMOTE_IMAGE_BYTES) {
-            await reader.cancel()
-            return null
-          }
-          chunks.push(Buffer.from(value))
-        }
-        const buf = Buffer.concat(chunks)
-        const ct = resp.headers.get('content-type') ?? ''
-        const mime = ct.includes('png')
-          ? 'image/png'
-          : ct.includes('gif')
-            ? 'image/gif'
-            : 'image/jpeg'
-        return { base64: buf.toString('base64'), mime }
-      } catch {
-        return null
-      }
-    },
-  )
-}
-
-// ── project-store IPC (standalone mode) ────────────────────────────────────
-// In shell mode docs-main.registerProjectIpc has already registered it
-// (idempotency guard).
-
-let sheetsProjectStore: ProjectStore | null = null
-let sheetsProjectIpcRegistered = false
-
-function getSheetsProjectStore(): ProjectStore {
-  if (!sheetsProjectStore) sheetsProjectStore = new ProjectStore(app.getPath('userData'))
-  return sheetsProjectStore
-}
-
-export function registerProjectIpc(): void {
-  if (sheetsProjectIpcRegistered) return
-  sheetsProjectIpcRegistered = true
-
-  ipcMain.handle(
-    'project:resolveChat',
-    (event, args: { filePath: string | null; tempChatId?: string; sessionId?: string }) => {
-      const store = getSheetsProjectStore()
-      store.ensureDefaultProject()
-
-      // sheets mode: reverse-look up the file path via sessionId
-      let resolvedPath = args.filePath
-      if (!resolvedPath && args.sessionId) {
-        const tabEntry = sheetsTabs.get(event.sender.id)
-        if (tabEntry) {
-          resolvedPath = tabEntry.sessions.get(args.sessionId)?.path ?? null
-        }
-      }
-
-      if (!resolvedPath) {
-        return { projectId: 'default', chatId: args.tempChatId ?? `unsaved-${Date.now()}` }
-      }
-      return store.resolveChatForFile(resolvedPath)
-    },
-  )
-
-  ipcMain.handle(
-    'project:appendChat',
-    (
-      _event,
-      args: {
-        projectId: string
-        chatId: string
-        role: 'user' | 'assistant'
-        text: string
-        tools?: Array<{
-          name: string
-          summary: string
-          isError?: boolean
-          input?: string
-          output?: string
-        }>
-        attachments?: Array<{ name: string; path?: string; ext?: string; sizeBytes?: number }>
-        scope?: { label: string; text?: string }
-      },
-    ) => {
-      if (args.role !== 'user' && args.role !== 'assistant') {
-        throw new Error(`Invalid chat role: ${String(args.role)}`)
-      }
-      if (typeof args.text !== 'string' || args.text.length > 200_000) {
-        throw new Error('Invalid chat text: must be a string up to 200000 chars')
-      }
-      if (args.tools && !Array.isArray(args.tools)) throw new Error('Invalid chat tools')
-      if (args.attachments && !Array.isArray(args.attachments)) {
-        throw new Error('Invalid chat attachments')
-      }
-      const msg: Parameters<ProjectStore['appendChatMessage']>[2] = {
-        role: args.role,
-        text: args.text,
-      }
-      if (args.tools) msg.tools = args.tools
-      if (args.attachments) msg.attachments = args.attachments
-      if (args.scope) msg.scope = args.scope
-
-      getSheetsProjectStore().appendChatMessage(args.projectId, args.chatId, msg)
-    },
-  )
-
-  ipcMain.handle(
-    'project:loadChat',
-    (_event, args: { projectId: string; chatId: string; limit?: number }) => {
-      return getSheetsProjectStore().loadChat(args.projectId, args.chatId, args.limit ?? 200)
-    },
-  )
-
-  ipcMain.handle(
-    'project:rebindChat',
-    (
-      event,
-      args: {
-        projectId: string
-        tempChatId: string
-        newChatId?: string
-        newFilePath?: string
-        sessionId?: string
-      },
-    ) => {
-      const store = getSheetsProjectStore()
-      let path = args.newFilePath ?? null
-      if (!path && args.sessionId) {
-        path = resolveSheetsSessionPath(event.sender.id, args.sessionId)
-      }
-      if (path) {
-        return store.rebindChatToFile(args.projectId, args.tempChatId, path)
-      }
-      if (args.newChatId) store.rebindChat(args.projectId, args.tempChatId, args.newChatId)
-      return { projectId: args.projectId, chatId: args.newChatId ?? args.tempChatId }
-    },
-  )
-}
-
-/**
- * sessionId → workbook file path reverse lookup (injected into docs-main's
- * project:resolveChat in shell mode). In standalone mode the handler registered
- * above queries sheetsTabs directly.
- */
-export function resolveSheetsSessionPath(senderId: number, sessionId: string): string | null {
-  return sheetsTabs.get(senderId)?.sessions.get(sessionId)?.path ?? null
 }
 
 /**
@@ -4578,55 +3325,6 @@ export {
   startCaptureServer as startSheetsCaptureServer,
 }
 
-/**
- * Attaches a proxy to the main process's global fetch (same source as
- * slides-main.applyMainProcessProxy): main-process Node fetch (undici) ignores
- * the system proxy by default, so direct connections from mainland networks to
- * overseas LLM endpoints like api.anthropic.com time out or get rejected by
- * egress region (403 Request not allowed). Environment variables take priority;
- * otherwise the system proxy is read via session.resolveProxy() after app ready.
- */
-async function applyMainProcessProxy(): Promise<void> {
-  const setDispatcher = async (proxyUrl: string) => {
-    // spawned gsk CLI children do their own fetch and never see the
-    // dispatcher below — forward the proxy to them via env
-    setGskProxyUrl(proxyUrl)
-    try {
-      const { ProxyAgent, setGlobalDispatcher } = await import('undici')
-      setGlobalDispatcher(new ProxyAgent(proxyUrl))
-      // strip user:pass credentials before logging
-      console.log('[proxy] main-process fetch via', proxyUrl.replace(/\/\/[^@/]*@/, '//***@'))
-    } catch (e) {
-      console.warn('[proxy] failed to set ProxyAgent:', e)
-    }
-  }
-  const envProxy =
-    process.env.HTTPS_PROXY ||
-    process.env.https_proxy ||
-    process.env.HTTP_PROXY ||
-    process.env.http_proxy ||
-    process.env.ALL_PROXY ||
-    process.env.all_proxy
-  if (envProxy) {
-    await setDispatcher(envProxy)
-    return
-  }
-  try {
-    await app.whenReady()
-    // PAC/rule proxies answer per-host: probe the host the login flow, the
-    // Genspark LLM proxy and the gsk CLI actually target
-    const resolved = await electronSession.defaultSession.resolveProxy('https://www.genspark.ai/')
-    const m = /PROXY\s+([^;]+)/i.exec(resolved || '')
-    if (m?.[1]) {
-      await setDispatcher(`http://${m[1].trim()}`)
-    } else {
-      console.log('[proxy] system proxy = DIRECT, no dispatcher set')
-    }
-  } catch (e) {
-    console.warn('[proxy] resolveProxy failed:', e)
-  }
-}
-
 export function startSheetsStandalone(): void {
   registerRendererScheme()
   installNavigationGuard(app)
@@ -4638,7 +3336,6 @@ export function startSheetsStandalone(): void {
   if (!app.isPackaged && process.env.GENOFFICE_USER_DATA) {
     app.setPath('userData', process.env.GENOFFICE_USER_DATA)
   }
-  void applyMainProcessProxy()
   app.whenReady().then(() => {
     installRendererProtocol({ sheets: join(__dirname, '../renderer') })
     setUiLang(normalizeLang(process.env.GENOFFICE_LANG ?? app.getLocale()))

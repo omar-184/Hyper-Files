@@ -24,7 +24,7 @@ import { SheetsSelectionsService } from '@univerjs/sheets'
 import { IStatusBarService } from '@univerjs/sheets-ui'
 import type { RangeBounds } from '@genoffice/xlsx-gateway/domain/cell-address'
 
-import type { RangeAggregate } from './ai/aggregate'
+import type { RangeAggregate } from './aggregate'
 import type { LazyWorkbookState, UniverRuntime } from './univer-state'
 
 /** Same per-call budget as the aggregate_range AI tool (post-clamp cells). */

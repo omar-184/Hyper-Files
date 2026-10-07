@@ -1,6 +1,6 @@
 /**
  * Read-only PDF text extraction on pdfium, for consumers that only need the
- * text layer (the MCP `read_pdf` tool; a future search/preview path). Runs in
+ * text layer (redaction verification; a future search/preview path). Runs in
  * the same main-process WASM as the text editor (text-edit.ts) but never
  * mutates the document, so it bypasses the edit/save helpers and just walks
  * textpages: content-order text, per-page size and a char count that doubles
@@ -23,7 +23,7 @@ export interface PdfPageText {
 
 export interface PdfTextDoc {
   pageCount: number
-  /** document info dictionary entries worth showing an agent ('' entries omitted) */
+  /** document info dictionary entries ('' entries omitted) */
   info: { title?: string; author?: string }
   pages: PdfPageText[]
   /** the charBudget ran out before the requested span was fully extracted */

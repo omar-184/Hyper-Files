@@ -6,7 +6,7 @@
  * range so the grid shows real data instead of scrolling to a blank region.
  */
 import type { IRange } from '@univerjs/core'
-import { ERROR_VALUE_RE, FILE_READ_BATCH_CELLS, MAX_SCAN_CELLS } from './ai/workbook-search'
+import { ERROR_VALUE_RE, FILE_READ_BATCH_CELLS, MAX_SCAN_CELLS } from './workbook-search'
 import { formatAddress } from '@genoffice/xlsx-gateway/domain/cell-address'
 import { t } from './i18n/locale'
 import { netAxisDelta } from './view-transform'

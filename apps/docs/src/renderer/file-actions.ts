@@ -40,11 +40,9 @@ import {
   type ThemeColors,
   type ThemeFonts,
   type WriteProtection,
-  type PictureWatermarkSpec,
-  type WatermarkSpec,
 } from '@genoffice/docx-engine'
 import type { Dispatch, SetStateAction } from 'react'
-import type { AiDocContent, OpenDocxResult } from '../shared/ipc'
+import type { OpenDocxResult } from '../shared/ipc'
 import {
   hfVariantsFromParsed,
   openedFileStartsDirty,
@@ -79,8 +77,6 @@ import {
   type InkTool,
 } from './editor/ink'
 import { t, getLang } from './i18n/locale'
-import { isBlankDocument, parseHtmlFragment, replaceBlockRange } from './ai/protocol'
-import { carryDocSeen } from './ai/tools'
 import { isDocDirty, resetCrossDocEditState } from './doc-dirty'
 import { pruneUnreferencedNumbering } from './numbering-actions'
 import { applySectPrRewrites, type SectPrRewrite } from './sectpr-rewrite'
@@ -93,7 +89,6 @@ import { hasPrintableHeaderFooter } from './pagination'
 import { clearPrintZoom, setPrintZoom } from './print-zoom'
 import { showToast } from './components/toast-bus'
 import { buildStandaloneHtml } from './html-export'
-import { aiPanelInitiallyOpen } from '@genoffice/ui'
 
 /** An export waiting for the pagination preview to mount; resolve settles the caller's exportPdf promise. */
 export type PendingPdfExport = { outPath?: string; resolve: (ok: boolean) => void }
@@ -113,9 +108,7 @@ export interface FileActionContext {
   setShowPrintDialog: (show: boolean) => void
   setStatus: (status: string) => void
   setRecent: (paths: string[]) => void
-  setShowAi: (show: boolean) => void
   setDoc: Dispatch<SetStateAction<DocState | null>>
-  setAiPanelKey: Dispatch<SetStateAction<number>>
   setDocCss: (css: string) => void
   /** true while a phased open streams the document tail (editor stays read-only) */
   setDocLoading: (loading: boolean) => void
@@ -190,12 +183,6 @@ export interface FileActionContext {
   watermarkDirty: boolean
   setWatermark: (value: string | null) => void
   setWatermarkDirty: (dirty: boolean) => void
-  /** face/color/layout of an AI-set watermark (null = Word's default look); text lives in `watermark` */
-  watermarkStyle: Omit<WatermarkSpec, 'text'> | null
-  setWatermarkStyle: (value: Omit<WatermarkSpec, 'text'> | null) => void
-  /** pending picture watermark (AI-set); replaces any text watermark on save */
-  watermarkPicture: PictureWatermarkSpec | null
-  setWatermarkPicture: (value: PictureWatermarkSpec | null) => void
   inkAnnotations: InkAnnotation[]
   inksDirty: boolean
   setInkAnnotations: (value: InkAnnotation[]) => void
@@ -313,11 +300,10 @@ function applyDocLayoutSettings(editor: Editor, parsed: ParsedDocFull): void {
  */
 export type LoadFileOutcome = 'ok' | 'canceled' | 'password' | 'failed' | 'superseded'
 
-/** appends a streamed tail chunk at the document end, outside undo history and the AI freshness baseline */
+/** appends a streamed tail chunk at the document end, outside undo history */
 export function appendStreamedNodes(editor: Editor, nodes: PmNode[]): void {
-  const before = editor.state.doc
   const tr = editor.state.tr.insert(
-    before.content.size,
+    editor.state.doc.content.size,
     nodes.map((n) => editor.schema.nodeFromJSON(n)),
   )
   tr.setMeta('addToHistory', false)
@@ -326,7 +312,6 @@ export function appendStreamedNodes(editor: Editor, nodes: PmNode[]): void {
   tr.setMeta(TRACK_IGNORE, true)
   tr.setMeta(TABLE_TRAILING_SKIP, true)
   editor.view.dispatch(tr)
-  carryDocSeen(editor, before)
 }
 
 /** binds the phased content streamer to the editor and App state behind ctx */
@@ -362,7 +347,7 @@ function phasedHostFor(ctx: FileActionContext): PhasedContentHost {
 /** Word parity: a freshly opened or created document starts with the caret at
  *  its beginning — typing must work without a click into the page.
  *  Skipped when something else in this webContents already holds keyboard
- *  focus (e.g. the user clicked into the AI composer while the file parsed). */
+ *  focus (e.g. the user clicked into the find box while the file parsed). */
 function focusDocumentStart(editor: Editor): void {
   const startedAt = performance.now()
   const attempt = (): void => {
@@ -444,7 +429,6 @@ export async function loadFile(
     // Done here, not in the main process's loadDocx — Review > Compare also
     // opens files without replacing the current document.
     discardStalePasswordIntents()
-    ctx.setAiPanelKey((k) => k + 1)
     ctx.setDocCss(docStyleCss(parsed))
     ctx.setSection(readSectionSettings(parsed))
     ctx.setSections(readSections(parsed))
@@ -487,8 +471,6 @@ export async function loadFile(
     ctx.setCommentsDirty(false)
     ctx.setWatermark(parsed.watermarkText ?? null)
     ctx.setWatermarkDirty(false)
-    ctx.setWatermarkStyle(null)
-    ctx.setWatermarkPicture(null)
     ctx.setInkAnnotations(annotationsFromParsed(parsed.inks))
     ctx.setInksDirty(false)
     ctx.setInkTool('select')
@@ -557,7 +539,7 @@ async function blankDocxBytes(): Promise<Uint8Array> {
   })
 }
 
-/** new document from the built-in blank template (AI can then generate into it) */
+/** new document from the built-in blank template */
 export async function newFile(ctx: FileActionContext): Promise<boolean | undefined> {
   if (!ctx.editor) return
   const generation = ++openGeneration
@@ -588,7 +570,6 @@ export async function newFile(ctx: FileActionContext): Promise<boolean | undefin
     // a fresh blank draft starts unencrypted: drop any pending password left by
     // the previous draft (its DocState, including the encrypted flag, is gone)
     discardStalePasswordIntents()
-    ctx.setAiPanelKey((k) => k + 1)
     ctx.setDocCss(docStyleCss(parsed))
     ctx.setSection(readSectionSettings(parsed))
     ctx.setSections(readSections(parsed))
@@ -607,7 +588,6 @@ export async function newFile(ctx: FileActionContext): Promise<boolean | undefin
     ctx.setCommentsDirty(false)
     ctx.setWatermark(null)
     ctx.setWatermarkDirty(false)
-    ctx.setWatermarkPicture(null)
     ctx.setInkAnnotations([])
     ctx.setInksDirty(false)
     ctx.setInkTool('select')
@@ -633,13 +613,6 @@ export async function newFile(ctx: FileActionContext): Promise<boolean | undefin
     ctx.onWriteProtectionLoaded(null)
     ctx.setCompareResult(null)
     ctx.dirtyRef.current = false
-    // A new document answers the same question the window's first render does,
-    // rather than forcing the panel open: the setting is called "open the AI
-    // panel *in new documents*", and a hardcoded true overrode it on every
-    // draft (the opening document was the only one that respected it) (#1589).
-    // With the setting on this is the remembered state, which is what the
-    // reader last chose, so nothing changes for them.
-    ctx.setShowAi(aiPanelInitiallyOpen('aidocs.showAi'))
     ctx.setStatus(t('appNewDocCreated'))
     return true
   } catch (err) {
@@ -790,10 +763,7 @@ export async function buildDocBytes(ctx: FileActionContext): Promise<Uint8Array 
     writeProtection: ctx.writeProtectionDirty ? ctx.writeProtection : undefined,
     removePersonalInfo: ctx.removePersonalInfoDirty ? ctx.removePersonalInfo : undefined,
     inks,
-    watermark: ctx.watermarkDirty
-      ? (ctx.watermarkPicture ??
-        (ctx.watermark ? { text: ctx.watermark, ...(ctx.watermarkStyle ?? {}) } : null))
-      : undefined,
+    watermark: ctx.watermarkDirty ? (ctx.watermark ? { text: ctx.watermark } : null) : undefined,
     footnotes: ctx.notesDirty ? ctx.footnotes : undefined,
     endnotes: ctx.notesDirty ? ctx.endnotes : undefined,
     sources: ctx.sourcesDirty ? ctx.sources : undefined,
@@ -802,6 +772,14 @@ export async function buildDocBytes(ctx: FileActionContext): Promise<Uint8Array 
     themeColors: ctx.themeColorsDirty && ctx.themeColors ? ctx.themeColors : undefined,
   })
   return bytes
+}
+
+/** a document whose only block is one empty paragraph */
+function isBlankDocument(editor: Editor): boolean {
+  const doc = editor.state.doc
+  if (doc.childCount !== 1) return false
+  const first = doc.child(0)
+  return first.type.name === 'docParagraph' && first.content.size === 0
 }
 
 /**
@@ -887,8 +865,6 @@ export function save(
   ctx: FileActionContext,
   saveAs: boolean,
   auto = false,
-  newDocName?: string,
-  explicitTarget?: ExplicitSaveTarget,
 ): Promise<boolean> {
   // A save arriving mid-flight waits for the current one instead of failing.
   // Reuse the finished pass only when it left nothing behind — judged by the
@@ -901,85 +877,16 @@ export function save(
     async () => {
       const settled = ctx.settleFontSettings ? await ctx.settleFontSettings() : ctx
       if (docGeneration !== generation) return false
-      return saveOnce(settled, saveAs, auto, newDocName, explicitTarget)
+      return saveOnce(settled, saveAs, auto)
     },
-    // an explicit MCP target must always write, never reuse an earlier pass
-    () => !saveAs && !explicitTarget && !ctx.saveIncompleteRef.current && !isDocDirty(ctx),
+    () => !saveAs && !ctx.saveIncompleteRef.current && !isDocDirty(ctx),
   )
-}
-
-/** an MCP-driven explicit output target: write to this absolute path, no dialog */
-export interface ExplicitSaveTarget {
-  path: string
-  overwrite: boolean
-  /** receives the main process's reason when the write is refused */
-  onError?: (message: string) => void
-}
-
-/** the parsed fragment flags every node aiChanged (yellow highlight); a boot-time fill is not a reviewable AI edit */
-function stripAiChanged(node: PmNode): PmNode {
-  const next: PmNode = { ...node }
-  if (next.attrs && 'aiChanged' in next.attrs) next.attrs = { ...next.attrs, aiChanged: false }
-  if (next.content) next.content = next.content.map(stripAiChanged)
-  return next
-}
-
-/**
- * Parse queued create_document content into blocks. The docs chat validates
- * the fragment before queueing, but the pdf chat cannot (the parser lives
- * here), so unparseable HTML falls back to plain-text paragraphs instead of
- * silently dropping the content.
- */
-export function aiDocContentNodes(html: string): PmNode[] {
-  const numIds = { bullet: BLANK_BULLET_NUM_ID, ordered: BLANK_ORDERED_NUM_ID }
-  try {
-    const nodes = parseHtmlFragment(html, numIds)
-    if (nodes.length > 0) return nodes.map(stripAiChanged)
-  } catch {
-    /* fall through to the plain-text salvage */
-  }
-  try {
-    // textContent glues adjacent blocks in minified markup — reinsert the
-    // block structure as blank lines (and cell gaps as spaces) before parsing
-    const spaced = html
-      .replace(/<\/(?:td|th)>/gi, ' $&')
-      .replace(/<\/(?:p|h[1-6]|li|div|pre|blockquote|tr)>/gi, '$&\n\n')
-    const text = new DOMParser().parseFromString(spaced, 'text/html').body.textContent ?? ''
-    if (!text.trim()) return []
-    return parseHtmlFragment(text, numIds).map(stripAiChanged)
-  } catch {
-    return []
-  }
-}
-
-/**
- * Boot-time half of the AI create_document tool: fill the fresh blank
- * document with the queued content (same restricted-HTML pipeline as
- * insert_content), then silently save it under the tool-provided title.
- * The save runs even when nothing could be parsed — the tool already
- * reported the document as created, so an unsaved untitled tab would lie.
- */
-export async function applyAiDocContent(
-  ctx: FileActionContext,
-  content: AiDocContent,
-): Promise<void> {
-  const { editor, doc } = ctx
-  if (!editor || !doc) return
-  const nodes = aiDocContentNodes(content.html)
-  if (nodes.length > 0) {
-    replaceBlockRange(editor, 0, editor.state.doc.childCount - 1, nodes)
-    // the document is born with this content: undo must not reach back to empty
-    resetEditorHistory(editor)
-  }
-  await save(ctx, false, true, `${content.title}.docx`)
 }
 
 async function saveOnce(
   ctx: FileActionContext,
   saveAs: boolean,
   auto: boolean,
-  newDocName?: string,
-  explicitTarget?: ExplicitSaveTarget,
 ): Promise<boolean> {
   const { doc, editor } = ctx
   if (!doc || !editor) return false
@@ -1008,25 +915,7 @@ async function saveOnce(
     let savedPath = doc.filePath ?? pathlessDocSavedPath
     let passwordIntentPending = false
     let fullBytes: Uint8Array | undefined
-    if (explicitTarget) {
-      // MCP-driven explicit output: no dialog, no derived name — always write to
-      // the caller's path (overwrite policy is enforced in the main process).
-      const result = await window.desktop.saveDocxTo(
-        explicitTarget.path,
-        buffer,
-        explicitTarget.overwrite,
-      )
-      if (!result.ok) {
-        ctx.setStatus(t('appSaveFailed', { error: result.error ?? '' }))
-        showToast(t('appSaveFailed', { error: result.error ?? '' }), 'error')
-        explicitTarget.onError?.(result.error ?? '')
-        return false
-      }
-      savedPath = result.path!
-      passwordIntentPending = result.passwordIntentPending === true
-      if (result.dataUrl) fullBytes = await fetchDocBytes(result.dataUrl)
-      if (!doc.filePath) pathlessDocSavedPath = savedPath
-    } else if (saveAs || !savedPath) {
+    if (saveAs || !savedPath) {
       // A never-saved document still called "Untitled" gets a name derived from its first heading
       const autoName =
         !doc.filePath && doc.fileName === t('appUntitledDocx') ? deriveAutoFileName(editor) : null
@@ -1034,7 +923,7 @@ async function saveOnce(
       // folder. The source path identifies the desired password state to snapshot.
       const result = saveAs
         ? await window.desktop.saveDocxAs(autoName ?? doc.fileName, buffer, doc.filePath)
-        : await window.desktop.saveDocxNew(newDocName ?? autoName ?? doc.fileName, buffer)
+        : await window.desktop.saveDocxNew(autoName ?? doc.fileName, buffer)
       if (!result.ok) {
         if (result.error) {
           ctx.setStatus(t('appSaveFailed', { error: result.error }))
@@ -1163,8 +1052,6 @@ async function saveOnce(
     ctx.setCommentsDirty(false)
     ctx.setWatermark(reparsed.watermarkText ?? null)
     ctx.setWatermarkDirty(false)
-    ctx.setWatermarkStyle(null)
-    ctx.setWatermarkPicture(null)
     ctx.setInkAnnotations(annotationsFromParsed(reparsed.inks))
     ctx.setInksDirty(false)
     ctx.setFootnotes(reparsed.footnotes)

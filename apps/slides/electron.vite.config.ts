@@ -24,7 +24,6 @@ const workspaceAlias = {
     '../../packages/pptx-engine/src/background-promote.ts',
   ),
   '@genoffice/pptx-engine': resolve(here, '../../packages/pptx-engine/src/index.ts'),
-  '@genoffice/pptx-ops/op-docs': resolve(here, '../../packages/pptx-ops/src/op-docs.ts'),
   '@genoffice/pptx-ops/font-size': resolve(here, '../../packages/pptx-ops/src/font-size.ts'),
   '@genoffice/pptx-ops': resolve(here, '../../packages/pptx-ops/src/index.ts'),
   '@genoffice/pptx-render/preset-geometry': resolve(
@@ -32,11 +31,6 @@ const workspaceAlias = {
     '../../packages/pptx-render/src/preset-geometry.ts',
   ),
   '@genoffice/pptx-render': resolve(here, '../../packages/pptx-render/src/index.ts'),
-  '@genoffice/pipelines/slides/layout-audit': resolve(
-    here,
-    '../../packages/pipelines/src/slides/layout-audit.ts',
-  ),
-  '@genoffice/pipelines/slides': resolve(here, '../../packages/pipelines/src/slides/index.ts'),
   // Metafile (EMF/WMF) rasterizer shared with the docs engine (renderer-only: needs canvas)
   '@genoffice/docx-engine/metafile': resolve(here, '../../packages/docx-engine/src/metafile.ts'),
   '@genoffice/docx-engine/math': resolve(here, '../../packages/docx-engine/src/math.ts'),
@@ -55,9 +49,6 @@ export default defineConfig({
           '@genoffice/pptx-engine',
           '@genoffice/pptx-ops',
           '@genoffice/pptx-render',
-          '@genoffice/pipelines',
-          '@genoffice/ai-search',
-          '@genoffice/file-parse',
           '@genoffice/electron-utils',
           'opentype.js',
         ],

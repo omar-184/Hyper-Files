@@ -100,9 +100,6 @@ const rename = (wcId: number, path: string, base: unknown) =>
     base,
   ) as PdfAutoRenameResult
 
-const isUntitled = (wcId: number, path: string) =>
-  handlers.get(PDF_CHANNELS.isUntitled)?.({ sender: { id: wcId } }, path) as boolean
-
 const readGranted = (wcId: number, path: string) =>
   handlers.get(PDF_CHANNELS.readFile)?.({ sender: { id: wcId } }, path) as Promise<ArrayBuffer>
 
@@ -125,9 +122,6 @@ describe('pdf auto-rename', () => {
     const hook = vi.fn()
     setPdfRenamedHook(hook)
 
-    // the untitled flag is queryable (gates the renderer's after-AI-run silent save)
-    expect(isUntitled(wcId, path)).toBe(true)
-
     const result = rename(wcId, path, 'Rental Agreement')
     expect(result.renamed).toBe(true)
     expect(basename(result.path!)).toBe('Rental Agreement.pdf')
@@ -136,7 +130,6 @@ describe('pdf auto-rename', () => {
     expect(hook).toHaveBeenCalledWith(expect.objectContaining({ id: wcId }), path, result.path)
 
     // the untitled flag is consumed: a second proposal must not move the file again
-    expect(isUntitled(wcId, path)).toBe(false)
     expect(rename(wcId, result.path!, 'Other Name').renamed).toBe(false)
     // the view keeps working on the new path (readFile grant follows the rename)
     expect(handlers.get(PDF_CHANNELS.consumePending)?.({ sender: { id: wcId } })).toBe(result.path)
@@ -271,7 +264,6 @@ describe('pdf auto-rename', () => {
     expect(rename(wcId, path, 'Will Retry').renamed).toBe(false)
     writeFileSync(path, bytes)
 
-    expect(isUntitled(wcId, path)).toBe(true)
     expect(Buffer.from(new Uint8Array(await readGranted(wcId, path)))).toEqual(bytes)
     expect(rename(wcId, path, 'Will Retry').renamed).toBe(true)
     warn.mockRestore()
@@ -302,7 +294,6 @@ describe('pdf auto-rename', () => {
     createPdfView(opened)
     const wcId = lastWebContents.id
     // granted but not untitled (a regular file the user opened)
-    expect(isUntitled(wcId, opened)).toBe(false)
     expect(rename(wcId, opened, 'New Name').renamed).toBe(false)
     expect(existsSync(opened)).toBe(true)
 

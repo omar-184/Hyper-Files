@@ -57,7 +57,7 @@ class FakeResizeObserver {
 }
 
 /** The size fitZoom() sees (content box); fitZoom subtracts 56px (w) / 72px (h) padding. */
-let stageSize = { w: 1336, h: 800 } // avail 1280x728 → fit zoom 1 for the blank 1280x720 deck
+let stageSize = { w: 1336, h: 800 } // avail 1280x744 → fit zoom 1 for the blank 1280x720 deck
 /** Border box of .stage-wrap: unlike the content box, scrollbars never shrink it. */
 let outerSize = { w: 1336, h: 800 }
 
@@ -82,7 +82,6 @@ function makeSlidesApi() {
     newBlank: () => Promise.resolve({ path: '', slides: [blankSlide()], defaultFont: 'Arial' }),
     isDirty: () => Promise.resolve(false),
     getRecentFiles: () => Promise.resolve([]),
-    getAiSettings: () => Promise.resolve(null),
     getSections: () => Promise.resolve([]),
     getComments: () => Promise.resolve([]),
     getNotes: () => Promise.resolve(''),

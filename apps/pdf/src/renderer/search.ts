@@ -88,7 +88,7 @@ export interface SearchIndexCache {
 }
 
 /** Building the index walks every page of the document, so it must happen once per
-    loaded document: search, paragraph boxes, the AI tools and the auto-OCR pass all
+    loaded document: search, paragraph boxes and the auto-OCR pass all
     read this cache instead of extracting the text a second time. */
 export function createSearchIndexCache(): SearchIndexCache {
   let entry: { doc: PDFDocumentProxy; promise: Promise<SearchIndex> } | null = null

@@ -16,7 +16,6 @@ import * as slideActions from './slide-actions'
 import * as showActions from './show-actions'
 import * as styleActions from './style-actions'
 import { flushActiveEdit } from './file-actions'
-import { shouldRouteHistoryToDeck } from './undo-routing'
 import { rangeSelection } from '../shared/slide-selection'
 import { nextPreset, prevPreset } from './zoom-steps'
 
@@ -134,13 +133,13 @@ export function handleGlobalKeydown(
   }
   // Undo/redo (menu accelerators normally intercept; fallback for shell/menuless scenarios)
   if (mod && !e.altKey && (e.key === 'z' || e.key === 'Z')) {
-    if (editing || (inField && !shouldRouteHistoryToDeck(e.target as HTMLElement))) return
+    if (editing || inField) return
     e.preventDefault()
     void (e.shiftKey ? ctx.redo() : ctx.undo())
     return
   }
   if (mod && !e.altKey && (e.key === 'y' || e.key === 'Y')) {
-    if (editing || (inField && !shouldRouteHistoryToDeck(e.target as HTMLElement))) return
+    if (editing || inField) return
     e.preventDefault()
     void ctx.redo()
     return
@@ -150,13 +149,6 @@ export function handleGlobalKeydown(
     if (editing) return
     e.preventDefault()
     ctx.setFindOpen(true)
-    return
-  }
-  // ⌘K: annotate the selection with an AI edit
-  if (mod && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
-    if (editing || inField || selectedIds.length === 0) return
-    e.preventDefault()
-    ctx.openAskPopover()
     return
   }
   // ⌘P print
@@ -218,7 +210,7 @@ export function handleGlobalKeydown(
     return
   }
   if (editing || inField) return
-  // ⌘C/⌘X with text dragged in plain DOM (e.g. AI panel, focus on body): let the
+  // ⌘C/⌘X with text dragged in plain DOM (e.g. a side pane, focus on body): let the
   // native copy run instead of hijacking it for the slide/element clipboard
   if (mod && !e.altKey && !e.shiftKey && ['c', 'C', 'x', 'X'].includes(e.key)) {
     const sel = window.getSelection()
@@ -373,7 +365,7 @@ export function handleGlobalKeydown(
     // Delete/Backspace removes the selected slides (same action as the thumbnail
     // context menu; deleteSlides keeps ≥1 slide). Not while inking or in
     // reading view (both clear the selection), and not with plain-DOM text
-    // dragged (AI panel): the key targets that text.
+    // dragged (e.g. a side pane): the key targets that text.
     if (
       !mod &&
       !e.altKey &&

@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core'
-import { runUiOps } from '../ai/ops'
+import { runUiOps } from './paragraph-ops'
 
 /** Word's Ctrl+T / Ctrl+Shift+T: hanging indent one half-inch stop out or back (see the stepHangingIndent op) */
 export function stepHangingIndent(editor: Editor, delta: 1 | -1): boolean {

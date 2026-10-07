@@ -8,13 +8,10 @@ import '@genoffice/ui/screentip.css'
 import '@genoffice/ui/color-picker.css'
 import '@genoffice/ui/dropdown.css'
 import '@genoffice/ui/ribbon-collapse.css'
-import '@genoffice/ui/markdown.css'
-import '@genoffice/ui/ai-panel-prefs.css'
-import '@genoffice/ui/ai-scope-quote.css'
 import '@genoffice/ui/image-viewer.css'
 import './styles.css'
 import './fonts/fonts.css'
-import { applyAiPanelPrefs, installScreenTips } from '@genoffice/ui'
+import { installScreenTips } from '@genoffice/ui'
 import { setAltChunkHtmlConverter } from '@genoffice/docx-engine'
 
 installScreenTips()
@@ -55,11 +52,6 @@ async function bootstrap(): Promise<void> {
   applyDocumentTheme(docTheme ?? 'follow')
   window.desktop?.onThemeChanged(applyTheme)
   window.desktop?.onDocumentThemeChanged?.(applyDocumentTheme)
-  await window.desktop
-    ?.getAiPanelPrefs?.()
-    .then(applyAiPanelPrefs)
-    .catch(() => {})
-  window.desktop?.onAiPanelPrefsChanged?.(applyAiPanelPrefs)
   createRoot(document.getElementById('root')!).render(
     <LocaleProvider initial={lang}>
       <App />

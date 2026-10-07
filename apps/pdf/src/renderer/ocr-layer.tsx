@@ -2,8 +2,8 @@
  * OCR text layer for scanned pages (issue #119): the platform system engine
  * returns line/word boxes; this module converts them into (a) a synthetic,
  * selectable transparent text overlay and (b) a PageEntry that patches the
- * search index — everything downstream (search, selection quads, markups,
- * AI tools) then works on scanned pages unchanged.
+ * search index — everything downstream (search, selection quads, markups)
+ * then works on scanned pages unchanged.
  *
  * Word boxes are stored in PDF user space (like markups), so unsaved page
  * rotations re-project them instead of invalidating the recognition.
@@ -160,9 +160,8 @@ export function buildOcrPageData(lines: PdfOcrLine[], geom: PageGeom): OcrPageDa
   return { entry: { text, lower: foldCase(text), items }, words }
 }
 
-/** True when a page has effectively no extractable text (scanned candidate).
-    Shared with the AI read_pages fallback so both sides agree on what "scanned" means. */
-export const isScannedText = (text: string): boolean => text.replace(/\s/g, '').length < 8
+/** True when a page has effectively no extractable text (scanned candidate) */
+const isScannedText = (text: string): boolean => text.replace(/\s/g, '').length < 8
 
 export const isScannedEntry = (entry: PageEntry): boolean => isScannedText(entry.text)
 

@@ -40,7 +40,6 @@ import {
 } from 'electron'
 import {
   appMenuLabels,
-  buildPrintableHtml,
   configuredDefaultSaveDir,
   contextMenuLabels,
   fetchRemoteImage,
@@ -48,14 +47,12 @@ import {
   setContextMenuInterceptor,
   installNavigationGuard,
   isHeadlessMode,
-  printHtmlToPdf,
   safeExternalUrl,
   saveAsSuggestion,
   saveImageFromUrl,
   showOpenDialogWithMemory,
   showSaveDialogWithMemory,
   aboutMenuItem,
-  checkUpdatesMenuItem,
   toggleDevToolsItem,
   windowMenuTemplate,
   type HeadlessExportFormat,
@@ -69,7 +66,6 @@ import {
 } from '@genoffice/electron-utils'
 import { configureMetricsCache, familyVerticalMetrics } from '@genoffice/font-metrics'
 import { createI18n, getUiLang, normalizeLang, setUiLang } from '@genoffice/i18n'
-import { ProjectStore } from '@genoffice/project-store'
 import type {
   IpcMainInvokeEvent,
   MenuItemConstructorOptions,
@@ -77,65 +73,16 @@ import type {
   SaveDialogOptions,
   WebContents,
 } from 'electron'
-import { parseFileToText } from '@genoffice/file-parse'
 import { convertHtmlToDocx } from '../../../../packages/html2docx/src'
 import { ElectronBrowserDriver } from '../../../../packages/html2docx/src/drivers/electron'
-import {
-  AiCreditsError,
-  AiTimeoutError,
-  isAiNetworkError,
-  isAiOverloadedError,
-  chatForProvider,
-  defaultAiSettings,
-  activeProvider,
-  testMediaProvider,
-  type AiMediaProviderConfig,
-  type AiMediaProviderId,
-  type AiSearchProviderId,
-  resolveAiSettings,
-  maxOutputTokensOf,
-  sanitizeAiSettings,
-  validCliPath,
-  setAiUserAgent,
-  setRescueFetch,
-  streamForProvider,
-  type AiChatRequest,
-  type AiSettings,
-  type AiStreamChunk,
-  type AiStreamRequest,
-  type GenSparkAccountStatus,
-  type LegacyAiSettings,
-} from '@genoffice/ai-provider'
-import { listCodexModels, shutdownCodexAppServers } from '@genoffice/ai-provider/codex-app-server'
-import { listCustomModelsForIpc } from '@genoffice/ai-provider/custom-models'
-import {
-  ensureGenofficeLogin,
-  gskApiKey,
-  generateImageTool,
-  testSearchProvider,
-  gskLoginInfo,
-  hasGskAuth,
-  webSearchTool,
-  imageSearchTool,
-  analyzeMediaTool,
-  documentMediaRoots,
-} from '@genoffice/ai-search'
 import type {
-  AiDocContent,
-  AttachmentAddResult,
-  AttachmentImageResult,
-  AttachmentMeta,
-  AttachmentReadResult,
   ContextMenuRequest,
-  CreateDocumentRequest,
-  CreateDocumentResult,
   DecryptOpenResult,
   DocsTabInfo,
   MenuCommand,
   OpenDocxResult,
   SpellLanguages,
 } from '../shared/ipc'
-import { ATTACHMENT_IMAGE_EXTS } from '../shared/ipc'
 import { ClickClaims } from '../shared/context-menu-claims'
 import { findDocxPath } from '../shared/open-file'
 import { atomicWriteFile, looksLikeZip } from './atomic-write'
@@ -171,7 +118,6 @@ import {
 import { isExternallyModified, type DiskFileState } from './external-change'
 import { copyImageDisplaySize, validCopyImageDataUrl } from './copy-image-guard'
 import { printScaleOption, validPrintGeometry } from './print-args'
-import { initDocsAutoUpdater } from './updater'
 import { registerZoteroIpc, teardownZoteroIpc } from './zotero-ipc'
 
 /**
@@ -204,25 +150,10 @@ const tMain = createI18n({
     btnOverwrite: '覆盖',
     dlgInsertImage: '插入图片',
     filterImages: '图片',
-    dlgAddAttachment: '添加附件',
-    filterSupported: '支持的文件',
-    filterAll: '所有文件',
     dlgExportPdf: '导出为 PDF',
     dlgExportHtml: '导出为 HTML',
     dlgPickExportDir: '选择导出目录',
-    errUnsupportedExt: '暂不支持 .{ext} 类型',
-    errNotFile: '不是文件',
     errTooLarge: '超过 {mb}MB 上限',
-    errImageTooLarge: '图片超过 5MB 上限',
-    errUnreadable: '无法读取',
-    errFileTooLarge: '文件超过大小上限',
-    errParseFailed: '文件解析失败',
-    errImageNoText: '图片附件不提供文本,已作为图像随用户消息发送,直接看图即可',
-    errNotImage: '不是支持的图片类型',
-    errGskNotLoggedIn: '未登录 Genspark:请点击下方「登录 Genspark」完成登录后重试',
-    errNoApiKey: '未配置 {provider} 的 API Key',
-    errAiBusy: 'AI 服务当前繁忙，请稍后重试',
-    errNoModel: '未配置模型名称',
     menuFile: '文件',
     menuNewDoc: '新建文档',
     menuNewWindow: '新建窗口',
@@ -254,7 +185,6 @@ const tMain = createI18n({
     menuZoom100: '实际大小 (100%)',
     menuPageWidth: '页宽',
     menuWholePage: '整页',
-    menuAiSidebar: 'AI 侧栏',
     menuDarkMode: '深色模式',
     menuFullscreen: '进入全屏',
     menuInsert: '插入',
@@ -308,7 +238,6 @@ const tMain = createI18n({
     menuWordCount: '字数统计…',
     menuAutoCorrect: '自动更正选项…',
     menuPreferences: '偏好设置…',
-    menuAiProofread: 'AI 校对',
     menuWindow: '窗口',
     menuHelp: '帮助',
     menuShortcuts: '键盘快捷键',
@@ -335,26 +264,10 @@ const tMain = createI18n({
     btnOverwrite: 'Overwrite',
     dlgInsertImage: 'Insert Image',
     filterImages: 'Images',
-    dlgAddAttachment: 'Add Attachments',
-    filterSupported: 'Supported Files',
-    filterAll: 'All Files',
     dlgExportPdf: 'Export as PDF',
     dlgExportHtml: 'Export as HTML',
     dlgPickExportDir: 'Choose Export Folder',
-    errUnsupportedExt: '.{ext} files are not supported',
-    errNotFile: 'not a file',
     errTooLarge: 'exceeds the {mb}MB limit',
-    errImageTooLarge: 'image exceeds the 5MB limit',
-    errUnreadable: 'cannot be read',
-    errFileTooLarge: 'File exceeds the size limit',
-    errParseFailed: 'Failed to parse file',
-    errImageNoText: 'Image attachments have no text; the image is sent along with the user message',
-    errNotImage: 'not a supported image type',
-    errGskNotLoggedIn:
-      'Not signed in to Genspark: click “Sign in to Genspark” below, sign in, then retry',
-    errNoApiKey: 'No API key configured for {provider}',
-    errAiBusy: 'The AI service is busy right now — please try again in a moment',
-    errNoModel: 'No model name configured',
     menuFile: 'File',
     menuNewDoc: 'New Document',
     menuNewWindow: 'New Window',
@@ -386,7 +299,6 @@ const tMain = createI18n({
     menuZoom100: 'Actual Size (100%)',
     menuPageWidth: 'Page Width',
     menuWholePage: 'Whole Page',
-    menuAiSidebar: 'AI Sidebar',
     menuDarkMode: 'Dark Mode',
     menuFullscreen: 'Enter Full Screen',
     menuInsert: 'Insert',
@@ -440,7 +352,6 @@ const tMain = createI18n({
     menuWordCount: 'Word Count…',
     menuAutoCorrect: 'AutoCorrect Options…',
     menuPreferences: 'Preferences…',
-    menuAiProofread: 'AI Proofread',
     menuWindow: 'Window',
     menuHelp: 'Help',
     menuShortcuts: 'Keyboard Shortcuts',
@@ -467,27 +378,10 @@ const tMain = createI18n({
     btnOverwrite: 'Ghi đè',
     dlgInsertImage: 'Chèn hình ảnh',
     filterImages: 'Hình ảnh',
-    dlgAddAttachment: 'Thêm tệp đính kèm',
-    filterSupported: 'Các tệp được hỗ trợ',
-    filterAll: 'Tất cả các tệp',
     dlgExportPdf: 'Xuất dưới dạng PDF',
     dlgExportHtml: 'Xuất dưới dạng HTML',
     dlgPickExportDir: 'Chọn thư mục xuất',
-    errUnsupportedExt: 'Tệp .{ext} không được hỗ trợ',
-    errNotFile: 'không phải là tệp',
     errTooLarge: 'vượt quá giới hạn {mb}MB',
-    errImageTooLarge: 'hình ảnh vượt quá giới hạn 5MB',
-    errUnreadable: 'không thể đọc được',
-    errFileTooLarge: 'Tệp vượt quá giới hạn kích thước',
-    errParseFailed: 'Không thể phân tích tệp',
-    errImageNoText:
-      'Tệp đính kèm hình ảnh không có văn bản; hình ảnh được gửi cùng với tin nhắn của người dùng',
-    errNotImage: 'loại hình ảnh không được hỗ trợ',
-    errGskNotLoggedIn:
-      'Chưa đăng nhập vào Genspark: nhấp vào “Đăng nhập vào Genspark” bên dưới, đăng nhập, sau đó thử lại',
-    errNoApiKey: 'Chưa cấu hình khóa API cho {provider}',
-    errAiBusy: 'Dịch vụ AI hiện đang bận — vui lòng thử lại sau giây lát',
-    errNoModel: 'Chưa cấu hình tên mô hình',
     menuFile: 'Tệp',
     menuNewDoc: 'Tài liệu mới',
     menuNewWindow: 'Cửa sổ mới',
@@ -519,7 +413,6 @@ const tMain = createI18n({
     menuZoom100: 'Kích thước thực tế (100%)',
     menuPageWidth: 'Chiều rộng trang',
     menuWholePage: 'Toàn bộ trang',
-    menuAiSidebar: 'Thanh bên AI',
     menuDarkMode: 'Chế độ tối',
     menuFullscreen: 'Vào chế độ toàn màn hình',
     menuInsert: 'Chèn',
@@ -573,7 +466,6 @@ const tMain = createI18n({
     menuWordCount: 'Đếm từ…',
     menuAutoCorrect: 'Tùy chọn tự sửa lỗi…',
     menuPreferences: 'Tùy chọn…',
-    menuAiProofread: 'Hiệu đính bằng AI',
     menuWindow: 'Cửa sổ',
     menuHelp: 'Trợ giúp',
     menuShortcuts: 'Phím tắt bàn phím',
@@ -599,27 +491,10 @@ const tMain = createI18n({
     btnOverwrite: '上書き',
     dlgInsertImage: '画像の挿入',
     filterImages: '画像',
-    dlgAddAttachment: '添付ファイルの追加',
-    filterSupported: 'サポートされているファイル',
-    filterAll: 'すべてのファイル',
     dlgExportPdf: 'PDF としてエクスポート',
     dlgExportHtml: 'HTML としてエクスポート',
     dlgPickExportDir: 'エクスポート先フォルダーの選択',
-    errUnsupportedExt: '.{ext} 形式には対応していません',
-    errNotFile: 'ファイルではありません',
     errTooLarge: '{mb}MB の上限を超えています',
-    errImageTooLarge: '画像が 5MB の上限を超えています',
-    errUnreadable: '読み取れません',
-    errFileTooLarge: 'ファイルがサイズ上限を超えています',
-    errParseFailed: 'ファイルの解析に失敗しました',
-    errImageNoText:
-      '画像の添付ファイルはテキストを提供しません。画像としてユーザーメッセージと一緒に送信されるため、そのまま画像をご確認ください',
-    errNotImage: 'サポートされていない画像形式です',
-    errGskNotLoggedIn:
-      'Genspark にサインインしていません。下の「Genspark にサインイン」からサインインして再試行してください',
-    errNoApiKey: '{provider} の API キーが設定されていません',
-    errAiBusy: 'AI サービスが混み合っています。しばらくしてからもう一度お試しください',
-    errNoModel: 'モデル名が設定されていません',
     menuFile: 'ファイル',
     menuNewDoc: '新規文書',
     menuNewWindow: '新規ウィンドウ',
@@ -651,7 +526,6 @@ const tMain = createI18n({
     menuZoom100: '実際のサイズ (100%)',
     menuPageWidth: 'ページ幅',
     menuWholePage: 'ページ全体',
-    menuAiSidebar: 'AI サイドバー',
     menuDarkMode: 'ダークモード',
     menuFullscreen: 'フルスクリーンにする',
     menuInsert: '挿入',
@@ -705,7 +579,6 @@ const tMain = createI18n({
     menuWordCount: '文字カウント…',
     menuAutoCorrect: 'オートコレクトのオプション…',
     menuPreferences: '環境設定…',
-    menuAiProofread: 'AI 校正',
     menuWindow: 'ウィンドウ',
     menuHelp: 'ヘルプ',
     menuShortcuts: 'キーボードショートカット',
@@ -732,27 +605,10 @@ const tMain = createI18n({
     btnOverwrite: '덮어쓰기',
     dlgInsertImage: '그림 삽입',
     filterImages: '그림',
-    dlgAddAttachment: '첨부 파일 추가',
-    filterSupported: '지원되는 파일',
-    filterAll: '모든 파일',
     dlgExportPdf: 'PDF로 내보내기',
     dlgExportHtml: 'HTML로 내보내기',
     dlgPickExportDir: '내보낼 폴더 선택',
-    errUnsupportedExt: '.{ext} 형식은 지원되지 않습니다',
-    errNotFile: '파일이 아닙니다',
     errTooLarge: '{mb}MB 제한을 초과했습니다',
-    errImageTooLarge: '이미지가 5MB 제한을 초과했습니다',
-    errUnreadable: '읽을 수 없습니다',
-    errFileTooLarge: '파일이 크기 제한을 초과했습니다',
-    errParseFailed: '파일을 분석하지 못했습니다',
-    errImageNoText:
-      '이미지 첨부 파일은 텍스트를 제공하지 않으며, 이미지 형태로 사용자 메시지와 함께 전송되므로 이미지를 직접 확인하면 됩니다',
-    errNotImage: '지원되지 않는 이미지 형식입니다',
-    errGskNotLoggedIn:
-      'Genspark에 로그인되어 있지 않습니다. 아래 "Genspark 로그인"을 눌러 로그인한 뒤 다시 시도하세요',
-    errNoApiKey: '{provider}의 API 키가 설정되지 않았습니다',
-    errAiBusy: 'AI 서비스가 혼잡합니다. 잠시 후 다시 시도해 주세요',
-    errNoModel: '모델 이름이 설정되지 않았습니다',
     menuFile: '파일',
     menuNewDoc: '새 문서',
     menuNewWindow: '새 창',
@@ -784,7 +640,6 @@ const tMain = createI18n({
     menuZoom100: '실제 크기(100%)',
     menuPageWidth: '페이지 너비',
     menuWholePage: '전체 페이지',
-    menuAiSidebar: 'AI 사이드바',
     menuDarkMode: '다크 모드',
     menuFullscreen: '전체 화면 시작',
     menuInsert: '삽입',
@@ -838,7 +693,6 @@ const tMain = createI18n({
     menuWordCount: '단어 개수…',
     menuAutoCorrect: '자동 고침 옵션…',
     menuPreferences: '기본 설정…',
-    menuAiProofread: 'AI 교정',
     menuWindow: '창',
     menuHelp: '도움말',
     menuShortcuts: '키보드 바로 가기',
@@ -866,27 +720,10 @@ const tMain = createI18n({
     btnOverwrite: 'Écraser',
     dlgInsertImage: 'Insérer une image',
     filterImages: 'Images',
-    dlgAddAttachment: 'Ajouter des pièces jointes',
-    filterSupported: 'Fichiers pris en charge',
-    filterAll: 'Tous les fichiers',
     dlgExportPdf: 'Exporter au format PDF',
     dlgExportHtml: 'Exporter au format HTML',
     dlgPickExportDir: "Choisir le dossier d'exportation",
-    errUnsupportedExt: 'les fichiers .{ext} ne sont pas pris en charge',
-    errNotFile: "n'est pas un fichier",
     errTooLarge: 'dépasse la limite de {mb} Mo',
-    errImageTooLarge: "l'image dépasse la limite de 5 Mo",
-    errUnreadable: 'lecture impossible',
-    errFileTooLarge: 'Le fichier dépasse la taille maximale',
-    errParseFailed: "Échec de l'analyse du fichier",
-    errImageNoText:
-      "Les pièces jointes image ne fournissent pas de texte ; l'image est envoyée avec le message de l'utilisateur, consultez-la directement",
-    errNotImage: "type d'image non pris en charge",
-    errGskNotLoggedIn:
-      'Non connecté à Genspark : cliquez sur « Se connecter à Genspark » ci-dessous, connectez-vous puis réessayez',
-    errNoApiKey: 'Aucune clé API configurée pour {provider}',
-    errAiBusy: "Le service d'IA est actuellement surchargé — réessayez dans un instant",
-    errNoModel: 'Aucun nom de modèle configuré',
     menuFile: 'Fichier',
     menuNewDoc: 'Nouveau document',
     menuNewWindow: 'Nouvelle fenêtre',
@@ -918,7 +755,6 @@ const tMain = createI18n({
     menuZoom100: 'Taille réelle (100 %)',
     menuPageWidth: 'Largeur de page',
     menuWholePage: 'Page entière',
-    menuAiSidebar: 'Volet IA',
     menuDarkMode: 'Mode sombre',
     menuFullscreen: 'Activer le mode plein écran',
     menuInsert: 'Insertion',
@@ -972,7 +808,6 @@ const tMain = createI18n({
     menuWordCount: 'Statistiques…',
     menuAutoCorrect: 'Options de correction automatique…',
     menuPreferences: 'Préférences…',
-    menuAiProofread: 'Relecture IA',
     menuWindow: 'Fenêtre',
     menuHelp: 'Aide',
     menuShortcuts: 'Raccourcis clavier',
@@ -1000,27 +835,10 @@ const tMain = createI18n({
     btnOverwrite: 'Überschreiben',
     dlgInsertImage: 'Bild einfügen',
     filterImages: 'Bilder',
-    dlgAddAttachment: 'Anlagen hinzufügen',
-    filterSupported: 'Unterstützte Dateien',
-    filterAll: 'Alle Dateien',
     dlgExportPdf: 'Als PDF exportieren',
     dlgExportHtml: 'Als HTML exportieren',
     dlgPickExportDir: 'Exportordner auswählen',
-    errUnsupportedExt: '.{ext}-Dateien werden nicht unterstützt',
-    errNotFile: 'keine Datei',
     errTooLarge: 'überschreitet das Limit von {mb} MB',
-    errImageTooLarge: 'Bild überschreitet das Limit von 5 MB',
-    errUnreadable: 'kann nicht gelesen werden',
-    errFileTooLarge: 'Datei überschreitet die maximale Größe',
-    errParseFailed: 'Datei konnte nicht analysiert werden',
-    errImageNoText:
-      'Bildanlagen liefern keinen Text; das Bild wird mit der Benutzernachricht gesendet und kann direkt betrachtet werden',
-    errNotImage: 'kein unterstütztes Bildformat',
-    errGskNotLoggedIn:
-      'Nicht bei Genspark angemeldet: Klicken Sie unten auf „Bei Genspark anmelden“, melden Sie sich an und versuchen Sie es erneut',
-    errNoApiKey: 'Kein API-Schlüssel für {provider} konfiguriert',
-    errAiBusy: 'Der KI-Dienst ist derzeit überlastet — bitte gleich erneut versuchen',
-    errNoModel: 'Kein Modellname konfiguriert',
     menuFile: 'Datei',
     menuNewDoc: 'Neues Dokument',
     menuNewWindow: 'Neues Fenster',
@@ -1052,7 +870,6 @@ const tMain = createI18n({
     menuZoom100: 'Originalgröße (100 %)',
     menuPageWidth: 'Seitenbreite',
     menuWholePage: 'Ganze Seite',
-    menuAiSidebar: 'KI-Seitenleiste',
     menuDarkMode: 'Dunkelmodus',
     menuFullscreen: 'Vollbild ein',
     menuInsert: 'Einfügen',
@@ -1106,7 +923,6 @@ const tMain = createI18n({
     menuWordCount: 'Wörter zählen…',
     menuAutoCorrect: 'AutoKorrektur-Optionen…',
     menuPreferences: 'Einstellungen…',
-    menuAiProofread: 'KI-Korrektur',
     menuWindow: 'Fenster',
     menuHelp: 'Hilfe',
     menuShortcuts: 'Tastenkombinationen',
@@ -1133,28 +949,10 @@ const tMain = createI18n({
     btnOverwrite: 'Sobrescribir',
     dlgInsertImage: 'Insertar imagen',
     filterImages: 'Imágenes',
-    dlgAddAttachment: 'Agregar datos adjuntos',
-    filterSupported: 'Archivos compatibles',
-    filterAll: 'Todos los archivos',
     dlgExportPdf: 'Exportar como PDF',
     dlgExportHtml: 'Exportar como HTML',
     dlgPickExportDir: 'Elegir carpeta de exportación',
-    errUnsupportedExt: 'los archivos .{ext} no son compatibles',
-    errNotFile: 'no es un archivo',
     errTooLarge: 'supera el límite de {mb} MB',
-    errImageTooLarge: 'la imagen supera el límite de 5 MB',
-    errUnreadable: 'no se puede leer',
-    errFileTooLarge: 'El archivo supera el tamaño máximo',
-    errParseFailed: 'No se pudo analizar el archivo',
-    errImageNoText:
-      'Las imágenes adjuntas no proporcionan texto; la imagen se envía junto con el mensaje del usuario, puedes verla directamente',
-    errNotImage: 'no es un tipo de imagen compatible',
-    errGskNotLoggedIn:
-      'No has iniciado sesión en Genspark: pulsa «Iniciar sesión en Genspark» abajo, inicia sesión y vuelve a intentarlo',
-    errNoApiKey: 'No hay clave de API configurada para {provider}',
-    errAiBusy:
-      'El servicio de IA está saturado en este momento; inténtalo de nuevo en unos instantes',
-    errNoModel: 'No se ha configurado el nombre del modelo',
     menuFile: 'Archivo',
     menuNewDoc: 'Nuevo documento',
     menuNewWindow: 'Nueva ventana',
@@ -1186,7 +984,6 @@ const tMain = createI18n({
     menuZoom100: 'Tamaño real (100 %)',
     menuPageWidth: 'Ancho de página',
     menuWholePage: 'Página completa',
-    menuAiSidebar: 'Barra lateral de IA',
     menuDarkMode: 'Modo oscuro',
     menuFullscreen: 'Usar pantalla completa',
     menuInsert: 'Insertar',
@@ -1240,7 +1037,6 @@ const tMain = createI18n({
     menuWordCount: 'Contar palabras…',
     menuAutoCorrect: 'Opciones de autocorrección…',
     menuPreferences: 'Preferencias…',
-    menuAiProofread: 'Corrección con IA',
     menuWindow: 'Ventana',
     menuHelp: 'Ayuda',
     menuShortcuts: 'Atajos de teclado',
@@ -1266,27 +1062,10 @@ const tMain = createI18n({
     btnOverwrite: 'เขียนทับ',
     dlgInsertImage: 'แทรกรูปภาพ',
     filterImages: 'รูปภาพ',
-    dlgAddAttachment: 'เพิ่มสิ่งที่แนบ',
-    filterSupported: 'ไฟล์ที่รองรับ',
-    filterAll: 'ไฟล์ทั้งหมด',
     dlgExportPdf: 'ส่งออกเป็น PDF',
     dlgExportHtml: 'ส่งออกเป็น HTML',
     dlgPickExportDir: 'เลือกโฟลเดอร์ส่งออก',
-    errUnsupportedExt: 'ไม่รองรับไฟล์ .{ext}',
-    errNotFile: 'ไม่ใช่ไฟล์',
     errTooLarge: 'เกินขีดจำกัด {mb}MB',
-    errImageTooLarge: 'รูปภาพเกินขีดจำกัด 5MB',
-    errUnreadable: 'ไม่สามารถอ่านได้',
-    errFileTooLarge: 'ไฟล์เกินขนาดสูงสุด',
-    errParseFailed: 'แยกวิเคราะห์ไฟล์ไม่สำเร็จ',
-    errImageNoText:
-      'สิ่งที่แนบเป็นรูปภาพไม่มีข้อความ รูปจะถูกส่งไปพร้อมข้อความของผู้ใช้ ดูรูปได้โดยตรง',
-    errNotImage: 'ไม่ใช่ชนิดรูปภาพที่รองรับ',
-    errGskNotLoggedIn:
-      'ยังไม่ได้ลงชื่อเข้าใช้ Genspark: แตะ “ลงชื่อเข้าใช้ Genspark” ด้านล่าง แล้วลองอีกครั้ง',
-    errNoApiKey: 'ยังไม่ได้ตั้งค่า API Key ของ {provider}',
-    errAiBusy: 'บริการ AI มีผู้ใช้งานจำนวนมากในขณะนี้ โปรดลองอีกครั้งในอีกสักครู่',
-    errNoModel: 'ยังไม่ได้ตั้งค่าชื่อโมเดล',
     menuFile: 'ไฟล์',
     menuNewDoc: 'เอกสารใหม่',
     menuNewWindow: 'หน้าต่างใหม่',
@@ -1318,7 +1097,6 @@ const tMain = createI18n({
     menuZoom100: 'ขนาดจริง (100%)',
     menuPageWidth: 'ความกว้างของหน้า',
     menuWholePage: 'ทั้งหน้า',
-    menuAiSidebar: 'แถบข้าง AI',
     menuDarkMode: 'โหมดมืด',
     menuFullscreen: 'เข้าสู่โหมดเต็มหน้าจอ',
     menuInsert: 'แทรก',
@@ -1372,7 +1150,6 @@ const tMain = createI18n({
     menuWordCount: 'นับจำนวนคำ…',
     menuAutoCorrect: 'ตัวเลือกการแก้ไขอัตโนมัติ…',
     menuPreferences: 'การตั้งค่า…',
-    menuAiProofread: 'พิสูจน์อักษรด้วย AI',
     menuWindow: 'หน้าต่าง',
     menuHelp: 'วิธีใช้',
     menuShortcuts: 'แป้นพิมพ์ลัด',
@@ -1399,26 +1176,10 @@ const tMain = createI18n({
     btnOverwrite: 'Timpa',
     dlgInsertImage: 'Sisipkan Gambar',
     filterImages: 'Gambar',
-    dlgAddAttachment: 'Tambahkan Lampiran',
-    filterSupported: 'File yang Didukung',
-    filterAll: 'Semua File',
     dlgExportPdf: 'Ekspor sebagai PDF',
     dlgExportHtml: 'Ekspor sebagai HTML',
     dlgPickExportDir: 'Pilih Folder Ekspor',
-    errUnsupportedExt: 'file .{ext} tidak didukung',
-    errNotFile: 'bukan file',
     errTooLarge: 'melebihi batas {mb}MB',
-    errImageTooLarge: 'gambar melebihi batas 5MB',
-    errUnreadable: 'tidak dapat dibaca',
-    errFileTooLarge: 'File melebihi batas ukuran',
-    errParseFailed: 'Gagal mengurai file',
-    errImageNoText:
-      'Lampiran gambar tidak menyediakan teks; gambar dikirim bersama pesan pengguna dan dapat dilihat langsung',
-    errNotImage: 'bukan jenis gambar yang didukung',
-    errGskNotLoggedIn: 'Belum masuk ke Genspark: klik “Masuk ke Genspark” di bawah, lalu coba lagi',
-    errNoApiKey: 'API Key untuk {provider} belum dikonfigurasi',
-    errAiBusy: 'Layanan AI sedang sibuk — silakan coba lagi sebentar lagi',
-    errNoModel: 'Nama model belum dikonfigurasi',
     menuFile: 'File',
     menuNewDoc: 'Dokumen Baru',
     menuNewWindow: 'Jendela Baru',
@@ -1450,7 +1211,6 @@ const tMain = createI18n({
     menuZoom100: 'Ukuran Sebenarnya (100%)',
     menuPageWidth: 'Lebar Halaman',
     menuWholePage: 'Seluruh Halaman',
-    menuAiSidebar: 'Bilah Samping AI',
     menuDarkMode: 'Mode Gelap',
     menuFullscreen: 'Masuk Layar Penuh',
     menuInsert: 'Sisipkan',
@@ -1504,7 +1264,6 @@ const tMain = createI18n({
     menuWordCount: 'Hitungan Kata…',
     menuAutoCorrect: 'Opsi Koreksi Otomatis…',
     menuPreferences: 'Preferensi…',
-    menuAiProofread: 'Koreksi AI',
     menuWindow: 'Jendela',
     menuHelp: 'Bantuan',
     menuShortcuts: 'Pintasan Papan Ketik',
@@ -1531,27 +1290,10 @@ const tMain = createI18n({
     btnOverwrite: 'Перезаписать',
     dlgInsertImage: 'Вставить рисунок',
     filterImages: 'Изображения',
-    dlgAddAttachment: 'Добавить вложения',
-    filterSupported: 'Поддерживаемые файлы',
-    filterAll: 'Все файлы',
     dlgExportPdf: 'Экспорт в PDF',
     dlgExportHtml: 'Экспорт в HTML',
     dlgPickExportDir: 'Выбор папки для экспорта',
-    errUnsupportedExt: 'файлы .{ext} не поддерживаются',
-    errNotFile: 'не является файлом',
     errTooLarge: 'превышает лимит {mb} МБ',
-    errImageTooLarge: 'изображение превышает лимит 5 МБ',
-    errUnreadable: 'не удается прочитать',
-    errFileTooLarge: 'Файл превышает максимальный размер',
-    errParseFailed: 'Не удалось разобрать файл',
-    errImageNoText:
-      'Вложенные изображения не содержат текста; изображение отправляется вместе с сообщением пользователя, смотрите его напрямую',
-    errNotImage: 'неподдерживаемый тип изображения',
-    errGskNotLoggedIn:
-      'Вы не вошли в Genspark: нажмите «Войти в Genspark» ниже, войдите и повторите попытку',
-    errNoApiKey: 'API-ключ для {provider} не настроен',
-    errAiBusy: 'Сервис ИИ сейчас перегружен — повторите попытку чуть позже',
-    errNoModel: 'Не указано имя модели',
     menuFile: 'Файл',
     menuNewDoc: 'Создать документ',
     menuNewWindow: 'Новое окно',
@@ -1583,7 +1325,6 @@ const tMain = createI18n({
     menuZoom100: 'Фактический размер (100%)',
     menuPageWidth: 'По ширине страницы',
     menuWholePage: 'Страница целиком',
-    menuAiSidebar: 'Боковая панель ИИ',
     menuDarkMode: 'Темный режим',
     menuFullscreen: 'Перейти в полноэкранный режим',
     menuInsert: 'Вставка',
@@ -1637,7 +1378,6 @@ const tMain = createI18n({
     menuWordCount: 'Статистика…',
     menuAutoCorrect: 'Параметры автозамены…',
     menuPreferences: 'Параметры…',
-    menuAiProofread: 'ИИ-корректура',
     menuWindow: 'Окно',
     menuHelp: 'Справка',
     menuShortcuts: 'Сочетания клавиш',
@@ -1664,27 +1404,10 @@ const tMain = createI18n({
     btnOverwrite: 'استبدال',
     dlgInsertImage: 'إدراج صورة',
     filterImages: 'الصور',
-    dlgAddAttachment: 'إضافة مرفقات',
-    filterSupported: 'الملفات المدعومة',
-    filterAll: 'كل الملفات',
     dlgExportPdf: 'تصدير بتنسيق PDF',
     dlgExportHtml: 'تصدير بتنسيق HTML',
     dlgPickExportDir: 'اختيار مجلد التصدير',
-    errUnsupportedExt: 'ملفات .{ext} غير مدعومة',
-    errNotFile: 'ليس ملفًا',
     errTooLarge: 'يتجاوز الحد {mb}MB',
-    errImageTooLarge: 'الصورة تتجاوز حد 5MB',
-    errUnreadable: 'تعذرت القراءة',
-    errFileTooLarge: 'الملف يتجاوز الحد الأقصى للحجم',
-    errParseFailed: 'فشل تحليل الملف',
-    errImageNoText:
-      'مرفقات الصور لا توفر نصًا؛ تُرسل الصورة مع رسالة المستخدم ويمكن الاطلاع عليها مباشرة',
-    errNotImage: 'ليس نوع صورة مدعومًا',
-    errGskNotLoggedIn:
-      'لم تسجّل الدخول إلى Genspark: انقر على «تسجيل الدخول إلى Genspark» أدناه ثم أعد المحاولة',
-    errNoApiKey: 'لم يتم تكوين مفتاح API لـ {provider}',
-    errAiBusy: 'خدمة الذكاء الاصطناعي مشغولة حاليًا — يرجى المحاولة مرة أخرى بعد قليل',
-    errNoModel: 'لم يتم تكوين اسم النموذج',
     menuFile: 'ملف',
     menuNewDoc: 'مستند جديد',
     menuNewWindow: 'نافذة جديدة',
@@ -1716,7 +1439,6 @@ const tMain = createI18n({
     menuZoom100: 'الحجم الفعلي (100%)',
     menuPageWidth: 'عرض الصفحة',
     menuWholePage: 'صفحة كاملة',
-    menuAiSidebar: 'الشريط الجانبي للذكاء الاصطناعي',
     menuDarkMode: 'الوضع الداكن',
     menuFullscreen: 'الدخول إلى ملء الشاشة',
     menuInsert: 'إدراج',
@@ -1770,7 +1492,6 @@ const tMain = createI18n({
     menuWordCount: 'عدد الكلمات…',
     menuAutoCorrect: 'خيارات التصحيح التلقائي…',
     menuPreferences: 'التفضيلات…',
-    menuAiProofread: 'تدقيق بالذكاء الاصطناعي',
     menuWindow: 'نافذة',
     menuHelp: 'تعليمات',
     menuShortcuts: 'اختصارات لوحة المفاتيح',
@@ -1797,27 +1518,10 @@ const tMain = createI18n({
     btnOverwrite: 'Sobrescrever',
     dlgInsertImage: 'Inserir Imagem',
     filterImages: 'Imagens',
-    dlgAddAttachment: 'Adicionar Anexos',
-    filterSupported: 'Arquivos Compatíveis',
-    filterAll: 'Todos os Arquivos',
     dlgExportPdf: 'Exportar como PDF',
     dlgExportHtml: 'Exportar como HTML',
     dlgPickExportDir: 'Escolher Pasta de Exportação',
-    errUnsupportedExt: 'arquivos .{ext} não são suportados',
-    errNotFile: 'não é um arquivo',
     errTooLarge: 'excede o limite de {mb}MB',
-    errImageTooLarge: 'a imagem excede o limite de 5MB',
-    errUnreadable: 'não é possível ler',
-    errFileTooLarge: 'O arquivo excede o limite de tamanho',
-    errParseFailed: 'Falha ao analisar o arquivo',
-    errImageNoText:
-      'Anexos de imagem não fornecem texto; a imagem é enviada junto com a mensagem do usuário, basta vê-la diretamente',
-    errNotImage: 'não é um tipo de imagem suportado',
-    errGskNotLoggedIn:
-      'Não conectado ao Genspark: clique em “Entrar no Genspark” abaixo, entre e tente novamente',
-    errNoApiKey: 'Nenhuma chave de API configurada para {provider}',
-    errAiBusy: 'O serviço de IA está sobrecarregado no momento — tente novamente em instantes',
-    errNoModel: 'Nenhum nome de modelo configurado',
     menuFile: 'Arquivo',
     menuNewDoc: 'Novo Documento',
     menuNewWindow: 'Nova Janela',
@@ -1849,7 +1553,6 @@ const tMain = createI18n({
     menuZoom100: 'Tamanho Real (100%)',
     menuPageWidth: 'Largura da Página',
     menuWholePage: 'Página Inteira',
-    menuAiSidebar: 'Barra Lateral de IA',
     menuDarkMode: 'Modo Escuro',
     menuFullscreen: 'Entrar em Tela Cheia',
     menuInsert: 'Inserir',
@@ -1903,7 +1606,6 @@ const tMain = createI18n({
     menuWordCount: 'Contagem de Palavras…',
     menuAutoCorrect: 'Opções de Correção Automática…',
     menuPreferences: 'Preferências…',
-    menuAiProofread: 'Revisão com IA',
     menuWindow: 'Janela',
     menuHelp: 'Ajuda',
     menuShortcuts: 'Atalhos de Teclado',
@@ -1930,27 +1632,10 @@ const tMain = createI18n({
     btnOverwrite: 'Sovrascrivi',
     dlgInsertImage: 'Inserisci immagine',
     filterImages: 'Immagini',
-    dlgAddAttachment: 'Aggiungi allegati',
-    filterSupported: 'File supportati',
-    filterAll: 'Tutti i file',
     dlgExportPdf: 'Esporta come PDF',
     dlgExportHtml: 'Esporta come HTML',
     dlgPickExportDir: 'Scegli la cartella di esportazione',
-    errUnsupportedExt: 'i file .{ext} non sono supportati',
-    errNotFile: 'non è un file',
     errTooLarge: 'supera il limite di {mb} MB',
-    errImageTooLarge: "l'immagine supera il limite di 5 MB",
-    errUnreadable: 'impossibile leggere',
-    errFileTooLarge: 'Il file supera il limite di dimensione',
-    errParseFailed: 'Impossibile analizzare il file',
-    errImageNoText:
-      "Gli allegati immagine non forniscono testo; l'immagine viene inviata insieme al messaggio dell'utente, basta guardarla direttamente",
-    errNotImage: 'tipo di immagine non supportato',
-    errGskNotLoggedIn:
-      'Accesso a Genspark non effettuato: fai clic su “Accedi a Genspark” qui sotto, accedi e riprova',
-    errNoApiKey: 'Nessuna chiave API configurata per {provider}',
-    errAiBusy: 'Il servizio IA è momentaneamente sovraccarico — riprova tra poco',
-    errNoModel: 'Nessun nome di modello configurato',
     menuFile: 'File',
     menuNewDoc: 'Nuovo documento',
     menuNewWindow: 'Nuova finestra',
@@ -1982,7 +1667,6 @@ const tMain = createI18n({
     menuZoom100: 'Dimensioni effettive (100%)',
     menuPageWidth: 'Larghezza pagina',
     menuWholePage: 'Pagina intera',
-    menuAiSidebar: 'Barra laterale IA',
     menuDarkMode: 'Modalità scura',
     menuFullscreen: 'Attiva schermo intero',
     menuInsert: 'Inserisci',
@@ -2036,7 +1720,6 @@ const tMain = createI18n({
     menuWordCount: 'Conteggio parole…',
     menuAutoCorrect: 'Opzioni correzione automatica…',
     menuPreferences: 'Preferenze…',
-    menuAiProofread: 'Correzione IA',
     menuWindow: 'Finestra',
     menuHelp: 'Aiuto',
     menuShortcuts: 'Scelte rapide da tastiera',
@@ -2063,27 +1746,10 @@ const tMain = createI18n({
     btnOverwrite: 'Nadpisz',
     dlgInsertImage: 'Wstaw obraz',
     filterImages: 'Obrazy',
-    dlgAddAttachment: 'Dodaj załączniki',
-    filterSupported: 'Obsługiwane pliki',
-    filterAll: 'Wszystkie pliki',
     dlgExportPdf: 'Eksportuj jako PDF',
     dlgExportHtml: 'Eksportuj jako HTML',
     dlgPickExportDir: 'Wybierz folder eksportu',
-    errUnsupportedExt: 'pliki .{ext} nie są obsługiwane',
-    errNotFile: 'to nie jest plik',
     errTooLarge: 'przekracza limit {mb} MB',
-    errImageTooLarge: 'obraz przekracza limit 5 MB',
-    errUnreadable: 'nie można odczytać',
-    errFileTooLarge: 'Plik przekracza limit rozmiaru',
-    errParseFailed: 'Nie udało się przeanalizować pliku',
-    errImageNoText:
-      'Załączniki graficzne nie zawierają tekstu; obraz jest wysyłany razem z wiadomością użytkownika, wystarczy na niego spojrzeć',
-    errNotImage: 'nieobsługiwany typ obrazu',
-    errGskNotLoggedIn:
-      'Nie zalogowano do Genspark: kliknij „Zaloguj się do Genspark” poniżej, zaloguj się i spróbuj ponownie',
-    errNoApiKey: 'Nie skonfigurowano klucza API dla {provider}',
-    errAiBusy: 'Usługa AI jest obecnie przeciążona — spróbuj ponownie za chwilę',
-    errNoModel: 'Nie skonfigurowano nazwy modelu',
     menuFile: 'Plik',
     menuNewDoc: 'Nowy dokument',
     menuNewWindow: 'Nowe okno',
@@ -2115,7 +1781,6 @@ const tMain = createI18n({
     menuZoom100: 'Rzeczywisty rozmiar (100%)',
     menuPageWidth: 'Szerokość strony',
     menuWholePage: 'Cała strona',
-    menuAiSidebar: 'Pasek boczny AI',
     menuDarkMode: 'Tryb ciemny',
     menuFullscreen: 'Przejdź do pełnego ekranu',
     menuInsert: 'Wstaw',
@@ -2169,7 +1834,6 @@ const tMain = createI18n({
     menuWordCount: 'Statystyka wyrazów…',
     menuAutoCorrect: 'Opcje Autokorekty…',
     menuPreferences: 'Preferencje…',
-    menuAiProofread: 'Korekta AI',
     menuWindow: 'Okno',
     menuHelp: 'Pomoc',
     menuShortcuts: 'Skróty klawiaturowe',
@@ -2196,27 +1860,10 @@ const tMain = createI18n({
     btnOverwrite: 'Přepsat',
     dlgInsertImage: 'Vložit obrázek',
     filterImages: 'Obrázky',
-    dlgAddAttachment: 'Přidat přílohy',
-    filterSupported: 'Podporované soubory',
-    filterAll: 'Všechny soubory',
     dlgExportPdf: 'Exportovat jako PDF',
     dlgExportHtml: 'Exportovat jako HTML',
     dlgPickExportDir: 'Zvolte složku pro export',
-    errUnsupportedExt: 'soubory .{ext} nejsou podporovány',
-    errNotFile: 'není soubor',
     errTooLarge: 'překračuje limit {mb} MB',
-    errImageTooLarge: 'obrázek překračuje limit 5 MB',
-    errUnreadable: 'nelze přečíst',
-    errFileTooLarge: 'Soubor překračuje limit velikosti',
-    errParseFailed: 'Soubor se nepodařilo zpracovat',
-    errImageNoText:
-      'Obrázkové přílohy neobsahují text; obrázek se odesílá spolu se zprávou uživatele',
-    errNotImage: 'nepodporovaný typ obrázku',
-    errGskNotLoggedIn:
-      'Nejste přihlášeni do Genspark: klikněte níže na „Přihlásit se do Genspark“, přihlaste se a zkuste to znovu',
-    errNoApiKey: 'Pro {provider} není nakonfigurován žádný klíč API',
-    errAiBusy: 'Služba AI je právě zaneprázdněna — zkuste to prosím za chvíli znovu',
-    errNoModel: 'Není nakonfigurován název modelu',
     menuFile: 'Soubor',
     menuNewDoc: 'Nový dokument',
     menuNewWindow: 'Nové okno',
@@ -2248,7 +1895,6 @@ const tMain = createI18n({
     menuZoom100: 'Skutečná velikost (100 %)',
     menuPageWidth: 'Šířka stránky',
     menuWholePage: 'Celá stránka',
-    menuAiSidebar: 'Boční panel AI',
     menuDarkMode: 'Tmavý režim',
     menuFullscreen: 'Přejít na celou obrazovku',
     menuInsert: 'Vložení',
@@ -2302,7 +1948,6 @@ const tMain = createI18n({
     menuWordCount: 'Počet slov…',
     menuAutoCorrect: 'Možnosti automatických oprav…',
     menuPreferences: 'Předvolby…',
-    menuAiProofread: 'Korektura AI',
     menuWindow: 'Okno',
     menuHelp: 'Nápověda',
     menuShortcuts: 'Klávesové zkratky',
@@ -2329,27 +1974,10 @@ const tMain = createI18n({
     btnOverwrite: 'Overschrijven',
     dlgInsertImage: 'Afbeelding invoegen',
     filterImages: 'Afbeeldingen',
-    dlgAddAttachment: 'Bijlagen toevoegen',
-    filterSupported: 'Ondersteunde bestanden',
-    filterAll: 'Alle bestanden',
     dlgExportPdf: 'Exporteren als PDF',
     dlgExportHtml: 'Exporteren als HTML',
     dlgPickExportDir: 'Exportmap kiezen',
-    errUnsupportedExt: '.{ext}-bestanden worden niet ondersteund',
-    errNotFile: 'geen bestand',
     errTooLarge: 'overschrijdt de limiet van {mb} MB',
-    errImageTooLarge: 'afbeelding overschrijdt de limiet van 5 MB',
-    errUnreadable: 'kan niet worden gelezen',
-    errFileTooLarge: 'Bestand overschrijdt de maximale grootte',
-    errParseFailed: 'Kan bestand niet parseren',
-    errImageNoText:
-      'Afbeeldingsbijlagen bevatten geen tekst; de afbeelding wordt samen met het gebruikersbericht verzonden en kan direct worden bekeken',
-    errNotImage: 'geen ondersteund afbeeldingstype',
-    errGskNotLoggedIn:
-      'Niet aangemeld bij Genspark: klik hieronder op “Aanmelden bij Genspark”, meld u aan en probeer het opnieuw',
-    errNoApiKey: 'Geen API-sleutel geconfigureerd voor {provider}',
-    errAiBusy: 'De AI-service is momenteel overbelast — probeer het zo opnieuw',
-    errNoModel: 'Geen modelnaam geconfigureerd',
     menuFile: 'Bestand',
     menuNewDoc: 'Nieuw document',
     menuNewWindow: 'Nieuw venster',
@@ -2381,7 +2009,6 @@ const tMain = createI18n({
     menuZoom100: 'Ware grootte (100%)',
     menuPageWidth: 'Paginabreedte',
     menuWholePage: 'Hele pagina',
-    menuAiSidebar: 'AI-zijbalk',
     menuDarkMode: 'Donkere modus',
     menuFullscreen: 'Schermvullende weergave',
     menuInsert: 'Invoegen',
@@ -2435,7 +2062,6 @@ const tMain = createI18n({
     menuWordCount: 'Woorden tellen…',
     menuAutoCorrect: 'AutoCorrectie-opties…',
     menuPreferences: 'Voorkeuren…',
-    menuAiProofread: 'AI-proeflezen',
     menuWindow: 'Venster',
     menuHelp: 'Help',
     menuShortcuts: 'Sneltoetsen',
@@ -2462,27 +2088,10 @@ const tMain = createI18n({
     btnOverwrite: 'Tulis Ganti',
     dlgInsertImage: 'Sisipkan Imej',
     filterImages: 'Imej',
-    dlgAddAttachment: 'Tambah Lampiran',
-    filterSupported: 'Fail yang Disokong',
-    filterAll: 'Semua Fail',
     dlgExportPdf: 'Eksport sebagai PDF',
     dlgExportHtml: 'Eksport sebagai HTML',
     dlgPickExportDir: 'Pilih Folder Eksport',
-    errUnsupportedExt: 'fail .{ext} tidak disokong',
-    errNotFile: 'bukan fail',
     errTooLarge: 'melebihi had {mb}MB',
-    errImageTooLarge: 'imej melebihi had 5MB',
-    errUnreadable: 'tidak dapat dibaca',
-    errFileTooLarge: 'Fail melebihi had saiz',
-    errParseFailed: 'Gagal menghurai fail',
-    errImageNoText:
-      'Lampiran imej tidak menyediakan teks; imej dihantar bersama mesej pengguna dan boleh dilihat terus',
-    errNotImage: 'bukan jenis imej yang disokong',
-    errGskNotLoggedIn:
-      'Belum log masuk ke Genspark: klik “Log masuk ke Genspark” di bawah, kemudian cuba lagi',
-    errNoApiKey: 'Kunci API untuk {provider} belum dikonfigurasikan',
-    errAiBusy: 'Perkhidmatan AI sedang sibuk — sila cuba lagi sebentar lagi',
-    errNoModel: 'Nama model belum dikonfigurasikan',
     menuFile: 'Fail',
     menuNewDoc: 'Dokumen Baharu',
     menuNewWindow: 'Tetingkap Baharu',
@@ -2514,7 +2123,6 @@ const tMain = createI18n({
     menuZoom100: 'Saiz Sebenar (100%)',
     menuPageWidth: 'Lebar Halaman',
     menuWholePage: 'Seluruh Halaman',
-    menuAiSidebar: 'Bar Sisi AI',
     menuDarkMode: 'Mod Gelap',
     menuFullscreen: 'Masuk Skrin Penuh',
     menuInsert: 'Sisip',
@@ -2568,7 +2176,6 @@ const tMain = createI18n({
     menuWordCount: 'Kiraan Perkataan…',
     menuAutoCorrect: 'Pilihan AutoBetul…',
     menuPreferences: 'Keutamaan…',
-    menuAiProofread: 'Pembacaan Pruf AI',
     menuWindow: 'Tetingkap',
     menuHelp: 'Bantuan',
     menuShortcuts: 'Pintasan Papan Kekunci',
@@ -2594,26 +2201,10 @@ const tMain = createI18n({
     btnOverwrite: 'דרוס',
     dlgInsertImage: 'הוספת תמונה',
     filterImages: 'תמונות',
-    dlgAddAttachment: 'הוספת קבצים מצורפים',
-    filterSupported: 'קבצים נתמכים',
-    filterAll: 'כל הקבצים',
     dlgExportPdf: 'ייצוא כ-PDF',
     dlgExportHtml: 'ייצוא כ-HTML',
     dlgPickExportDir: 'בחירת תיקיית ייצוא',
-    errUnsupportedExt: 'קובצי .{ext} אינם נתמכים',
-    errNotFile: 'אינו קובץ',
     errTooLarge: 'חורג מהמגבלה של {mb}MB',
-    errImageTooLarge: 'התמונה חורגת מהמגבלה של 5MB',
-    errUnreadable: 'לא ניתן לקרוא',
-    errFileTooLarge: 'הקובץ חורג ממגבלת הגודל',
-    errParseFailed: 'ניתוח הקובץ נכשל',
-    errImageNoText:
-      'קבצים מצורפים מסוג תמונה אינם מספקים טקסט; התמונה נשלחת יחד עם הודעת המשתמש וניתן לצפות בה ישירות',
-    errNotImage: 'סוג תמונה שאינו נתמך',
-    errGskNotLoggedIn: 'לא מחובר ל-Genspark: לחץ על "התחבר ל-Genspark" למטה, התחבר ונסה שוב',
-    errNoApiKey: 'לא הוגדר מפתח API עבור {provider}',
-    errAiBusy: 'שירות ה-AI עמוס כרגע — נסו שוב בעוד רגע',
-    errNoModel: 'לא הוגדר שם מודל',
     menuFile: 'קובץ',
     menuNewDoc: 'מסמך חדש',
     menuNewWindow: 'חלון חדש',
@@ -2645,7 +2236,6 @@ const tMain = createI18n({
     menuZoom100: 'גודל אמיתי (100%)',
     menuPageWidth: 'רוחב עמוד',
     menuWholePage: 'עמוד שלם',
-    menuAiSidebar: 'סרגל צד AI',
     menuDarkMode: 'מצב כהה',
     menuFullscreen: 'מעבר למסך מלא',
     menuInsert: 'הוספה',
@@ -2699,7 +2289,6 @@ const tMain = createI18n({
     menuWordCount: 'ספירת מילים…',
     menuAutoCorrect: 'אפשרויות תיקון אוטומטי…',
     menuPreferences: 'העדפות…',
-    menuAiProofread: 'הגהת AI',
     menuWindow: 'חלון',
     menuHelp: 'עזרה',
     menuShortcuts: 'קיצורי מקלדת',
@@ -2726,27 +2315,10 @@ const tMain = createI18n({
     btnOverwrite: 'अधिलेखित करें',
     dlgInsertImage: 'छवि सम्मिलित करें',
     filterImages: 'छवियाँ',
-    dlgAddAttachment: 'अनुलग्नक जोड़ें',
-    filterSupported: 'समर्थित फ़ाइलें',
-    filterAll: 'सभी फ़ाइलें',
     dlgExportPdf: 'PDF के रूप में निर्यात करें',
     dlgExportHtml: 'HTML के रूप में निर्यात करें',
     dlgPickExportDir: 'निर्यात फ़ोल्डर चुनें',
-    errUnsupportedExt: '.{ext} फ़ाइलें समर्थित नहीं हैं',
-    errNotFile: 'फ़ाइल नहीं है',
     errTooLarge: '{mb}MB की सीमा से अधिक है',
-    errImageTooLarge: 'छवि 5MB की सीमा से अधिक है',
-    errUnreadable: 'पढ़ा नहीं जा सकता',
-    errFileTooLarge: 'फ़ाइल आकार सीमा से अधिक है',
-    errParseFailed: 'फ़ाइल पार्स करने में विफल',
-    errImageNoText:
-      'छवि अनुलग्नक टेक्स्ट प्रदान नहीं करते; छवि उपयोगकर्ता संदेश के साथ भेजी जाती है, उसे सीधे देखें',
-    errNotImage: 'समर्थित छवि प्रकार नहीं है',
-    errGskNotLoggedIn:
-      'Genspark में साइन इन नहीं है: नीचे “Genspark में साइन इन करें” पर क्लिक करें, साइन इन करें और फिर से कोशिश करें',
-    errNoApiKey: '{provider} के लिए कोई API कुंजी कॉन्फ़िगर नहीं है',
-    errAiBusy: 'AI सेवा अभी व्यस्त है — कृपया थोड़ी देर बाद फिर से प्रयास करें',
-    errNoModel: 'कोई मॉडल नाम कॉन्फ़िगर नहीं है',
     menuFile: 'फ़ाइल',
     menuNewDoc: 'नया दस्तावेज़',
     menuNewWindow: 'नई विंडो',
@@ -2778,7 +2350,6 @@ const tMain = createI18n({
     menuZoom100: 'वास्तविक आकार (100%)',
     menuPageWidth: 'पृष्ठ चौड़ाई',
     menuWholePage: 'पूरा पृष्ठ',
-    menuAiSidebar: 'AI साइडबार',
     menuDarkMode: 'डार्क मोड',
     menuFullscreen: 'पूर्ण स्क्रीन में जाएँ',
     menuInsert: 'सम्मिलित करें',
@@ -2832,7 +2403,6 @@ const tMain = createI18n({
     menuWordCount: 'शब्द गणना…',
     menuAutoCorrect: 'स्वतः सुधार विकल्प…',
     menuPreferences: 'प्राथमिकताएँ…',
-    menuAiProofread: 'AI प्रूफ़रीडिंग',
     menuWindow: 'विंडो',
     menuHelp: 'सहायता',
     menuShortcuts: 'कीबोर्ड शॉर्टकट',
@@ -2858,25 +2428,10 @@ const tMain = createI18n({
     btnOverwrite: '覆寫',
     dlgInsertImage: '插入圖片',
     filterImages: '圖片',
-    dlgAddAttachment: '新增附件',
-    filterSupported: '支援的檔案',
-    filterAll: '所有檔案',
     dlgExportPdf: '匯出為 PDF',
     dlgExportHtml: '匯出為 HTML',
     dlgPickExportDir: '選擇匯出目錄',
-    errUnsupportedExt: '暫不支援 .{ext} 類型',
-    errNotFile: '不是檔案',
     errTooLarge: '超過 {mb}MB 上限',
-    errImageTooLarge: '圖片超過 5MB 上限',
-    errUnreadable: '無法讀取',
-    errFileTooLarge: '檔案超過大小上限',
-    errParseFailed: '檔案解析失敗',
-    errImageNoText: '圖片附件不提供文字,已作為影像隨使用者訊息傳送,直接看圖即可',
-    errNotImage: '不是支援的圖片類型',
-    errGskNotLoggedIn: '未登入 Genspark:請點擊下方「登入 Genspark」完成登入後重試',
-    errNoApiKey: '未設定 {provider} 的 API Key',
-    errAiBusy: 'AI 服務目前繁忙，請稍後重試',
-    errNoModel: '未設定模型名稱',
     menuFile: '檔案',
     menuNewDoc: '新增文件',
     menuNewWindow: '新增視窗',
@@ -2908,7 +2463,6 @@ const tMain = createI18n({
     menuZoom100: '實際大小 (100%)',
     menuPageWidth: '頁面寬度',
     menuWholePage: '整頁',
-    menuAiSidebar: 'AI 側邊欄',
     menuDarkMode: '深色模式',
     menuFullscreen: '進入全螢幕',
     menuInsert: '插入',
@@ -2962,7 +2516,6 @@ const tMain = createI18n({
     menuWordCount: '字數統計…',
     menuAutoCorrect: '自動校正選項…',
     menuPreferences: '偏好設定…',
-    menuAiProofread: 'AI 校對',
     menuWindow: '視窗',
     menuHelp: '說明',
     menuShortcuts: '鍵盤快速鍵',
@@ -3008,14 +2561,6 @@ const pendingNewBlankIds = new Set<number>()
 /** mark a docs webContents as "open blank on first consume" (called by the shell for home:new-doc) */
 export function markDocsNewBlank(wcId: number): void {
   pendingNewBlankIds.add(wcId)
-}
-
-/** AI-authored content waiting for its create_document tab, keyed by webContents id */
-const pendingAiDocContents = new Map<number, AiDocContent>()
-
-/** queue AI content for a fresh blank docs tab (called by the shell right after creating the view) */
-export function queueDocsAiContent(wcId: number, content: AiDocContent): void {
-  pendingAiDocContents.set(wcId, content)
 }
 
 /** the single real BrowserWindow hosting the tab strip, used as dialog parent in tab mode */
@@ -3301,37 +2846,10 @@ const docWritablePaths = new Map<number, Set<string>>()
 const pdfWritablePaths = new Map<number, Set<string>>()
 const tornDownWcIds = new Set<number>()
 
-/**
- * The document each renderer currently has open (set on open and on every
- * save, so a first-save/save-as keeps it current). Only the local-media
- * allowlist reads it: a tool call naming a file next to the open document is
- * the legitimate local-path case for analyze_media / generate_image. Absent for
- * an untitled document.
- */
-const openDocByWc = new Map<number, string>()
-
-function rememberOpenDoc(wcId: number, filePath: string): void {
-  openDocByWc.set(wcId, filePath)
-}
-
-/**
- * Local media roots for a renderer: the open document's directory plus the
- * directory docs stages pasted images in. A tool call may read a media file
- * from either, and nothing else.
- */
-function docsMediaRoots(wcId: number): string[] {
-  return documentMediaRoots(openDocByWc.get(wcId), join(app.getPath('temp'), 'genoffice-pasted'))
-}
-
 function allowDocWrite(wcId: number, filePath: string): void {
   const set = docWritablePaths.get(wcId) ?? new Set<string>()
   set.add(filePath)
   docWritablePaths.set(wcId, set)
-}
-
-/** MCP save_session: the shell resolved this path for the tab, so docs:save-to may write it */
-export function authorizeMcpDocWrite(wcId: number, filePath: string): void {
-  allowDocWrite(wcId, filePath)
 }
 
 function canDocWrite(wcId: number, filePath: string): boolean {
@@ -3387,7 +2905,6 @@ function dropDocWriter(wcId: number): void {
   releaseSpellIgnores(wcId)
   docWritablePaths.delete(wcId)
   pdfWritablePaths.delete(wcId)
-  openDocByWc.delete(wcId)
   for (const p of imageExportTemps.get(wcId) ?? []) void rm(p, { force: true })
   imageExportTemps.delete(wcId)
   imageExportDirs.delete(wcId)
@@ -3580,7 +3097,6 @@ async function loadDocx(
   if (recovered) await adoptLazyMediaHashes(bytes, filePath, wcId)
   pushRecent(filePath)
   allowDocWrite(wcId, filePath)
-  rememberOpenDoc(wcId, filePath)
   if (fileOpenedHook) fileOpenedHook(wcId, filePath)
   markDiskEncrypted(wcId, filePath, encrypted)
   // record the on-disk file, not the recovery copy: what matters is what save would overwrite
@@ -3604,474 +3120,13 @@ const IMAGE_MIME: Record<string, 'image/png' | 'image/jpeg' | 'image/gif'> = {
   gif: 'image/gif',
 }
 
-// ---- chat attachments: local files parsed for the agent ----
-
-const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024
-/** plain-text extensions read as UTF-8 */
-const TEXT_EXTS = new Set([
-  'txt',
-  'md',
-  'markdown',
-  'csv',
-  'tsv',
-  'json',
-  'yaml',
-  'yml',
-  'xml',
-  'html',
-  'htm',
-  'log',
-  'js',
-  'ts',
-  'tsx',
-  'jsx',
-  'py',
-  'java',
-  'c',
-  'h',
-  'cpp',
-  'go',
-  'rs',
-  'rb',
-  'sh',
-  'sql',
-  'css',
-])
-/** office/pdf formats get text extracted via @genoffice/file-parse; images skip extraction and go multimodal (files:read-image) */
-const ATTACHMENT_EXTS = new Set([
-  ...TEXT_EXTS,
-  'doc',
-  'docx',
-  'pdf',
-  'pptx',
-  'ppt',
-  'xlsx',
-  'xlsm',
-  'xls',
-  ...ATTACHMENT_IMAGE_EXTS,
-])
-
-const ATTACHMENT_IMAGE_MIME: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-}
-/** multimodal size cap per image attachment (keeps the context from blowing up) */
-const ATTACHMENT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
-
-/** extracted text cache keyed by path; invalidated by mtime+size */
-const attachmentTextCache = new Map<string, { stamp: string; text: string }>()
-
-function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: string } {
-  const name = basename(filePath)
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
-  if (!ATTACHMENT_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
-  try {
-    const stat = statSync(filePath)
-    if (!stat.isFile()) return { error: `${name}: ${tm('errNotFile')}` }
-    if (stat.size > ATTACHMENT_MAX_BYTES) {
-      return {
-        error: `${name}: ${tm('errTooLarge', { mb: Math.round(ATTACHMENT_MAX_BYTES / 1024 / 1024) })}`,
-      }
-    }
-    if (ATTACHMENT_IMAGE_EXTS.has(ext) && stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
-      return { error: `${name}: ${tm('errImageTooLarge')}` }
-    }
-    return { meta: { path: filePath, name, ext, sizeBytes: stat.size } }
-  } catch {
-    return { error: `${name}: ${tm('errUnreadable')}` }
-  }
-}
-
-function collectAttachments(paths: string[]): AttachmentAddResult {
-  const accepted: AttachmentMeta[] = []
-  const rejected: string[] = []
-  for (const p of paths) {
-    const { meta, error } = statAttachment(p)
-    if (meta) accepted.push(meta)
-    else if (error) rejected.push(error)
-  }
-  return { accepted, rejected }
-}
-
-/** save clipboard-pasted image bytes to a temp file (screenshots/bitmaps with no local path); returns null for non-images or empty data */
-let pastedImageSeq = 0
-let pastedDirPruned = false
-
-/** drop pasted-image temp files older than 7 days (once per app run) */
-function prunePastedImages(dir: string): void {
-  if (pastedDirPruned) return
-  pastedDirPruned = true
-  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
-  try {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name)
-      try {
-        if (statSync(p).mtimeMs < cutoff) unlinkSync(p)
-      } catch {
-        // ignore: another tab may have removed it already
-      }
-    }
-  } catch {
-    // ignore: directory may not exist yet
-  }
-}
-function savePastedImage(data: unknown, ext: unknown): string | null {
-  const cleanExt = typeof ext === 'string' ? ext.toLowerCase() : ''
-  if (!ATTACHMENT_IMAGE_EXTS.has(cleanExt)) return null
-  const bytes =
-    data instanceof ArrayBuffer
-      ? Buffer.from(data)
-      : ArrayBuffer.isView(data)
-        ? Buffer.from(data.buffer, data.byteOffset, data.byteLength)
-        : null
-  if (!bytes || bytes.byteLength === 0) return null
-  const dir = join(app.getPath('temp'), 'genoffice-pasted')
-  mkdirSync(dir, { recursive: true })
-  prunePastedImages(dir)
-  const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-')
-  const filePath = join(dir, `pasted-${stamp}-${++pastedImageSeq}.${cleanExt}`)
-  writeFileSync(filePath, bytes)
-  return filePath
-}
-
-/** parse an attachment to text via @genoffice/file-parse (docx/pdf/pptx/xlsx/plain text) */
-async function extractAttachmentText(filePath: string): Promise<string> {
-  const stat = statSync(filePath)
-  const stamp = `${stat.mtimeMs}:${stat.size}`
-  const cached = attachmentTextCache.get(filePath)
-  if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > ATTACHMENT_MAX_BYTES) throw new Error(tm('errFileTooLarge'))
-  const parsed = await parseFileToText(filePath)
-  if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
-    throw new Error(parsed.error ?? tm('errParseFailed'))
-  }
-  attachmentTextCache.set(filePath, { stamp, text: parsed.text })
-  // keep the cache bounded (a handful of recent files is plenty)
-  if (attachmentTextCache.size > 8) {
-    const oldest = attachmentTextCache.keys().next().value
-    if (oldest) attachmentTextCache.delete(oldest)
-  }
-  return parsed.text
-}
-
 // ---- print / export PDF ----
 
 const TWIPS_PER_INCH = 1440
 
-// ---- AI settings + chat proxy (main process avoids renderer CORS) ----
-// provider metadata, settings defaults/migration, and per-provider streaming/chat
-// implementations live in @genoffice/ai-provider, shared with apps/sheets.
-
-const SETTINGS_PATH = () => userDataPath('ai-settings.json')
-
-const activeAiStreams = new Map<string, AbortController>()
-
-/**
- * AI settings + chat/stream proxy handlers. Split out so the shell can
- * register them exactly once for all window types (docs, sheets, home) —
- * sheets' standalone AI handlers use the same channel names.
- */
-export function registerAiIpc(): void {
-  app.once('before-quit', shutdownCodexAppServers)
-  ipcMain.handle('ai:get-settings', async (): Promise<AiSettings> => {
-    const stored = readJson<Partial<AiSettings> & LegacyAiSettings>(SETTINGS_PATH(), {})
-    // pre-lock legacy file: genspark selected with cloud tools opted out. The
-    // settings UI locks the tools switch on with genspark and apps read this
-    // file live, so heal the stored flag once. Judged on the *stored* provider
-    // — never the activeProvider fallback below, which must not leak into the
-    // file and clobber a saved (half-configured) BYOK selection.
-    if ((stored.provider ?? 'genspark') === 'genspark' && stored.gskToolsEnabled === false) {
-      stored.gskToolsEnabled = true
-      writeJsonAtomic(SETTINGS_PATH(), stored)
-    }
-    const settings = resolveAiSettings(stored, defaultAiSettings())
-    // a stored BYOK provider is honored when usable; half-filled configs fall back to genspark
-    settings.provider = activeProvider(settings)
-    return settings
-  })
-
-  // Genspark account (gsk login state): auth source for AI features; the frontend uses it to prompt login when logged out
-  ipcMain.handle(
-    'ai:gsk-status',
-    async (_event, withEmail?: boolean): Promise<GenSparkAccountStatus> => {
-      if (!hasGskAuth()) return { loggedIn: false }
-      if (!withEmail) return { loggedIn: true }
-      const info = await gskLoginInfo()
-      return info?.email ? { loggedIn: true, email: info.email } : { loggedIn: true }
-    },
-  )
-
-  ipcMain.handle('ai:gsk-login', () => {
-    ensureGenofficeLogin((url) => void shell.openExternal(url))
-  })
-
-  ipcMain.handle('ai:set-settings', (_event, settings: AiSettings) => {
-    // SECURITY.md: payloads are schema-checked in the main process. The settings
-    // file feeds cliPath into spawn() and baseUrl receives the gsk bearer token,
-    // so the renderer's copy is sanitized before it touches disk.
-    const sanitized = sanitizeAiSettings(settings)
-    if (!sanitized) {
-      console.warn('[ai] rejected invalid ai:set-settings payload')
-      return
-    }
-    writeJsonAtomic(SETTINGS_PATH(), sanitized)
-  })
-
-  ipcMain.handle('ai:codex-models', async (_event, cliPath: unknown) => {
-    // the probe spawns the path directly, so it gets the same metacharacter and
-    // existence check as the stored setting (anything else: auto-detect)
-    return listCodexModels(validCliPath(cliPath) ? cliPath.trim() : undefined)
-  })
-
-  ipcMain.handle('ai:custom-models', (_event, input: unknown) => listCustomModelsForIpc(input))
-
-  ipcMain.handle('ai:stream', async (event, request: AiStreamRequest) => {
-    // per-request settings get the same schema check as the persisted ones: a
-    // compromised renderer could otherwise hand cliPath/baseUrl straight to
-    // the provider layer without ever touching the settings file
-    const settings = sanitizeAiSettings(request.settings)
-    if (!settings) {
-      event.sender.send('ai:stream-chunk', {
-        requestId: request.requestId,
-        type: 'error',
-        error: 'invalid AI settings payload',
-      } satisfies AiStreamChunk)
-      return
-    }
-    const { requestId, system, messages } = request
-    const tools = request.tools ?? []
-    const maxTokens = request.maxTokens ?? maxOutputTokensOf(settings)
-    const provider = settings.provider
-    let config = settings.providers?.[provider]
-    // the genspark key never enters the settings file; requests take it from the gsk login state
-    if (provider === 'genspark' && config && !config.apiKey) {
-      config = { ...config, apiKey: gskApiKey() }
-    }
-    const send = (chunk: AiStreamChunk) => {
-      if (!event.sender.isDestroyed()) event.sender.send('ai:stream-chunk', chunk)
-    }
-    if (!config || (provider !== 'codex' && !config.apiKey)) {
-      send({
-        requestId,
-        type: 'error',
-        error: provider === 'genspark' ? tm('errGskNotLoggedIn') : tm('errNoApiKey', { provider }),
-      })
-      return
-    }
-    if (provider !== 'codex' && !config.model) {
-      send({ requestId, type: 'error', error: tm('errNoModel') })
-      return
-    }
-    const controller = new AbortController()
-    activeAiStreams.set(requestId, controller)
-    // wire-activity keepalive: lets the renderer's silence watchdog tell a slow turn from a dead one
-    let lastPing = 0
-    const ping = () => {
-      const now = Date.now()
-      if (now - lastPing < 5_000) return
-      lastPing = now
-      send({ requestId, type: 'ping' })
-    }
-    try {
-      let stopReason: string | undefined
-      await streamForProvider(provider, config, system, messages, tools, maxTokens, {
-        ...(request.sessionId ? { sessionId: request.sessionId } : {}),
-        signal: controller.signal,
-        onDelta: (text) => send({ requestId, type: 'delta', text }),
-        onReasoningDelta: (text) => send({ requestId, type: 'reasoning', text }),
-        onToolCall: (toolCall) => send({ requestId, type: 'tool-call', toolCall }),
-        onActivity: ping,
-        onStopReason: (reason) => {
-          stopReason = reason
-        },
-      })
-      send({ requestId, type: 'done', stopReason })
-    } catch (err) {
-      if (controller.signal.aborted) {
-        send({ requestId, type: 'done' })
-      } else {
-        send({
-          requestId,
-          type: 'error',
-          error: err instanceof Error ? err.message : String(err),
-          ...(err instanceof AiTimeoutError
-            ? { errorCode: 'timeout' as const }
-            : err instanceof AiCreditsError
-              ? { errorCode: 'credits' as const }
-              : isAiNetworkError(err)
-                ? { errorCode: 'network' as const }
-                : isAiOverloadedError(err)
-                  ? { errorCode: 'overloaded' as const }
-                  : {}),
-        })
-      }
-    } finally {
-      activeAiStreams.delete(requestId)
-    }
-  })
-
-  ipcMain.handle('ai:stream-cancel', (_event, requestId: string) => {
-    activeAiStreams.get(requestId)?.abort()
-  })
-
-  // shared search tools (content + images): Serper with DuckDuckGo fallback (same source as slides/sheets)
-  ipcMain.handle('ai:web-search', async (_event, query: string, maxResults?: number) => {
-    try {
-      return await webSearchTool(
-        SETTINGS_PATH(),
-        String(query),
-        typeof maxResults === 'number' ? maxResults : 6,
-      )
-    } catch (err) {
-      return { results: [], method: 'error', error: String(err) }
-    }
-  })
-  ipcMain.handle('ai:image-search', async (_event, query: string, maxResults?: number) => {
-    try {
-      return await imageSearchTool(
-        SETTINGS_PATH(),
-        String(query),
-        typeof maxResults === 'number' ? maxResults : 8,
-      )
-    } catch (err) {
-      return { images: [], method: 'error', error: String(err) }
-    }
-  })
-
-  // media understanding (pictures in the document, attachments, local files): BYOK media
-  // provider when one is configured, otherwise the Genspark CLI behind its login gate.
-  // docs-prefixed: slides registers its own ai:analyze-media in the same shell process.
-  ipcMain.handle(
-    'docs:analyze-media',
-    async (event, op: { mediaUrls: string[]; requirements: string }) => {
-      const mediaUrls = (op.mediaUrls ?? []).map(String).filter(Boolean)
-      // a picture opened lazily from a large docx is only addressable by its main-process
-      // store; hand its bytes over as a data URL so the loader can read them like any other
-      const resolved: string[] = []
-      for (const url of mediaUrls) {
-        const lazy = await readLazyMedia(url).catch(() => null)
-        resolved.push(lazy ? `data:${lazy.mime};base64,${lazy.body.toString('base64')}` : url)
-      }
-      return analyzeMediaTool(
-        SETTINGS_PATH(),
-        {
-          mediaUrls: resolved,
-          requirements: String(op.requirements ?? ''),
-        },
-        { mediaRoots: docsMediaRoots(event.sender.id) },
-      )
-    },
-  )
-
-  // download image from URL → base64+mime (download in the main process avoids CORS; the renderer builds the image node and measures size itself)
-  ipcMain.handle(
-    'ai:fetch-image',
-    async (_event, url: string): Promise<{ base64: string; mime: string } | null> => {
-      try {
-        // the URL originates from AI tool calls (prompt-injectable via web search
-        // results), so refuse non-http schemes and private/link-local targets;
-        // redirects are followed manually so every hop is validated too.
-        // fetchRemoteImage adds CDN-friendly headers and transient-error retries.
-        const resp = await fetchRemoteImage(String(url))
-        if (!resp || !resp.ok) return null
-        const buf = Buffer.from(await readBodyCapped(resp, MAX_REMOTE_IMAGE_BYTES))
-        const ct = resp.headers.get('content-type') ?? ''
-        const mime = ct.includes('png')
-          ? 'image/png'
-          : ct.includes('gif')
-            ? 'image/gif'
-            : 'image/jpeg'
-        return { base64: buf.toString('base64'), mime }
-      } catch {
-        return null
-      }
-    },
-  )
-
-  // docs-owned (like pdf:generate-image): slides' ai:generate-image is only
-  // registered once a slides view exists, so docs needs its own channel
-  ipcMain.handle(
-    'docs:ai-generate-image',
-    (event, op: { prompt?: unknown; aspectRatio?: unknown }) =>
-      generateImageTool(
-        SETTINGS_PATH(),
-        {
-          prompt: String(op?.prompt ?? ''),
-          aspectRatio: op?.aspectRatio ? String(op.aspectRatio) : undefined,
-        },
-        { mediaRoots: docsMediaRoots(event.sender.id) },
-      ),
-  )
-
-  ipcMain.handle('ai:search-test', (_event, input: unknown) => {
-    const { provider, apiKey } = (input ?? {}) as { provider?: AiSearchProviderId; apiKey?: string }
-    if (!provider || provider === 'genspark') {
-      return hasGskAuth() ? { ok: true } : { ok: false, error: tm('errGskNotLoggedIn') }
-    }
-    return testSearchProvider(provider, String(apiKey ?? ''))
-  })
-
-  // settings-UI connection test for the media provider (genspark = the gsk login state)
-  ipcMain.handle('ai:media-test', (_event, input: unknown) => {
-    const { provider, config } = (input ?? {}) as {
-      provider?: AiMediaProviderId
-      config?: AiMediaProviderConfig
-    }
-    if (!provider || provider === 'genspark') {
-      return hasGskAuth() ? { ok: true } : { ok: false, error: tm('errGskNotLoggedIn') }
-    }
-    if (!config) return { ok: false, error: 'No media provider configuration' }
-    return testMediaProvider(provider, config)
-  })
-
-  ipcMain.handle('ai:chat', async (_event, request: AiChatRequest) => {
-    // same schema check as ai:stream: one-shot requests would otherwise act on
-    // the renderer's settings copy verbatim
-    const settings = sanitizeAiSettings(request.settings)
-    if (!settings) return { ok: false, error: 'invalid AI settings payload' }
-    const { system, user } = request
-    const provider = settings.provider
-    let config = settings.providers?.[provider]
-    if (provider === 'genspark' && config && !config.apiKey) {
-      config = { ...config, apiKey: gskApiKey() }
-    }
-    if (!config || (provider !== 'codex' && !config.apiKey)) {
-      return {
-        ok: false,
-        error: provider === 'genspark' ? tm('errGskNotLoggedIn') : tm('errNoApiKey', { provider }),
-      }
-    }
-    if (provider !== 'codex' && !config.model) return { ok: false, error: tm('errNoModel') }
-    try {
-      const result = await chatForProvider(provider, config, system, user)
-      // the one-shot path reports HTTP failures as ok:false with the raw body —
-      // replace capacity/rate-limit dumps with the localized "busy" message
-      if (!result.ok && isAiOverloadedError(result.error)) {
-        return { ok: false, error: tm('errAiBusy') }
-      }
-      return result
-    } catch (err) {
-      return { ok: false, error: isAiOverloadedError(err) ? tm('errAiBusy') : String(err) }
-    }
-  })
-}
-
-// ── project-store IPC (shared across docs / slides / sheets) ──────────────
-
-let projectStore: ProjectStore | null = null
-let projectIpcRegistered = false
-
-function getProjectStore(): ProjectStore {
-  if (!projectStore) projectStore = new ProjectStore(app.getPath('userData'))
-  return projectStore
-}
-
 /**
  * Fired when a save lands on a new path (save-as / first silent save). The shell
- * uses it to sync the tab title/path, record recents and apply a pending project —
+ * uses it to sync the tab title/path and record recents —
  * same contract as the sheets/slides opened hooks. Never called standalone.
  * Returns the final path when the shell filed the new file into a Home folder.
  */
@@ -4101,155 +3156,10 @@ export function setDocsFileOpenedHook(hook: (wcId: number, filePath: string) => 
   fileOpenedHook = hook
 }
 
-/**
- * Reverse lookup from a sheets sessionId to its file path. In shell mode the
- * project:* handlers are registered by this file, but only sheets-main knows the
- * sessionId mapping; the shell injects it at startup (standalone docs doesn't need it).
- */
-let sessionPathResolver: ((senderId: number, sessionId: string) => string | null) | null = null
-
-export function setSessionPathResolver(
-  fn: (senderId: number, sessionId: string) => string | null,
-): void {
-  sessionPathResolver = fn
-}
-
-/** After a file is renamed/moved on disk, sync project-store (fileMap/chatIdByPath re-key accordingly; history follows the file). */
-export function projectFilePaths(): string[] {
-  try {
-    return getProjectStore().knownFilePaths()
-  } catch {
-    return []
-  }
-}
-
-export function projectFileRenamed(oldPath: string, newPath: string): void {
-  try {
-    getProjectStore().fileRenamed(oldPath, newPath)
-  } catch (err) {
-    console.warn('[project-store] fileRenamed failed:', err)
-  }
-}
-
-/**
- * Register the project:* IPC handlers (all three apps share the same channel names).
- * Idempotency guard: registered only once in shell mode.
- */
-export function registerProjectIpc(): void {
-  if (projectIpcRegistered) return
-  projectIpcRegistered = true
-
-  /** Resolve projectId + chatId from a file path (sheets without a path resolves via sessionId) */
-  ipcMain.handle(
-    'project:resolveChat',
-    (event, args: { filePath: string | null; tempChatId?: string; sessionId?: string }) => {
-      const store = getProjectStore()
-      store.ensureDefaultProject()
-      let resolvedPath = args.filePath
-      if (!resolvedPath && args.sessionId && sessionPathResolver) {
-        resolvedPath = sessionPathResolver(event.sender.id, args.sessionId)
-      }
-      if (!resolvedPath) {
-        return {
-          projectId: 'default',
-          chatId: args.tempChatId ?? `unsaved-${Date.now()}`,
-        }
-      }
-      return store.resolveChatForFile(resolvedPath)
-    },
-  )
-
-  /** Append a message */
-  ipcMain.handle(
-    'project:appendChat',
-    (
-      _event,
-      args: {
-        projectId: string
-        chatId: string
-        role: 'user' | 'assistant'
-        text: string
-        tools?: Array<{
-          name: string
-          summary: string
-          isError?: boolean
-          input?: string
-          output?: string
-        }>
-        attachments?: Array<{ name: string; path?: string; ext?: string; sizeBytes?: number }>
-        scope?: { label: string; text?: string }
-      },
-    ) => {
-      if (args.role !== 'user' && args.role !== 'assistant') {
-        throw new Error(`Invalid chat role: ${String(args.role)}`)
-      }
-      if (typeof args.text !== 'string' || args.text.length > 200_000) {
-        throw new Error('Invalid chat text: must be a string up to 200000 chars')
-      }
-      if (args.tools && !Array.isArray(args.tools)) throw new Error('Invalid chat tools')
-      if (args.attachments && !Array.isArray(args.attachments)) {
-        throw new Error('Invalid chat attachments')
-      }
-      const store = getProjectStore()
-      const msg: Parameters<ProjectStore['appendChatMessage']>[2] = {
-        role: args.role,
-        text: args.text,
-      }
-      if (args.tools) msg.tools = args.tools
-      if (args.attachments) msg.attachments = args.attachments
-      if (args.scope) msg.scope = args.scope
-
-      store.appendChatMessage(args.projectId, args.chatId, msg)
-    },
-  )
-
-  /** Read history */
-  ipcMain.handle(
-    'project:loadChat',
-    (
-      _event,
-      args: {
-        projectId: string
-        chatId: string
-        limit?: number
-      },
-    ) => {
-      const store = getProjectStore()
-      return store.loadChat(args.projectId, args.chatId, args.limit ?? 200)
-    },
-  )
-
-  /** rebind chat (called after a file first hits disk): newFilePath/sessionId take priority; the main process computes chatId and records fileMap */
-  ipcMain.handle(
-    'project:rebindChat',
-    (
-      event,
-      args: {
-        projectId: string
-        tempChatId: string
-        newChatId?: string
-        newFilePath?: string
-        sessionId?: string
-      },
-    ) => {
-      const store = getProjectStore()
-      let path = args.newFilePath ?? null
-      if (!path && args.sessionId && sessionPathResolver) {
-        path = sessionPathResolver(event.sender.id, args.sessionId)
-      }
-      if (path) {
-        return store.rebindChatToFile(args.projectId, args.tempChatId, path)
-      }
-      if (args.newChatId) store.rebindChat(args.projectId, args.tempChatId, args.newChatId)
-      return { projectId: args.projectId, chatId: args.newChatId ?? args.tempChatId }
-    },
-  )
-}
-
 /** A4 at 96dpi, as the HTML app exports */
 const ALT_CHUNK_VIEWPORT = { width: 794, height: 1123, deviceScaleFactor: 2 }
 const ALT_CHUNK_HTML_MAX_CHARS = 64 * 1024 * 1024
-// An AI-generated page whose scripts never yield must not strand the hidden
+// An embedded page whose scripts never yield must not strand the hidden
 // conversion window; the slides export path uses the same shape.
 const ALT_CHUNK_TIMEOUT_MS = 120_000
 
@@ -4261,13 +3171,10 @@ const reissuedDoc = (
   plain: Buffer,
 ): { dataUrl?: string } => (encrypted && hashes.size > 0 ? { dataUrl: handOffBytes(plain) } : {})
 
-/** document/attachment/window IPC (everything except the AI proxy above) */
+/** document/window IPC */
 export function registerDocsIpc(): void {
   registerZoteroIpc()
   void app.whenReady().then(registerLazyMediaProtocol)
-  // Node fetch (undici) direct connections get reset under VPN/tun setups; retry over Chromium's stack
-  setRescueFetch((url, init) => net.fetch(url, init))
-  setAiUserAgent(`GenOffice/${app.getVersion()}`)
 
   // shared with the other editor modules — last (identical) registration wins
   ipcMain.removeHandler('app:get-language')
@@ -4307,7 +3214,7 @@ export function registerDocsIpc(): void {
       // the BOM outranks a stale <meta charset> left in the decoded markup
       await writeFile(htmlPath, `\ufeff${html}`, 'utf8')
       driver = await ElectronBrowserDriver.create(ALT_CHUNK_VIEWPORT)
-      // The markup is an unsanitised AI artifact: a script that never yields
+      // The markup is unsanitised document content: a script that never yields
       // would otherwise keep executeJavaScript pending forever, and the
       // finally below would never run (the hidden window and workDir leak for
       // good). Race a watchdog and destroy the window on timeout, matching
@@ -4418,13 +3325,6 @@ export function registerDocsIpc(): void {
       return true
     }
     return false
-  })
-
-  /** one-shot AI content queued by create_document for this tab; null when none */
-  ipcMain.handle('docs:consume-ai-doc-content', (event): AiDocContent | null => {
-    const content = pendingAiDocContents.get(event.sender.id) ?? null
-    pendingAiDocContents.delete(event.sender.id)
-    return content
   })
 
   // ---- headless export mode (--headless-export) ----
@@ -4773,78 +3673,6 @@ export function registerDocsIpc(): void {
     }
   })
 
-  ipcMain.handle(
-    'docs:create-document',
-    (_event, request: CreateDocumentRequest): Promise<CreateDocumentResult> =>
-      createAiDocument(request),
-  )
-
-  // MCP-driven output: write the live document to an explicit absolute path with
-  // no dialog. Mirrors docs:save-new's bookkeeping (write allowlist, disk state,
-  // recents, tab-title sync) but targets a caller-chosen path and refuses to
-  // clobber an existing file unless the caller asked for overwrite.
-  ipcMain.handle(
-    'docs:save-to',
-    async (event, filePath: string, data: ArrayBuffer, overwrite: boolean) => {
-      try {
-        if (tornDownWcIds.has(event.sender.id)) return { ok: false }
-        if (typeof filePath !== 'string' || !isAbsolute(filePath)) {
-          return { ok: false, error: 'path must be absolute' }
-        }
-        if (extname(filePath).toLowerCase() !== '.docx') {
-          return { ok: false, error: 'path must point to a .docx file' }
-        }
-        // only a target the MCP layer resolved for this tab may be written
-        if (!canDocWrite(event.sender.id, filePath)) {
-          return { ok: false, error: 'save target was not authorized' }
-        }
-        const existed = existsSync(filePath)
-        if (!overwrite && existed) {
-          return {
-            ok: false,
-            error: `file already exists: ${filePath} (pass overwrite:true to replace it)`,
-          }
-        }
-        await mkdir(dirname(filePath), { recursive: true })
-        const passwordState = snapshotDocPassword(event.sender.id, null)
-        const { bytes: plain, hashes } = await materializeLazyDocx(Buffer.from(data))
-        const bytes = passwordState.password ? encryptDocx(plain, passwordState.password) : plain
-        await atomicWriteFile(filePath, bytes)
-        // teardown may have happened while the write was in flight — only a file
-        // this handler created is safe to roll back; an overwritten one stays
-        const rollback = async (): Promise<{ ok: false }> => {
-          if (!existed) await unlink(filePath).catch(() => {})
-          return { ok: false }
-        }
-        if (tornDownWcIds.has(event.sender.id)) return rollback()
-        await rememberDiskState(event.sender.id, filePath, sha256Hex(bytes))
-        pointLazyMediaAt(
-          hashes,
-          filePath,
-          event.sender.id,
-          passwordState.password ? plain : undefined,
-        )
-        if (tornDownWcIds.has(event.sender.id)) return rollback()
-        const passwordIntentPending = commitDocPasswordSave(
-          event.sender.id,
-          passwordState,
-          filePath,
-        )
-        pushRecent(filePath)
-        rememberOpenDoc(event.sender.id, filePath)
-        notifyFileSaved(event.sender, filePath)
-        return {
-          ok: true,
-          path: filePath,
-          passwordIntentPending,
-          ...reissuedDoc(!!passwordState.password, hashes, plain),
-        }
-      } catch (err) {
-        return { ok: false, error: String(err) }
-      }
-    },
-  )
-
   ipcMain.handle('docs:recent', () =>
     readJson<string[]>(RECENT_PATH(), []).filter((p) => existsSync(p)),
   )
@@ -4867,77 +3695,29 @@ export function registerDocsIpc(): void {
     }
   })
 
-  ipcMain.handle('files:pick', async (event): Promise<AttachmentAddResult | null> => {
-    const result = await openDialog(event, {
-      title: tm('dlgAddAttachment'),
-      filters: [
-        { name: tm('filterSupported'), extensions: [...ATTACHMENT_EXTS] },
-        { name: tm('filterAll'), extensions: ['*'] },
-      ],
-      properties: ['openFile', 'multiSelections'],
-    })
-    if (result.canceled || result.filePaths.length === 0) return null
-    return collectAttachments(result.filePaths)
-  })
-
-  ipcMain.handle('files:add', (_event, paths: string[]) => collectAttachments(paths))
-
+  // bitmap-less web image paste: download in the main process (avoids CORS; the
+  // renderer builds the image node and measures size itself)
   ipcMain.handle(
-    'files:read',
-    async (
-      _event,
-      filePath: string,
-      offset: number,
-      maxChars: number,
-    ): Promise<AttachmentReadResult> => {
-      const name = basename(filePath)
-      const ext = name.split('.').pop()?.toLowerCase() ?? ''
-      if (!ATTACHMENT_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
-      if (ATTACHMENT_IMAGE_EXTS.has(ext)) {
-        return { ok: false, error: tm('errImageNoText') }
-      }
+    'docs:fetch-image',
+    async (_event, url: string): Promise<{ base64: string; mime: string } | null> => {
       try {
-        const text = await extractAttachmentText(filePath)
-        const start = Math.max(0, Math.floor(offset) || 0)
-        const size = Math.min(Math.max(1, Math.floor(maxChars) || 1), 48_000)
-        return {
-          ok: true,
-          name,
-          totalChars: text.length,
-          offset: start,
-          text: text.slice(start, start + size),
-        }
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : String(e) }
+        // the URL comes from pasted foreign HTML, so refuse non-http schemes and
+        // private/link-local targets; redirects are followed manually so every
+        // hop is validated too. fetchRemoteImage adds CDN-friendly headers and
+        // transient-error retries.
+        const resp = await fetchRemoteImage(String(url))
+        if (!resp || !resp.ok) return null
+        const buf = Buffer.from(await readBodyCapped(resp, MAX_REMOTE_IMAGE_BYTES))
+        const ct = resp.headers.get('content-type') ?? ''
+        const mime = ct.includes('png')
+          ? 'image/png'
+          : ct.includes('gif')
+            ? 'image/gif'
+            : 'image/jpeg'
+        return { base64: buf.toString('base64'), mime }
+      } catch {
+        return null
       }
-    },
-  )
-
-  // image attachments read raw bytes → base64; AiPanel puts them into the user message's images for multimodal
-  ipcMain.handle('files:read-image', (_event, filePath: string): AttachmentImageResult => {
-    const name = basename(filePath)
-    const ext = name.split('.').pop()?.toLowerCase() ?? ''
-    const mime = ATTACHMENT_IMAGE_MIME[ext]
-    if (!mime) return { ok: false, error: `${name}: ${tm('errNotImage')}` }
-    try {
-      const stat = statSync(filePath)
-      if (stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
-        return { ok: false, error: `${name}: ${tm('errImageTooLarge')}` }
-      }
-      return { ok: true, base64: readFileSync(filePath).toString('base64'), mime }
-    } catch {
-      return { ok: false, error: `${name}: ${tm('errUnreadable')}` }
-    }
-  })
-
-  // clipboard-pasted images (screenshots and other bitmaps with no local path): saved to a temp file then use the regular attachment path
-  ipcMain.handle(
-    'files:add-pasted-image',
-    (_event, data: unknown, ext: unknown): AttachmentAddResult => {
-      const filePath = savePastedImage(data, ext)
-      return filePath
-        ? collectAttachments([filePath])
-        : { accepted: [], rejected: [tm('errNotImage')] }
     },
   )
 
@@ -5261,8 +4041,6 @@ export function registerDocsIpc(): void {
  * and falls back to real multi-BrowserWindow behavior. */
 interface DocsShellHooks {
   openTab(openPath?: string, options?: { newBlank?: boolean }): void
-  /** open a blank docs tab that consumes the queued AI content on boot (create_document) */
-  openAiDocTab?(content: AiDocContent): void
   listTabs(): DocsTabInfo[]
   focusTab(id: string): void
   /** closes the calling tab instead of the whole shell window (Cmd+W / role:'close') */
@@ -5275,7 +4053,7 @@ export function setDocsShellHooks(hooks: DocsShellHooks | null): void {
   shellHooks = hooks
 }
 
-/** After writing an exported/AI-generated file: open it in the right tab
+/** After writing an exported file: open it in the right tab
  * (shell) or reveal it in the folder (standalone). Tab-opening failure must
  * not report the write itself as failed — the file is already persisted. */
 function openGeneratedFile(path: string): void {
@@ -5290,66 +4068,6 @@ function openGeneratedFile(path: string): void {
   shell.showItemInFolder(path)
 }
 
-/** Pick a safe file-name stem for an AI-created document. */
-export function sanitizeAiDocFileBase(title: string): string {
-  // Control characters are intentionally rejected from generated file names.
-  const cleaned = String(title ?? '')
-    // eslint-disable-next-line no-control-regex
-    .replace(/[/\\:*?"<>|\u0000-\u001f]/g, '_')
-    .trim()
-    .slice(0, 80)
-    .trim()
-  return cleaned && cleaned !== '.' && cleaned !== '..' ? cleaned : 'Untitled'
-}
-
-/**
- * AI create_document: build a new standalone file in the default folder and
- * open it in a new tab. docx routes through a fresh blank docs tab that
- * inserts the queued content on boot and saves itself (the full-fidelity
- * HTML → docx conversion lives in the docs renderer); pdf and md are written
- * directly here. Also called by other apps' mains via shell-wired hooks.
- */
-export async function createAiDocument(
-  request: CreateDocumentRequest,
-): Promise<CreateDocumentResult> {
-  const type = request?.type
-  const title = sanitizeAiDocFileBase(request?.title)
-  const content = String(request?.content ?? '')
-  if (!content.trim()) return { ok: false, error: 'content must not be empty' }
-  try {
-    if (type === 'docx') {
-      const payload: AiDocContent = { title, html: content }
-      if (shellHooks?.openAiDocTab) shellHooks.openAiDocTab(payload)
-      else {
-        const win = createDocsWindow(undefined)
-        markDocsNewBlank(win.webContents.id)
-        queueDocsAiContent(win.webContents.id, payload)
-      }
-      return { ok: true }
-    }
-    if (type === 'pdf') {
-      const bytes = await printHtmlToPdf(
-        buildPrintableHtml(title, content),
-        () =>
-          new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } }),
-      )
-      const filePath = uniquePathIn(defaultSaveDir(), `${title}.pdf`)
-      await writeFile(filePath, bytes)
-      openGeneratedFile(filePath)
-      return { ok: true, path: filePath }
-    }
-    if (type === 'md' || type === 'html') {
-      const filePath = uniquePathIn(defaultSaveDir(), `${title}.${type}`)
-      await writeFile(filePath, content, 'utf8')
-      openGeneratedFile(filePath)
-      return { ok: true, path: filePath }
-    }
-    return { ok: false, error: `unsupported document type: ${String(type)}` }
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
 // ---- application menu ----
 
 function sendCommand(command: MenuCommand, payload?: string): void {
@@ -5357,22 +4075,19 @@ function sendCommand(command: MenuCommand, payload?: string): void {
 }
 
 /**
- * Per-tab View-menu toggle state (AI Sidebar / Dark Mode), reported by each
+ * Per-tab View-menu toggle state (Dark Mode), reported by each
  * renderer whenever it changes. The template can't hardcode `checked` — the
  * state lives in the renderer and differs per tab — so builds read the active
  * tab's last report, and reports from the active tab patch the built menu in
  * place (buildDocsMenu also re-runs on every tab focus switch).
- * Defaults mirror the renderer's initial state: sidebar shown, light canvas.
+ * Defaults mirror the renderer's initial state: light canvas.
  */
-const viewMenuStateByWebContents = new Map<number, { aiSidebar: boolean; darkCanvas: boolean }>()
+const viewMenuStateByWebContents = new Map<number, { darkCanvas: boolean }>()
 
-function activeViewMenuState(): { aiSidebar: boolean; darkCanvas: boolean } {
+function activeViewMenuState(): { darkCanvas: boolean } {
   const id = activeDocsWebContents()?.id
   return (
-    (id !== undefined ? viewMenuStateByWebContents.get(id) : undefined) ?? {
-      aiSidebar: true,
-      darkCanvas: false,
-    }
+    (id !== undefined ? viewMenuStateByWebContents.get(id) : undefined) ?? { darkCanvas: false }
   )
 }
 
@@ -5537,13 +4252,6 @@ export function buildDocsMenu(): void {
         },
         { type: 'separator' },
         {
-          id: 'docs-menu-ai-sidebar',
-          type: 'checkbox',
-          checked: activeViewMenuState().aiSidebar,
-          label: tm('menuAiSidebar'),
-          click: () => sendCommand('toggle-ai'),
-        },
-        {
           id: 'docs-menu-dark-mode',
           type: 'checkbox',
           checked: activeViewMenuState().darkCanvas,
@@ -5696,9 +4404,6 @@ export function buildDocsMenu(): void {
         ...(isMac
           ? []
           : [{ label: tm('menuPreferences'), click: () => sendCommand('preferences') }]),
-        { type: 'separator' },
-        // Runs the same AI proofread as Review > Editor (renderer shows the one-time ack)
-        { label: tm('menuAiProofread'), click: () => sendCommand('ai-proofread') },
       ],
     },
     windowMenuTemplate(process.platform, appMenuLabels(getUiLang())),
@@ -5714,7 +4419,6 @@ export function buildDocsMenu(): void {
         { type: 'separator' },
         { label: tm('menuDocsHelp'), enabled: false },
         { type: 'separator' },
-        checkUpdatesMenuItem(appMenuLabels(getUiLang())),
         aboutMenuItem(appMenuLabels(getUiLang())),
       ],
     },
@@ -5877,8 +4581,8 @@ const closeCheckWaiters = new Map<number, (state: DocsCloseState) => void>()
 const closeSaveWaiters = new Map<number, (ok: boolean) => void>()
 
 ipcMain.on('docs:view-menu-state', (event, state: unknown) => {
-  const s = state as { aiSidebar?: unknown; darkCanvas?: unknown } | null
-  const next = { aiSidebar: s?.aiSidebar === true, darkCanvas: s?.darkCanvas === true }
+  const s = state as { darkCanvas?: unknown } | null
+  const next = { darkCanvas: s?.darkCanvas === true }
   if (!viewMenuStateByWebContents.has(event.sender.id)) {
     const id = event.sender.id
     event.sender.once('destroyed', () => viewMenuStateByWebContents.delete(id))
@@ -5888,8 +4592,6 @@ ipcMain.on('docs:view-menu-state', (event, state: unknown) => {
   // picked up by the buildDocsMenu run its next focus triggers
   if (event.sender.id !== activeDocsWebContents()?.id) return
   const menu = Menu.getApplicationMenu()
-  const ai = menu?.getMenuItemById('docs-menu-ai-sidebar')
-  if (ai) ai.checked = next.aiSidebar
   const dark = menu?.getMenuItemById('docs-menu-dark-mode')
   if (dark) dark.checked = next.darkCanvas
 })
@@ -6077,7 +4779,7 @@ export function startDocsStandalone(): void {
   registerRendererScheme()
   installNavigationGuard(app)
   installContextMenu(app, () => contextMenuLabels(getUiLang()))
-  // dev runs must not share the packaged app's userData (recent files, AI settings)
+  // dev runs must not share the packaged app's userData (recent files, settings)
   // or its single-instance lock — otherwise `npm run dev` silently quits whenever
   // the installed GenOffice Docs is open and forwards its argv there instead.
   // AI_OFFICE_USER_DATA: E2E/screenshot runs isolate userData (and the
@@ -6102,8 +4804,6 @@ export function startDocsStandalone(): void {
     mainWindow?.focus()
   })
 
-  registerAiIpc()
-  registerProjectIpc()
   registerDocsIpc()
 
   app.whenReady().then(() => {
@@ -6115,7 +4815,6 @@ export function startDocsStandalone(): void {
     }
     buildDocsMenu()
     createDocsWindow()
-    initDocsAutoUpdater(() => mainWindow)
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createDocsWindow()
     })

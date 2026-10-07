@@ -40,7 +40,7 @@ const toDataUrl = (b64: string): string => `data:image/png;base64,${b64}`
 const toBase64 = (dataUrl: string): string => dataUrl.split(',')[1] ?? ''
 
 /** Kept region of a decoded image as a base64 PNG (throws on canvas failure) */
-export function cropImagePng(img: HTMLImageElement, crop: CropFractions): string {
+function cropImagePng(img: HTMLImageElement, crop: CropFractions): string {
   const w = img.naturalWidth
   const h = img.naturalHeight
   const sx = Math.round(crop.l * w)

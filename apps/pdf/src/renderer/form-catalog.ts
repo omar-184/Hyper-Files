@@ -192,7 +192,7 @@ export function widgetsFromAnnotations(annots: RawFormAnnotation[], pageIndex = 
     .map(({ widget }) => widget)
 }
 
-/** Build the whole-document catalog once so ribbon, FormLayer, and AI share field semantics. */
+/** Build the whole-document catalog once so ribbon and FormLayer share field semantics. */
 export async function buildFormCatalog(doc: PDFDocumentProxy): Promise<FormCatalog> {
   const widgets: FormWidget[] = []
   const fields = new Map<string, FormField>()

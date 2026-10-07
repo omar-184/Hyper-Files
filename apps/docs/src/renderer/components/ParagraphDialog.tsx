@@ -5,7 +5,7 @@ import { Dropdown } from '@genoffice/ui'
 import { useI18n, type StringKey } from '../i18n/locale'
 import { setParaAttrs, activeParaAttrs } from './ribbon-tabs'
 import { setSelectionAlign } from '../editor/direction'
-import { runUiOps } from '../ai/ops'
+import { runUiOps } from '../editor/paragraph-ops'
 import { useModalKeys } from './modal-keys'
 import { LengthInput } from './LengthInput'
 import {
