@@ -82,7 +82,7 @@ function fixtureDoc(): JsonNode[] {
         docxIndex: 0,
       },
     ),
-    para([text('GenSpark intro,'), text('GenSpark is great', [{ type: 'bold' }])], {
+    para([text('Acme intro,'), text('Acme is great', [{ type: 'bold' }])], {
       docxIndex: 1,
     }),
     heading([text('Risk Notes')], 2, { docxIndex: 2 }),

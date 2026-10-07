@@ -313,7 +313,6 @@ function paraNode(p: CoverPara): PmNode {
     type: 'docParagraph',
     attrs: {
       docxIndex: null,
-      aiChanged: false,
       align: p.align ?? null,
       spaceBefore: p.spaceBefore ?? null,
       spaceAfter: p.spaceAfter ?? null,
@@ -336,7 +335,6 @@ export function buildCoverNodes(preset: CoverPreset): PmNode[] {
       type: 'docParagraph',
       attrs: {
         docxIndex: null,
-        aiChanged: false,
         pageBreakBefore: true,
         hiddenBookmarks: [COVER_END_MARK],
       },

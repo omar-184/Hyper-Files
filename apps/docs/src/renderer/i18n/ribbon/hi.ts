@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const hi = {
-  ribbonAiCreditNote: 'AI का उपयोग करता है और क्रेडिट खर्च होते हैं',
-  ribbonAiRewriteConfirm:
-    'यह क्रिया AI को कॉल करती है: इसमें क्रेडिट खर्च होते हैं और पूरी सामग्री फिर से लिखी जा सकती है। जारी रखें? (दोबारा नहीं पूछा जाएगा।)',
   ribbonTabFile: 'फ़ाइल',
   ribbonTabHome: 'होम',
   ribbonTabInsert: 'सम्मिलित करें',
@@ -186,8 +183,6 @@ export const hi = {
   ribbonReplaceTip: 'पाठ ढूँढें और बदलें',
   ribbonSelectAll: 'सभी चुनें',
   ribbonSelectAllTip: 'पूरा दस्तावेज़ चुनें',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'AI सहायक खोलें',
   ribbonRemoveTableStyleTip: 'तालिका शैली हटाएँ',
   ribbonNoStyle: 'कोई शैली नहीं',
   ribbonApplyTableStyleTip: 'तालिका शैली {name} लागू करें',
@@ -205,7 +200,6 @@ export const hi = {
   ribbonPtValue: '{n} पॉइंट',
   ribbonGroupBorders: 'बॉर्डर',
   ribbonDeleteTable: 'तालिका हटाएँ',
-  ribbonGroupDelete: 'हटाएँ',
   ribbonInsertAbove: 'ऊपर सम्मिलित करें',
   ribbonInsertBelow: 'नीचे सम्मिलित करें',
   ribbonInsertLeft: 'बाएँ सम्मिलित करें',
@@ -658,45 +652,10 @@ export const hi = {
   ribbonSourceJournalName: 'पत्रिका का नाम',
   ribbonSourceSiteName: 'साइट का नाम',
   ribbonSourcePublisher: 'प्रकाशक',
-  ribbonEditorBtn: 'संपादक',
-  ribbonEditorTip: 'AI वर्तनी, व्याकरण और विराम चिह्न जाँचता है',
-  ribbonEditorPrompt:
-    'पूरे दस्तावेज़ को प्रूफ़रीड करें: वर्तनी, विराम चिह्न और व्याकरण की गलतियाँ सुधारें, मूल अर्थ और अनुच्छेद संरचना को अपरिवर्तित रखें।',
   ribbonGroupProofing: 'प्रूफ़िंग',
   ribbonSpellcheckBtn: 'वर्तनी जाँच',
   ribbonSpellcheckTip:
     'टाइप करते समय वर्तनी जाँचें — संभावित गलत वर्तनी वाले शब्दों को लाल रेखा से रेखांकित करता है',
-  ribbonTranslate: 'अनुवाद करें',
-  ribbonTranslateTip: 'AI दस्तावेज़ का अनुवाद करता है',
-  ribbonTranslatePrompt:
-    'पूरे दस्तावेज़ का {lang} में अनुवाद करें, अनुच्छेद संरचना और शीर्षक स्तर अपरिवर्तित रखें।',
-  ribbonTranslateSelectionPrompt:
-    'चयनित सामग्री का {lang} में अनुवाद करें, अनुच्छेद संरचना अपरिवर्तित रखें।',
-  ribbonEditorSelectionPrompt:
-    'चयनित सामग्री को प्रूफ़रीड करें: वर्तनी, विराम चिह्न और व्याकरण की गलतियाँ सुधारें, मूल अर्थ और अनुच्छेद संरचना को अपरिवर्तित रखें।',
-  ribbonTranslateTo: '{lang} में अनुवाद करें',
-  ribbonLangEnglish: 'अंग्रेज़ी',
-  ribbonLangSimplifiedChinese: 'सरलीकृत चीनी',
-  ribbonLangJapanese: 'जापानी',
-  ribbonLangKorean: 'कोरियाई',
-  ribbonLangFrench: 'फ़्रेंच',
-  ribbonLangGerman: 'जर्मन',
-  ribbonLangSpanish: 'स्पेनिश',
-  ribbonLangThai: 'थाई',
-  ribbonLangIndonesian: 'इंडोनेशियाई',
-  ribbonLangRussian: 'रूसी',
-  ribbonLangArabic: 'अरबी',
-  ribbonLangPortuguese: 'पुर्तगाली',
-  ribbonLangItalian: 'इतालवी',
-  ribbonLangPolish: 'पोलिश',
-  ribbonLangCzech: 'चेक',
-  ribbonLangDutch: 'डच',
-  ribbonLangMalay: 'मलय',
-  ribbonLangHebrew: 'हिब्रू',
-  ribbonLangHindi: 'हिंदी',
-  ribbonLangTraditionalChinese: 'पारंपरिक चीनी',
-  ribbonLangVietnamese: 'वियतनामी',
-  ribbonGroupLanguage: 'भाषा',
   ribbonNewComment: 'नई टिप्पणी',
   ribbonNewCommentTip: 'चयन पर टिप्पणी जोड़ें',
   ribbonNewCommentSelectTip: 'पहले वह पाठ चुनें जिस पर टिप्पणी करनी है',
@@ -709,15 +668,6 @@ export const hi = {
   ribbonPrevCommentTip: 'पिछली टिप्पणी पर जाएँ',
   ribbonNextComment: 'अगली',
   ribbonNextCommentTip: 'अगली टिप्पणी पर जाएँ',
-  ribbonAiComments: 'AI से टिप्पणियाँ निपटाएँ',
-  ribbonAiRevisions: 'AI से परिवर्तन सारांश',
-  ribbonAiRevisionsTip:
-    'AI {count} लंबित परिवर्तनों को पढ़ता है, अनुभाग के अनुसार सारांश देता है और जोखिम बताता है',
-  ribbonAiRevisionsPrompt:
-    'दस्तावेज़ के सभी लंबित ट्रैक किए गए परिवर्तनों का सारांश दें: पहले समग्र आँकड़े (सम्मिलन/विलोपन की संख्या, लेखक, दिनांक सीमा), फिर अनुभाग-दर-अनुभाग बताएं कि क्या बदला (block सूचकांक बताएं), और अंत में ध्यान देने योग्य बिंदु सूचीबद्ध करें (हटाए गए दायित्व या शर्तें, बदले गए अंक/तिथियाँ/राशियाँ)। केवल सारांश दें — दस्तावेज़ न बदलें और कोई परिवर्तन स्वीकार/अस्वीकार न करें।',
-  ribbonAiCommentsTip: 'AI {count} अनसुलझी टिप्पणियों को क्रमशः निपटाता है (संशोधन, उत्तर, समाधान)',
-  ribbonAiCommentsPrompt:
-    'दस्तावेज़ की सभी अनसुलझी टिप्पणियाँ निपटाएँ: हर टिप्पणी के अनुरोध के अनुसार संशोधन करें, बदलाव का विवरण देते हुए उत्तर दें, फिर उसे हल के रूप में चिह्नित करें; यदि टिप्पणी कोई प्रश्न है या अस्पष्ट है, तो दस्तावेज़ बदले बिना केवल उत्तर दें।',
   ribbonShowCommentsTip: 'टिप्पणियाँ दिखाएँ ({count})',
   ribbonTrackChanges: 'परिवर्तन ट्रैक करें',
   ribbonTrackChangesTip:
@@ -827,8 +777,6 @@ export const hi = {
   ribbonWholePage: 'एक पृष्ठ',
   ribbonWholePageTip: 'इस तरह ज़ूम करें कि पूरा पृष्ठ विंडो में समा जाए',
   ribbonGroupZoom: 'ज़ूम',
-  ribbonAiPanel: 'AI पैनल',
-  ribbonAiPanelTip: 'AI पैनल दिखाएँ/छिपाएँ',
   ribbonDarkMode: 'डार्क मोड',
   ribbonDarkModeTip: 'दस्तावेज़ को बदले बिना संपादन क्षेत्र को गहरे रंगों में दिखाएँ',
   ribbonGroupShow: 'दिखाएँ',

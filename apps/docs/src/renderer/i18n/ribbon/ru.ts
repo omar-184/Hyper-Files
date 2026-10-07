@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const ru = {
-  ribbonAiCreditNote: 'Использует ИИ и расходует кредиты',
-  ribbonAiRewriteConfirm:
-    'Это действие вызывает ИИ: расходуются кредиты, и всё содержимое может быть переписано. Продолжить? (Вопрос больше не появится.)',
   ribbonTabFile: 'Файл',
   ribbonTabHome: 'Главная',
   ribbonTabInsert: 'Вставка',
@@ -185,8 +182,6 @@ export const ru = {
   ribbonReplaceTip: 'Найти и заменить текст',
   ribbonSelectAll: 'Выделить все',
   ribbonSelectAllTip: 'Выделить весь документ',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Открыть помощника ИИ',
   ribbonRemoveTableStyleTip: 'Удалить стиль таблицы',
   ribbonNoStyle: 'Без стиля',
   ribbonApplyTableStyleTip: 'Применить стиль таблицы {name}',
@@ -204,7 +199,6 @@ export const ru = {
   ribbonPtValue: '{n} пт',
   ribbonGroupBorders: 'Границы',
   ribbonDeleteTable: 'Удалить таблицу',
-  ribbonGroupDelete: 'Удаление',
   ribbonInsertAbove: 'Вставить сверху',
   ribbonInsertBelow: 'Вставить снизу',
   ribbonInsertLeft: 'Вставить слева',
@@ -658,45 +652,10 @@ export const ru = {
   ribbonSourceJournalName: 'Название журнала',
   ribbonSourceSiteName: 'Название сайта',
   ribbonSourcePublisher: 'Издательство',
-  ribbonEditorBtn: 'Корректор',
-  ribbonEditorTip: 'ИИ проверит орфографию, грамматику и пунктуацию',
-  ribbonEditorPrompt:
-    'Вычитайте весь документ: исправьте опечатки, пунктуацию и грамматические ошибки, сохранив исходный смысл и структуру абзацев.',
   ribbonGroupProofing: 'Правописание',
   ribbonSpellcheckBtn: 'Правописание',
   ribbonSpellcheckTip:
     'Проверять орфографию при вводе — подчёркивает красным слова с возможными ошибками',
-  ribbonTranslate: 'Перевод',
-  ribbonTranslateTip: 'ИИ переведёт документ',
-  ribbonTranslatePrompt:
-    'Переведите весь документ на {lang}, сохранив структуру абзацев и уровни заголовков.',
-  ribbonTranslateSelectionPrompt:
-    'Переведите выделенный текст на {lang}, сохранив структуру абзацев.',
-  ribbonEditorSelectionPrompt:
-    'Вычитайте выделенный текст: исправьте опечатки, пунктуацию и грамматические ошибки, сохранив исходный смысл и структуру абзацев.',
-  ribbonTranslateTo: 'Перевести на {lang}',
-  ribbonLangEnglish: 'английский',
-  ribbonLangSimplifiedChinese: 'китайский (упрощённый)',
-  ribbonLangJapanese: 'японский',
-  ribbonLangKorean: 'корейский',
-  ribbonLangFrench: 'французский',
-  ribbonLangGerman: 'немецкий',
-  ribbonLangSpanish: 'испанский',
-  ribbonLangThai: 'тайский',
-  ribbonLangIndonesian: 'индонезийский',
-  ribbonLangRussian: 'русский',
-  ribbonLangArabic: 'арабский',
-  ribbonLangPortuguese: 'португальский',
-  ribbonLangItalian: 'итальянский',
-  ribbonLangPolish: 'польский',
-  ribbonLangCzech: 'чешский',
-  ribbonLangDutch: 'нидерландский',
-  ribbonLangMalay: 'малайский',
-  ribbonLangHebrew: 'иврит',
-  ribbonLangHindi: 'хинди',
-  ribbonLangTraditionalChinese: 'китайский (традиционный)',
-  ribbonLangVietnamese: 'вьетнамский',
-  ribbonGroupLanguage: 'Язык',
   ribbonNewComment: 'Создать примечание',
   ribbonNewCommentTip: 'Добавить примечание к выделенному фрагменту',
   ribbonNewCommentSelectTip: 'Сначала выделите текст, к которому нужно добавить примечание',
@@ -709,16 +668,6 @@ export const ru = {
   ribbonPrevCommentTip: 'Перейти к предыдущему примечанию',
   ribbonNextComment: 'Далее',
   ribbonNextCommentTip: 'Перейти к следующему примечанию',
-  ribbonAiComments: 'ИИ: примечания',
-  ribbonAiRevisions: 'ИИ: сводка исправлений',
-  ribbonAiRevisionsTip:
-    'ИИ читает нерассмотренные исправления ({count}), резюмирует их по разделам и отмечает риски',
-  ribbonAiRevisionsPrompt:
-    'Составьте сводку всех нерассмотренных исправлений в документе: сначала общая статистика (число вставок/удалений, авторы, диапазон дат), затем изменения по разделам (с указанием индексов блоков), в конце — список рисков (удалённые обязательства или оговорки, изменённые числа/даты/суммы). Только сводка — не изменяйте документ и не принимайте/отклоняйте исправления.',
-  ribbonAiCommentsTip:
-    'ИИ обрабатывает нерешённые примечания ({count}): правка, ответ, отметка «решено»',
-  ribbonAiCommentsPrompt:
-    'Обработайте все нерешённые примечания в документе: для каждого внесите запрошенную правку, ответьте с описанием изменения и отметьте его решённым; если примечание — вопрос или неоднозначно, только ответьте, не меняя документ.',
   ribbonShowCommentsTip: 'Показать примечания ({count})',
   ribbonTrackChanges: 'Исправления',
   ribbonTrackChangesTip:
@@ -829,8 +778,6 @@ export const ru = {
   ribbonWholePage: 'Одна страница',
   ribbonWholePageTip: 'Масштабировать так, чтобы страница целиком помещалась в окне',
   ribbonGroupZoom: 'Масштаб',
-  ribbonAiPanel: 'Панель ИИ',
-  ribbonAiPanelTip: 'Показать/скрыть панель ИИ',
   ribbonDarkMode: 'Тёмный режим',
   ribbonDarkModeTip: 'Показать область редактирования в тёмных тонах, не изменяя документ',
   ribbonGroupShow: 'Отображение',

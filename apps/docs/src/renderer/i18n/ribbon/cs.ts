@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const cs = {
-  ribbonAiCreditNote: 'Používá AI a spotřebovává kredity',
-  ribbonAiRewriteConfirm:
-    'Tato akce volá asistenta AI: spotřebovává kredity a může přepsat celý obsah. Pokračovat? (Znovu se už nezeptáme.)',
   ribbonTabFile: 'Soubor',
   ribbonTabHome: 'Domů',
   ribbonTabInsert: 'Vložení',
@@ -184,8 +181,6 @@ export const cs = {
   ribbonReplaceTip: 'Najít a nahradit text',
   ribbonSelectAll: 'Vybrat vše',
   ribbonSelectAllTip: 'Vybrat celý dokument',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Otevřít asistenta AI',
   ribbonRemoveTableStyleTip: 'Odebrat styl tabulky',
   ribbonNoStyle: 'Bez stylu',
   ribbonApplyTableStyleTip: 'Použít styl tabulky {name}',
@@ -203,7 +198,6 @@ export const cs = {
   ribbonPtValue: '{n} b.',
   ribbonGroupBorders: 'Ohraničení',
   ribbonDeleteTable: 'Odstranit tabulku',
-  ribbonGroupDelete: 'Odstranit',
   ribbonInsertAbove: 'Vložit nad',
   ribbonInsertBelow: 'Vložit pod',
   ribbonInsertLeft: 'Vložit vlevo',
@@ -655,44 +649,9 @@ export const cs = {
   ribbonSourceJournalName: 'Název časopisu',
   ribbonSourceSiteName: 'Název webu',
   ribbonSourcePublisher: 'Vydavatel',
-  ribbonEditorBtn: 'Editor',
-  ribbonEditorTip: 'AI zkontroluje pravopis, gramatiku a interpunkci',
-  ribbonEditorPrompt:
-    'Zkorigujte celý dokument: opravte překlepy, interpunkci a gramatické chyby a zachovejte původní význam i strukturu odstavců.',
   ribbonGroupProofing: 'Kontrola pravopisu',
   ribbonSpellcheckBtn: 'Pravopis',
   ribbonSpellcheckTip: 'Kontrolovat pravopis při psaní — možné chyby se podtrhnou červeně',
-  ribbonTranslate: 'Přeložit',
-  ribbonTranslateTip: 'AI přeloží dokument',
-  ribbonTranslatePrompt:
-    'Přeložte celý dokument do jazyka {lang} a zachovejte strukturu odstavců i úrovně nadpisů.',
-  ribbonTranslateSelectionPrompt:
-    'Přeložte vybraný obsah do jazyka {lang} a zachovejte strukturu odstavců.',
-  ribbonEditorSelectionPrompt:
-    'Zkorigujte vybraný obsah: opravte překlepy, interpunkci a gramatické chyby a zachovejte původní význam i strukturu odstavců.',
-  ribbonTranslateTo: 'Přeložit do jazyka {lang}',
-  ribbonLangEnglish: 'angličtina',
-  ribbonLangSimplifiedChinese: 'zjednodušená čínština',
-  ribbonLangJapanese: 'japonština',
-  ribbonLangKorean: 'korejština',
-  ribbonLangFrench: 'francouzština',
-  ribbonLangGerman: 'němčina',
-  ribbonLangSpanish: 'španělština',
-  ribbonLangThai: 'thajština',
-  ribbonLangIndonesian: 'indonéština',
-  ribbonLangRussian: 'ruština',
-  ribbonLangArabic: 'arabština',
-  ribbonLangPortuguese: 'portugalština',
-  ribbonLangItalian: 'italština',
-  ribbonLangPolish: 'polština',
-  ribbonLangCzech: 'čeština',
-  ribbonLangDutch: 'nizozemština',
-  ribbonLangMalay: 'malajština',
-  ribbonLangHebrew: 'hebrejština',
-  ribbonLangHindi: 'hindi',
-  ribbonLangTraditionalChinese: 'tradiční čínština',
-  ribbonLangVietnamese: 'vietnamština',
-  ribbonGroupLanguage: 'Jazyk',
   ribbonNewComment: 'Nový komentář',
   ribbonNewCommentTip: 'Přidat komentář k výběru',
   ribbonNewCommentSelectTip: 'Nejprve vyberte text, který chcete komentovat',
@@ -705,16 +664,6 @@ export const cs = {
   ribbonPrevCommentTip: 'Přejít na předchozí komentář',
   ribbonNextComment: 'Další',
   ribbonNextCommentTip: 'Přejít na další komentář',
-  ribbonAiComments: 'Vyřešit komentáře pomocí AI',
-  ribbonAiRevisions: 'Souhrn revizí od AI',
-  ribbonAiRevisionsTip:
-    'AI přečte {count} čekajících revizí, shrne změny po oddílech a upozorní na rizika',
-  ribbonAiRevisionsPrompt:
-    'Shrňte všechny čekající sledované revize v dokumentu: začněte celkovou statistikou (počet vložení/odstranění, autoři, časové rozmezí), poté popište změny oddíl po oddílu (uvádějte indexy bloků) a na závěr uveďte seznam možných rizik (např. odstraněné povinnosti nebo podmínky, změněná čísla/data/částky). Pouze shrňte — dokument neupravujte a žádnou revizi nepřijímejte ani neodmítejte.',
-  ribbonAiCommentsTip:
-    'AI projde {count} nevyřešených komentářů: u každého provede úpravu, odpoví, co se změnilo, a poté ho vyřeší',
-  ribbonAiCommentsPrompt:
-    'Vyřiďte všechny nevyřešené komentáře v dokumentu: u každého proveďte požadovanou změnu, odpovězte popisem toho, co se změnilo, a poté ho vyřešte; pokud je komentář otázkou nebo je nejednoznačný, odpovězte bez úpravy dokumentu.',
   ribbonShowCommentsTip: 'Zobrazit komentáře ({count})',
   ribbonTrackChanges: 'Sledování změn',
   ribbonTrackChangesTip:
@@ -823,8 +772,6 @@ export const cs = {
   ribbonWholePage: 'Jedna stránka',
   ribbonWholePageTip: 'Přiblížit tak, aby se do okna vešla celá stránka',
   ribbonGroupZoom: 'Lupa',
-  ribbonAiPanel: 'Panel AI',
-  ribbonAiPanelTip: 'Zobrazit/skrýt panel AI',
   ribbonDarkMode: 'Tmavý režim',
   ribbonDarkModeTip: 'Zobrazit oblast úprav v tmavých barvách beze změny dokumentu',
   ribbonGroupShow: 'Zobrazit',

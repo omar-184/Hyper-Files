@@ -171,7 +171,7 @@ const ROMAN: Array<[number, string]> = [
   [1, 'I'],
 ]
 
-/** Page numbers arrive from the file (w:pgNumType w:start) and AI setups: a
+/** Page numbers arrive from the file (w:pgNumType w:start) and page setup: a
  *  non-finite or huge value must not hang toRoman/toLetters or OOM toGreek's
  *  repeat(). Bound to a million pages (far beyond real documents). */
 const MAX_PAGE_NUMBER = 1_000_000

@@ -161,7 +161,7 @@ export const AutoDirectionExtension = Extension.create({
           if (editor.view?.composing) return null
 
           // only plain text insertions (typing, text paste) qualify; block-level
-          // replacements (document load, Enter splits, AI edits) are skipped
+          // replacements (document load, Enter splits, programmatic edits) are skipped
           let textInserted = false
           for (const tr of transactions) {
             for (const step of tr.steps) {

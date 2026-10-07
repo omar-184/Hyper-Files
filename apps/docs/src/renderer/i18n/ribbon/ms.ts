@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const ms = {
-  ribbonAiCreditNote: 'Menggunakan AI dan menggunakan kredit',
-  ribbonAiRewriteConfirm:
-    'Tindakan ini memanggil AI: menggunakan kredit dan mungkin menulis semula keseluruhan kandungan. Teruskan? (Tidak akan ditanya lagi.)',
   ribbonTabFile: 'Fail',
   ribbonTabHome: 'Laman Utama',
   ribbonTabInsert: 'Sisip',
@@ -186,8 +183,6 @@ export const ms = {
   ribbonReplaceTip: 'Cari dan ganti teks',
   ribbonSelectAll: 'Pilih Semua',
   ribbonSelectAllTip: 'Pilih seluruh dokumen',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Buka pembantu AI',
   ribbonRemoveTableStyleTip: 'Alih keluar gaya jadual',
   ribbonNoStyle: 'Tiada Gaya',
   ribbonApplyTableStyleTip: 'Gunakan gaya jadual {name}',
@@ -205,7 +200,6 @@ export const ms = {
   ribbonPtValue: '{n} pt',
   ribbonGroupBorders: 'Sempadan',
   ribbonDeleteTable: 'Padam Jadual',
-  ribbonGroupDelete: 'Padam',
   ribbonInsertAbove: 'Sisip di Atas',
   ribbonInsertBelow: 'Sisip di Bawah',
   ribbonInsertLeft: 'Sisip di Kiri',
@@ -660,45 +654,10 @@ export const ms = {
   ribbonSourceJournalName: 'Nama Jurnal',
   ribbonSourceSiteName: 'Nama Laman',
   ribbonSourcePublisher: 'Penerbit',
-  ribbonEditorBtn: 'Editor',
-  ribbonEditorTip: 'AI menyemak ejaan, tatabahasa dan tanda baca',
-  ribbonEditorPrompt:
-    'Semak keseluruhan dokumen: betulkan kesalahan taip, tanda baca dan tatabahasa tanpa mengubah maksud asal dan struktur perenggan.',
   ribbonGroupProofing: 'Pembacaan Pruf',
   ribbonSpellcheckBtn: 'Ejaan',
   ribbonSpellcheckTip:
     'Semak ejaan semasa menaip — menggariskan merah perkataan yang mungkin salah eja',
-  ribbonTranslate: 'Terjemah',
-  ribbonTranslateTip: 'AI menterjemah dokumen',
-  ribbonTranslatePrompt:
-    'Terjemahkan keseluruhan dokumen ke {lang}, sambil mengekalkan struktur perenggan dan aras tajuk.',
-  ribbonTranslateSelectionPrompt:
-    'Terjemahkan kandungan yang dipilih ke {lang}, sambil mengekalkan struktur perenggan.',
-  ribbonEditorSelectionPrompt:
-    'Semak kandungan yang dipilih: betulkan kesalahan taip, tanda baca dan tatabahasa tanpa mengubah maksud asal dan struktur perenggan.',
-  ribbonTranslateTo: 'Terjemah kepada {lang}',
-  ribbonLangEnglish: 'bahasa Inggeris',
-  ribbonLangSimplifiedChinese: 'bahasa Cina Ringkas',
-  ribbonLangJapanese: 'bahasa Jepun',
-  ribbonLangKorean: 'bahasa Korea',
-  ribbonLangFrench: 'bahasa Perancis',
-  ribbonLangGerman: 'bahasa Jerman',
-  ribbonLangSpanish: 'bahasa Sepanyol',
-  ribbonLangThai: 'Thai',
-  ribbonLangIndonesian: 'Bahasa Indonesia',
-  ribbonLangRussian: 'Rusia',
-  ribbonLangArabic: 'Arab',
-  ribbonLangPortuguese: 'Portugis',
-  ribbonLangItalian: 'Itali',
-  ribbonLangPolish: 'Poland',
-  ribbonLangCzech: 'Czech',
-  ribbonLangDutch: 'Belanda',
-  ribbonLangMalay: 'Melayu',
-  ribbonLangHebrew: 'Ibrani',
-  ribbonLangHindi: 'Hindi',
-  ribbonLangTraditionalChinese: 'Cina Tradisional',
-  ribbonLangVietnamese: 'Vietnam',
-  ribbonGroupLanguage: 'Bahasa',
   ribbonNewComment: 'Komen Baharu',
   ribbonNewCommentTip: 'Tambah komen pada pilihan',
   ribbonNewCommentSelectTip: 'Pilih teks yang hendak dikomen terlebih dahulu',
@@ -711,16 +670,6 @@ export const ms = {
   ribbonPrevCommentTip: 'Pergi ke komen sebelumnya',
   ribbonNextComment: 'Seterusnya',
   ribbonNextCommentTip: 'Pergi ke komen seterusnya',
-  ribbonAiComments: 'Komen dengan AI',
-  ribbonAiRevisions: 'Ringkasan semakan AI',
-  ribbonAiRevisionsTip:
-    'AI membaca {count} semakan tertunda, meringkaskan perubahan mengikut bahagian dan menandakan risiko',
-  ribbonAiRevisionsPrompt:
-    'Ringkaskan semua semakan tertunda dalam dokumen: mulakan dengan statistik keseluruhan (bilangan sisipan/pemadaman, pengarang, julat tarikh), kemudian terangkan perubahan bahagian demi bahagian (nyatakan indeks blok), dan akhiri dengan senarai perkara yang perlu diberi perhatian (kewajipan atau syarat yang dipadamkan, nombor/tarikh/amaun yang diubah). Ringkaskan sahaja — jangan ubah dokumen atau terima/tolak sebarang semakan.',
-  ribbonAiCommentsTip:
-    'AI memproses {count} komen yang belum selesai: ubah, balas, kemudian selesaikan',
-  ribbonAiCommentsPrompt:
-    'Uruskan semua komen yang belum selesai dalam dokumen: bagi setiap satu, buat perubahan yang diminta, balas dengan menerangkan perubahan, kemudian tandakan selesai; jika komen berupa soalan atau kabur, balas sahaja tanpa mengubah dokumen.',
   ribbonShowCommentsTip: 'Tunjukkan komen ({count})',
   ribbonTrackChanges: 'Jejak Perubahan',
   ribbonTrackChangesTip:
@@ -831,8 +780,6 @@ export const ms = {
   ribbonWholePage: 'Satu Halaman',
   ribbonWholePageTip: 'Zum supaya keseluruhan halaman muat dalam tetingkap',
   ribbonGroupZoom: 'Zum',
-  ribbonAiPanel: 'Panel AI',
-  ribbonAiPanelTip: 'Tunjukkan/sembunyikan panel AI',
   ribbonDarkMode: 'Mod Gelap',
   ribbonDarkModeTip: 'Paparkan kawasan pengeditan dalam warna gelap tanpa mengubah dokumen',
   ribbonGroupShow: 'Tunjuk',

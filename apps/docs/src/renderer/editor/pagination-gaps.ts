@@ -394,8 +394,8 @@ export function makeGapEl(m: GapMetrics, kind: GapKind, cols?: number): HTMLElem
     gap.className = 'page-gap page-gap-inline page-gap-table'
     const cell = document.createElement('td')
     // colSpan must equal the table's real column count: a larger span widens the
-    // column grid, and in a fixed-layout table WITHOUT a <colgroup> (AI-inserted
-    // tables carry no colWidthsPct) Chromium then splits width:100% across all
+    // column grid, and in a fixed-layout table WITHOUT a <colgroup> (tables
+    // without colWidthsPct) Chromium then splits width:100% across all
     // phantom columns, collapsing every real cell to ~1px — which changes the
     // measured heights and sets off an endless remeasure/re-gap flicker loop
     cell.colSpan = Math.max(1, Math.round(cols ?? 1))

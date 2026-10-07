@@ -41,7 +41,7 @@ export function addCommentToSelection(editor: Editor, id: string): boolean {
 }
 
 /** attach `id` to every text node between the positions; false for an empty range */
-export function addCommentToRange(editor: Editor, from: number, to: number, id: string): boolean {
+function addCommentToRange(editor: Editor, from: number, to: number, id: string): boolean {
   const { state } = editor
   if (from >= to) return false
   const markType = state.schema.marks.comment
@@ -136,7 +136,7 @@ export function addReplyToCommentRange(editor: Editor, parentId: string, newId: 
   return found
 }
 
-export interface CommentAnchor {
+interface CommentAnchor {
   id: string
   from: number
   to: number

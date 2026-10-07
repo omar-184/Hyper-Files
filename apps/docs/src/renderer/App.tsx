@@ -15,12 +15,7 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
 import { DOMParser as PmDOMParser, type Mark as PmMark, Slice as PmSlice } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection, type Command, type Transaction } from '@tiptap/pm/state'
-import {
-  Dropdown,
-  ImageViewer,
-  createZoomWheelClassifier,
-  useAutoSavePref,
-} from '@genoffice/ui'
+import { Dropdown, ImageViewer, createZoomWheelClassifier, useAutoSavePref } from '@genoffice/ui'
 import { wordRangeAtCaret } from './editor/comments'
 import { setFieldInstr, toggleAllFieldCodes, type FieldRange } from './editor/field-codes'
 import { linkTarget } from './editor/link-actions'
@@ -1314,7 +1309,7 @@ export function App() {
     },
   })
 
-  // every header/footer consumer (strips, gaps, heights, preview, AI, save) reads
+  // every header/footer consumer (strips, gaps, heights, preview, save) reads
   // through one resolver, so pending edits, Link to Previous and inheritance agree
   // the section list as Word sees it right now: a deleted break paragraph merges its
   // section into the next, pending breaks are already in `sections`. Derived from the
@@ -1388,7 +1383,7 @@ export function App() {
     const target = hfCommitTarget(hfState, si, kind, variant, ownerAtOpen)
     if (!target) return false
     // functional: two commits in one turn (Remove Page Numbers on both strips, an
-    // editor exit racing an AI set) must both land
+    // editor exit racing another commit) must both land
     setSectionHfEdits((m) => ({ ...m, [target.key]: next }))
     return true
   }
@@ -2187,7 +2182,7 @@ export function App() {
    * original current section sectPr's) w:type.
    */
   /**
-   * A section's sectPr as save would write it now: unsaved Layout-tab / AI edits
+   * A section's sectPr as save would write it now: unsaved Layout-tab edits
    * applied on top of the parsed XML (a break copies this, not the stale file bytes).
    */
   const effectiveSectPrXml = (idx: number): string | null => {
@@ -2683,8 +2678,8 @@ export function App() {
     setFootnotes,
     setEndnotes,
     setNotesDirty,
-    // a getter into the live mirror, not a render-time reference: AI tool
-    // calls run several review actions between renders, and each one must
+    // a getter into the live mirror, not a render-time reference: several
+    // review actions can run between renders, and each one must
     // see the previous write (setComments replaces the array)
     get comments() {
       return commentsLiveRef.current
@@ -2808,7 +2803,7 @@ export function App() {
     [fitZoomFor],
   )
 
-  // On scroller size changes (window/AI-dock/nav-pane toggles): follow with a
+  // On scroller size changes (window/nav-pane toggles): follow with a
   // re-fit while in fit mode, and clamp any manual zoom back down to width-fit
   // whenever the page no longer fits horizontally — the canvas must never
   // overflow the pane on a resize (same contract as the slides stage). A manual
@@ -5830,7 +5825,6 @@ export function App() {
     const gap = target.closest('.page-gap-hf') as HTMLElement | null
     if (gap) startGapHfEditRef.current(gap)
   }, [])
-
 
   useEffect(() => (editor ? installSelectionBar(editor) : undefined), [editor])
 

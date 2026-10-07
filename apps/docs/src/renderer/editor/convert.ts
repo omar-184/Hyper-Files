@@ -129,7 +129,7 @@ export function blocksToPmDoc(
   if (content.length === 0) {
     content.push({
       type: 'docParagraph',
-      attrs: { docxIndex: null, styleId: null, aiChanged: false },
+      attrs: { docxIndex: null, styleId: null },
     })
   }
   return { type: 'doc', content }
@@ -692,7 +692,6 @@ function blockToPmNode(
         attrs: {
           docxIndex: block.docxIndex,
           styleId: block.styleId ?? null,
-          aiChanged: false,
           level: block.level ?? 1,
           outlineOnly: block.outlineOnly ?? null,
           bookmarks: block.bookmarks ?? null,
@@ -712,7 +711,6 @@ function blockToPmNode(
         attrs: {
           docxIndex: block.docxIndex,
           styleId: block.styleId ?? null,
-          aiChanged: false,
           kind: block.list?.kind ?? 'bullet',
           numId: block.list?.numId ?? null,
           ilvl: block.list?.ilvl ?? 0,
@@ -733,7 +731,6 @@ function blockToPmNode(
         attrs: {
           docxIndex: block.docxIndex,
           styleId: block.styleId ?? null,
-          aiChanged: false,
           bookmarks: block.bookmarks ?? null,
           hiddenBookmarks: block.hiddenBookmarks ?? null,
           commentStarts: block.commentStarts ?? null,

@@ -153,8 +153,7 @@ import { tableColumnDrag } from './table-column-drag'
 
 /**
  * Custom schema mirroring the docx-engine Block model 1:1.
- * Every top-level node carries `docxIndex` (patch anchor, null = new) and
- * `aiChanged` (diff highlighting for AI edits).
+ * Every top-level node carries `docxIndex` (patch anchor, null = new).
  */
 
 import {
@@ -227,7 +226,6 @@ export * from './decoration-extensions'
 const anchorAttrs = {
   docxIndex: { default: null as number | null },
   styleId: { default: null as string | null },
-  aiChanged: { default: false },
   /** user bookmark names starting in this paragraph */
   bookmarks: { default: null as string[] | null },
   /** Word internal bookmarks (_Ref/_Toc…): kept out of the bookmark manager, written back verbatim on paragraph rebuild so cross-references don't break */
@@ -669,7 +667,6 @@ function blockAttrs(
     attrs['data-bookmarks'] = (node.attrs.bookmarks as string[]).join(' ')
   }
   const classes: string[] = []
-  if (node.attrs.aiChanged) classes.push('ai-changed')
   // textless paragraph: table-cell CSS shrinks these to the Latin line height
   // (an empty cell inheriting the CJK factor would out-grow the content cells)
   if (!node.textContent) classes.push('doc-p-empty')
@@ -1191,7 +1188,7 @@ export const DocInlineMath = Node.create({
       omml: { default: '' },
       mathml: { default: '' },
       latex: { default: null as string | null },
-      /** flat token strip (word count / AI read fallback) */
+      /** flat token strip (word count fallback) */
       text: { default: '' },
     }
   },
@@ -5635,7 +5632,7 @@ function mountTextboxEditors(
     )
   }
 
-  /** external model change (undo of a commit, AI edit): re-feed the sub-editors */
+  /** external model change (undo of a commit): re-feed the sub-editors */
   const sync = (boxes: TextboxDisplay[] | null) => {
     if (!boxes || boxes === knownBoxes) return
     knownBoxes = boxes

@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const id = {
-  ribbonAiCreditNote: 'Menggunakan AI dan menghabiskan kredit',
-  ribbonAiRewriteConfirm:
-    'Tindakan ini memanggil AI: menghabiskan kredit dan dapat menulis ulang seluruh konten. Lanjutkan? (Tidak akan ditanya lagi.)',
   ribbonTabFile: 'File',
   ribbonTabHome: 'Beranda',
   ribbonTabInsert: 'Sisipkan',
@@ -186,8 +183,6 @@ export const id = {
   ribbonReplaceTip: 'Temukan dan ganti teks',
   ribbonSelectAll: 'Pilih Semua',
   ribbonSelectAllTip: 'Pilih seluruh dokumen',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Buka asisten AI',
   ribbonRemoveTableStyleTip: 'Hapus gaya tabel',
   ribbonNoStyle: 'Tanpa Gaya',
   ribbonApplyTableStyleTip: 'Terapkan gaya tabel {name}',
@@ -205,7 +200,6 @@ export const id = {
   ribbonPtValue: '{n} pt',
   ribbonGroupBorders: 'Batas',
   ribbonDeleteTable: 'Hapus Tabel',
-  ribbonGroupDelete: 'Hapus',
   ribbonInsertAbove: 'Sisipkan di Atas',
   ribbonInsertBelow: 'Sisipkan di Bawah',
   ribbonInsertLeft: 'Sisipkan di Kiri',
@@ -658,45 +652,10 @@ export const id = {
   ribbonSourceJournalName: 'Nama Jurnal',
   ribbonSourceSiteName: 'Nama Situs',
   ribbonSourcePublisher: 'Penerbit',
-  ribbonEditorBtn: 'Editor',
-  ribbonEditorTip: 'AI memeriksa ejaan, tata bahasa, dan tanda baca',
-  ribbonEditorPrompt:
-    'Koreksi seluruh dokumen: perbaiki salah ketik, tanda baca, dan kesalahan tata bahasa tanpa mengubah makna asli dan struktur paragraf.',
   ribbonGroupProofing: 'Pemeriksaan',
   ribbonSpellcheckBtn: 'Ejaan',
   ribbonSpellcheckTip:
     'Periksa ejaan saat mengetik — menggarisbawahi merah kata yang mungkin salah eja',
-  ribbonTranslate: 'Terjemahkan',
-  ribbonTranslateTip: 'AI menerjemahkan dokumen',
-  ribbonTranslatePrompt:
-    'Terjemahkan seluruh dokumen ke {lang}, dengan mempertahankan struktur paragraf dan tingkat judul.',
-  ribbonTranslateSelectionPrompt:
-    'Terjemahkan konten yang dipilih ke {lang}, dengan mempertahankan struktur paragraf.',
-  ribbonEditorSelectionPrompt:
-    'Koreksi konten yang dipilih: perbaiki salah ketik, tanda baca, dan kesalahan tata bahasa tanpa mengubah makna asli dan struktur paragraf.',
-  ribbonTranslateTo: 'Terjemahkan ke {lang}',
-  ribbonLangEnglish: 'bahasa Inggris',
-  ribbonLangSimplifiedChinese: 'bahasa Tionghoa Sederhana',
-  ribbonLangJapanese: 'bahasa Jepang',
-  ribbonLangKorean: 'bahasa Korea',
-  ribbonLangFrench: 'bahasa Prancis',
-  ribbonLangGerman: 'bahasa Jerman',
-  ribbonLangSpanish: 'bahasa Spanyol',
-  ribbonLangThai: 'Thai',
-  ribbonLangIndonesian: 'Bahasa Indonesia',
-  ribbonLangRussian: 'Rusia',
-  ribbonLangArabic: 'Arab',
-  ribbonLangPortuguese: 'Portugis',
-  ribbonLangItalian: 'Italia',
-  ribbonLangPolish: 'Polandia',
-  ribbonLangCzech: 'Ceko',
-  ribbonLangDutch: 'Belanda',
-  ribbonLangMalay: 'Melayu',
-  ribbonLangHebrew: 'Ibrani',
-  ribbonLangHindi: 'Hindi',
-  ribbonLangTraditionalChinese: 'Tionghoa Tradisional',
-  ribbonLangVietnamese: 'Vietnam',
-  ribbonGroupLanguage: 'Bahasa',
   ribbonNewComment: 'Komentar Baru',
   ribbonNewCommentTip: 'Tambahkan komentar pada pilihan',
   ribbonNewCommentSelectTip: 'Pilih dahulu teks yang akan dikomentari',
@@ -709,16 +668,6 @@ export const id = {
   ribbonPrevCommentTip: 'Ke komentar sebelumnya',
   ribbonNextComment: 'Berikutnya',
   ribbonNextCommentTip: 'Ke komentar berikutnya',
-  ribbonAiComments: 'Komentar dengan AI',
-  ribbonAiRevisions: 'Ringkasan revisi AI',
-  ribbonAiRevisionsTip:
-    'AI membaca {count} revisi tertunda, meringkas perubahan per bagian, dan menandai risiko',
-  ribbonAiRevisionsPrompt:
-    'Ringkas semua revisi terlacak yang tertunda di dokumen: mulai dengan statistik keseluruhan (jumlah sisipan/penghapusan, penulis, rentang tanggal), lalu jelaskan perubahan per bagian (sebutkan indeks blok), dan akhiri dengan daftar hal yang perlu diwaspadai (kewajiban atau kualifikasi yang dihapus, angka/tanggal/jumlah yang berubah). Ringkas saja — jangan mengubah dokumen atau menerima/menolak revisi apa pun.',
-  ribbonAiCommentsTip:
-    'AI memproses {count} komentar yang belum selesai: ubah, balas, lalu selesaikan',
-  ribbonAiCommentsPrompt:
-    'Tangani semua komentar yang belum selesai di dokumen: untuk tiap komentar, terapkan perubahan yang diminta, balas dengan menjelaskan perubahannya, lalu tandai selesai; jika komentar berupa pertanyaan atau ambigu, balas tanpa mengubah dokumen.',
   ribbonShowCommentsTip: 'Tampilkan komentar ({count})',
   ribbonTrackChanges: 'Lacak Perubahan',
   ribbonTrackChangesTip:
@@ -827,8 +776,6 @@ export const id = {
   ribbonWholePage: 'Satu Halaman',
   ribbonWholePageTip: 'Zoom agar seluruh halaman muat di jendela',
   ribbonGroupZoom: 'Zoom',
-  ribbonAiPanel: 'Panel AI',
-  ribbonAiPanelTip: 'Tampilkan/sembunyikan panel AI',
   ribbonDarkMode: 'Mode Gelap',
   ribbonDarkModeTip: 'Tampilkan area pengeditan dengan warna gelap tanpa mengubah dokumen',
   ribbonGroupShow: 'Tampilkan',

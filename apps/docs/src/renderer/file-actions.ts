@@ -855,15 +855,7 @@ export function noteDocumentSwapped(): void {
   docGeneration++
 }
 
-export function currentDocGeneration(): number {
-  return docGeneration
-}
-
-export function save(
-  ctx: FileActionContext,
-  saveAs: boolean,
-  auto = false,
-): Promise<boolean> {
+export function save(ctx: FileActionContext, saveAs: boolean, auto = false): Promise<boolean> {
   // A save arriving mid-flight waits for the current one instead of failing.
   // Reuse the finished pass only when it left nothing behind — judged by the
   // composite dirty check (header/section/theme edits do not set dirtyRef), plus
@@ -881,11 +873,7 @@ export function save(
   )
 }
 
-async function saveOnce(
-  ctx: FileActionContext,
-  saveAs: boolean,
-  auto: boolean,
-): Promise<boolean> {
+async function saveOnce(ctx: FileActionContext, saveAs: boolean, auto: boolean): Promise<boolean> {
   const { doc, editor } = ctx
   if (!doc || !editor) return false
   ctx.saveInFlightRef.current = true

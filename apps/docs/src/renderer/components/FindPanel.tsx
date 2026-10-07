@@ -289,7 +289,7 @@ export function FindPanel({
     focusTabInput('goto')
   }, [focusGoToNonce, focusTabInput])
 
-  // stay in sync while the document changes underneath (typing, AI edits).
+  // stay in sync while the document changes underneath (typing, undo, replace).
   // The listener reads the query through a ref: between a keystroke in the find
   // box and the next render, the effect closure still holds the previous query
   // and would overwrite the pending scan for the new needle with stale text.

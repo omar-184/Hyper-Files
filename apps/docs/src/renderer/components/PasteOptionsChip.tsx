@@ -8,7 +8,7 @@
  * as the default for pasting from other programs (editor/paste-options.ts).
  *
  * Mounted at the app root with fixed positioning (coordsAtPos speaks viewport
- * coordinates, the AiAskPopover pattern); repositions while the document
+ * coordinates); repositions while the document
  * scrolls and hides on any other document change.
  */
 import React, { useEffect, useRef, useState } from 'react'

@@ -27,8 +27,7 @@ import { symbolFontCovers } from '../font-check'
 
 /**
  * Custom schema mirroring the docx-engine Block model 1:1.
- * Every top-level node carries `docxIndex` (patch anchor, null = new) and
- * `aiChanged` (diff highlighting for AI edits).
+ * Every top-level node carries `docxIndex` (patch anchor, null = new).
  */
 
 export const BoldMark = Mark.create({

@@ -1176,17 +1176,6 @@ export function IconWand(props: IconProps) {
   )
 }
 
-export function IconTranslate(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <TextGlyph x={1.2} y={9} s={8.5}>
-        文
-      </TextGlyph>
-      <path d="M8.8 13.5 11.5 6.5 14.2 13.5M9.7 11.3h3.6" strokeWidth="1" />
-    </Svg>
-  )
-}
-
 export function IconTrackChanges(props: IconProps) {
   return (
     <Svg {...props}>
@@ -1530,83 +1519,13 @@ export function IconDoc(props: IconProps) {
   )
 }
 
-/* ---------- AI panel ---------- */
-
-export function IconSend(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M 3.01 8 12.99 3.36 10.58 12.64 7.66 9.38 z" strokeLinejoin="round" />
-      <path d="M 7.66 9.38 12.99 3.36" />
-    </Svg>
-  )
-}
-
-export function IconStop(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <rect x="3" y="3" width="10" height="10" rx="1.88" fill="currentColor" stroke="none" />
-    </Svg>
-  )
-}
-
-export function IconGear(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <circle cx="8" cy="8" r="1.78" />
-      <path d="M 8 2.98 v 1.62 M 8 11.4 v 1.62 M 13.02 8 h -1.62 M 4.6 8 h -1.62 M 11.56 4.44 l -1.13 1.13 M 5.57 10.43 l -1.13 1.13 M 11.56 11.56 10.43 10.43 M 5.57 5.57 4.44 4.44" />
-    </Svg>
-  )
-}
-
-/** collapse the left-docked AI panel: sheets-parity glyph (16-canvas, 1.2/1.3 stroke),
- *  self-contained so the shared Svg wrapper's pinned stroke doesn't alter its weight */
-export function IconSidebarCollapse({ size = 20 }: IconProps) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
-      <path d="M5.5 2.5v11" />
-      <path d="M12.5 8H8.1M9.8 5.9 7.7 8l2.1 2.1" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  )
-}
+/* ---------- date & time ---------- */
 
 export function IconClock(props: IconProps) {
   return (
     <Svg {...props}>
       <circle cx="8" cy="8" r="4.98" />
       <path d="M 8 5.34 V 8 l 1.91 1.33" />
-    </Svg>
-  )
-}
-
-export function IconPaperclip(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path
-        d="M 12.5 7.28 8.18 11.6 a 3.06 3.06 0 0 1 -4.32 -4.32 l 4.5 -4.5 a 2.07 2.07 0 0 1 2.88 2.88 l -4.5 4.5 a 0.99 0.99 0 0 1 -1.44 -1.44 l 4.14 -4.14"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  )
-}
-
-export function IconNewChat(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path
-        d="M 12.68 7.32 v -2.55 A 1.44 1.44 0 0 0 11.23 3.33 H 4.77 a 1.44 1.44 0 0 0 -1.44 1.44 v 5.19 a 1.44 1.44 0 0 0 1.44 1.44 h 0.94 v 1.7 l 2.21 -1.7 h 1.11"
-        strokeLinejoin="round"
-      />
-      <path d="M 11.57 9.19 v 3.4 M 9.87 10.89 h 3.4" />
     </Svg>
   )
 }

@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const ja = {
-  ribbonAiCreditNote: 'AI を呼び出し、クレジットを消費します',
-  ribbonAiRewriteConfirm:
-    'この操作は AI を呼び出します。クレジットを消費し、内容全体が書き換えられる可能性があります。続行しますか？（確認後は再表示されません）',
   // Tabs
   ribbonTabFile: 'ファイル',
   ribbonTabHome: 'ホーム',
@@ -191,9 +188,6 @@ export const ja = {
   ribbonReplaceTip: 'テキストを検索して置換',
   ribbonSelectAll: 'すべて選択',
   ribbonSelectAllTip: '文書全体を選択',
-  // Home · AI
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'AI アシスタントを開く',
   // Table Design
   ribbonRemoveTableStyleTip: '表のスタイルを削除',
   ribbonNoStyle: 'スタイルなし',
@@ -213,7 +207,6 @@ export const ja = {
   ribbonGroupBorders: '罫線',
   // Table Layout
   ribbonDeleteTable: '表の削除',
-  ribbonGroupDelete: '削除',
   ribbonInsertAbove: '上に挿入',
   ribbonInsertBelow: '下に挿入',
   ribbonInsertLeft: '左に挿入',
@@ -675,44 +668,9 @@ export const ja = {
   ribbonSourceSiteName: 'Web サイト名',
   ribbonSourcePublisher: '出版社',
   // Review
-  ribbonEditorBtn: 'エディター',
-  ribbonEditorTip: 'AI がスペル、文法、句読点をチェック',
-  ribbonEditorPrompt:
-    '文書全体を校正してください：誤字、句読点、文法の誤りを修正し、元の意味と段落構成は変えないでください。',
   ribbonGroupProofing: '文章校正',
   ribbonSpellcheckBtn: 'スペルチェック',
   ribbonSpellcheckTip: '入力時にスペルをチェックし、誤りの可能性がある単語に赤い波線を表示します',
-  ribbonTranslate: '翻訳',
-  ribbonTranslateTip: 'AI がドキュメントを翻訳',
-  ribbonTranslatePrompt:
-    '文書全体を{lang}に翻訳してください。段落構成と見出しレベルは変えないでください。',
-  ribbonTranslateSelectionPrompt:
-    '選択した内容を{lang}に翻訳してください。段落構成は変えないでください。',
-  ribbonEditorSelectionPrompt:
-    '選択した内容を校正してください：誤字、句読点、文法の誤りを修正し、元の意味と段落構成は変えないでください。',
-  ribbonTranslateTo: '{lang}に翻訳',
-  ribbonLangEnglish: '英語',
-  ribbonLangSimplifiedChinese: '簡体字中国語',
-  ribbonLangJapanese: '日本語',
-  ribbonLangKorean: '韓国語',
-  ribbonLangFrench: 'フランス語',
-  ribbonLangGerman: 'ドイツ語',
-  ribbonLangSpanish: 'スペイン語',
-  ribbonLangThai: 'タイ語',
-  ribbonLangIndonesian: 'インドネシア語',
-  ribbonLangRussian: 'ロシア語',
-  ribbonLangArabic: 'アラビア語',
-  ribbonLangPortuguese: 'ポルトガル語',
-  ribbonLangItalian: 'イタリア語',
-  ribbonLangPolish: 'ポーランド語',
-  ribbonLangCzech: 'チェコ語',
-  ribbonLangDutch: 'オランダ語',
-  ribbonLangMalay: 'マレー語',
-  ribbonLangHebrew: 'ヘブライ語',
-  ribbonLangHindi: 'ヒンディー語',
-  ribbonLangTraditionalChinese: '繁体字中国語',
-  ribbonLangVietnamese: 'ベトナム語',
-  ribbonGroupLanguage: '言語',
   ribbonNewComment: '新しいコメント',
   ribbonNewCommentTip: '選択範囲にコメントを追加',
   ribbonNewCommentSelectTip: 'まずコメントを付ける文字列を選択してください',
@@ -725,15 +683,6 @@ export const ja = {
   ribbonPrevCommentTip: '前のコメントへ移動',
   ribbonNextComment: '次へ',
   ribbonNextCommentTip: '次のコメントへ移動',
-  ribbonAiComments: 'AI でコメント処理',
-  ribbonAiRevisions: 'AI で変更履歴を要約',
-  ribbonAiRevisionsTip:
-    '保留中の変更 {count} 件を AI が読み、セクション別に要約してリスクを指摘します',
-  ribbonAiRevisionsPrompt:
-    '文書内の保留中の変更履歴をすべて要約してください:まず全体統計(挿入/削除の件数、作成者、日付範囲)、次にセクション別に何が変わったかを説明し(block 番号を明記)、最後に注意すべき点(義務や限定表現の削除、数値・日付・金額の変更など)を挙げてください。要約のみを行い、文書の変更や変更履歴の承諾/拒否はしないでください。',
-  ribbonAiCommentsTip: '未解決のコメント {count} 件を AI が順に処理します(修正・返信・解決)',
-  ribbonAiCommentsPrompt:
-    '文書内の未解決コメントをすべて処理してください:各コメントの要望どおりに修正し、変更内容を返信してから解決済みにしてください。質問や曖昧なコメントには返信のみ行い、本文は変更しないでください。',
   ribbonShowCommentsTip: 'コメントを表示({count} 件)',
   ribbonTrackChanges: '変更履歴の記録',
   ribbonTrackChangesTip:
@@ -842,8 +791,6 @@ export const ja = {
   ribbonWholePage: '1 ページ',
   ribbonWholePageTip: 'ページ全体がウィンドウに収まるように拡大/縮小',
   ribbonGroupZoom: 'ズーム',
-  ribbonAiPanel: 'AI パネル',
-  ribbonAiPanelTip: 'AI パネルの表示/非表示',
   ribbonDarkMode: 'ダーク モード',
   ribbonDarkModeTip: 'ドキュメントの内容は変えずに、編集領域を暗い配色で表示',
   ribbonGroupShow: '表示',

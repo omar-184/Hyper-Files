@@ -1585,21 +1585,21 @@ export function PaginationPreview({
                       !(watermarkDirty && (img.wordArt || img.watermark)),
                   )
                   .map((img, k) => {
-                  // picture watermark (anchored image in the header): drawn once
-                  // per page behind the body (negative z-index; .pv-page isolates)
-                  const pos = hfFloatPagePos(img, {
-                    pageW,
-                    pageH,
-                    marginLeft: mL,
-                    marginRight: mR,
-                    marginTop: mTop,
-                    marginBottom: mBottom,
-                    headerDist: pageBox.headerDist,
-                    sectMarginTop: twipsToPx(s.marginTop),
-                    sectMarginBottom: twipsToPx(s.marginBottom),
-                  })
-                  return <FloatHfImg key={`wm${k}`} img={img} pos={pos} />
-                })}
+                    // picture watermark (anchored image in the header): drawn once
+                    // per page behind the body (negative z-index; .pv-page isolates)
+                    const pos = hfFloatPagePos(img, {
+                      pageW,
+                      pageH,
+                      marginLeft: mL,
+                      marginRight: mR,
+                      marginTop: mTop,
+                      marginBottom: mBottom,
+                      headerDist: pageBox.headerDist,
+                      sectMarginTop: twipsToPx(s.marginTop),
+                      sectMarginBottom: twipsToPx(s.marginBottom),
+                    })
+                    return <FloatHfImg key={`wm${k}`} img={img} pos={pos} />
+                  })}
                 {(parts.footerImages ?? [])
                   .filter((img) => img.floating && !hfImageHangsOnPara(img))
                   .map((img, k) => {

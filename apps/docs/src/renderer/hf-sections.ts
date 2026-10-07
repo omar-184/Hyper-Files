@@ -1,6 +1,6 @@
 /**
  * The header/footer model every consumer shares (canvas strips, page gaps,
- * pagination heights, print preview, the AI tool, the save path).
+ * pagination heights, print preview, the save path).
  *
  * A section is identified by its break paragraph (lastBlockIndex): positions
  * shift when breaks are inserted or deleted, the paragraph does not. Per

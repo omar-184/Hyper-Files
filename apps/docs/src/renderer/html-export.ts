@@ -9,7 +9,6 @@ const SKIP_CLASSES = new Set([
   'doc-anchor-strut',
   'doc-image-anchor-marker',
   'doc-inline-img-anchor',
-  'ai-queue-anchor',
   'page-gap',
   'page-gap-cut',
   'page-gap-table-fill',

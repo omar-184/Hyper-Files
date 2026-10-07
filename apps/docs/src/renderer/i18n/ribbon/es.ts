@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const es = {
-  ribbonAiCreditNote: 'Usa IA y consume créditos',
-  ribbonAiRewriteConfirm:
-    'Esta acción llama a la IA: consume créditos y puede reescribir todo el contenido. ¿Continuar? (No se volverá a preguntar.)',
   ribbonTabFile: 'Archivo',
   ribbonTabHome: 'Inicio',
   ribbonTabInsert: 'Insertar',
@@ -186,8 +183,6 @@ export const es = {
   ribbonReplaceTip: 'Buscar y reemplazar texto',
   ribbonSelectAll: 'Seleccionar todo',
   ribbonSelectAllTip: 'Seleccionar todo el documento',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Abrir el asistente de IA',
   ribbonRemoveTableStyleTip: 'Quitar el estilo de tabla',
   ribbonNoStyle: 'Sin estilo',
   ribbonApplyTableStyleTip: 'Aplicar el estilo de tabla {name}',
@@ -205,7 +200,6 @@ export const es = {
   ribbonPtValue: '{n} pto',
   ribbonGroupBorders: 'Bordes',
   ribbonDeleteTable: 'Eliminar tabla',
-  ribbonGroupDelete: 'Eliminar',
   ribbonInsertAbove: 'Insertar arriba',
   ribbonInsertBelow: 'Insertar debajo',
   ribbonInsertLeft: 'Insertar a la izquierda',
@@ -663,45 +657,10 @@ export const es = {
   ribbonSourceJournalName: 'Nombre de la revista',
   ribbonSourceSiteName: 'Nombre del sitio',
   ribbonSourcePublisher: 'Editorial',
-  ribbonEditorBtn: 'Editor',
-  ribbonEditorTip: 'La IA revisa ortografía, gramática y puntuación',
-  ribbonEditorPrompt:
-    'Revisa todo el documento: corrige erratas, puntuación y errores gramaticales manteniendo el significado original y la estructura de los párrafos.',
   ribbonGroupProofing: 'Revisión',
   ribbonSpellcheckBtn: 'Ortografía',
   ribbonSpellcheckTip:
     'Revisar la ortografía mientras escribe — subraya en rojo las palabras posiblemente mal escritas',
-  ribbonTranslate: 'Traducir',
-  ribbonTranslateTip: 'La IA traduce el documento',
-  ribbonTranslatePrompt:
-    'Traduce todo el documento al {lang}, manteniendo la estructura de párrafos y los niveles de títulos.',
-  ribbonTranslateSelectionPrompt:
-    'Traduce el contenido seleccionado al {lang}, manteniendo la estructura de párrafos.',
-  ribbonEditorSelectionPrompt:
-    'Revisa el contenido seleccionado: corrige erratas, puntuación y errores gramaticales manteniendo el significado original y la estructura de los párrafos.',
-  ribbonTranslateTo: 'Traducir al {lang}',
-  ribbonLangEnglish: 'inglés',
-  ribbonLangSimplifiedChinese: 'chino simplificado',
-  ribbonLangJapanese: 'japonés',
-  ribbonLangKorean: 'coreano',
-  ribbonLangFrench: 'francés',
-  ribbonLangGerman: 'alemán',
-  ribbonLangSpanish: 'español',
-  ribbonLangThai: 'tailandés',
-  ribbonLangIndonesian: 'indonesio',
-  ribbonLangRussian: 'ruso',
-  ribbonLangArabic: 'árabe',
-  ribbonLangPortuguese: 'portugués',
-  ribbonLangItalian: 'italiano',
-  ribbonLangPolish: 'polaco',
-  ribbonLangCzech: 'checo',
-  ribbonLangDutch: 'neerlandés',
-  ribbonLangMalay: 'malayo',
-  ribbonLangHebrew: 'hebreo',
-  ribbonLangHindi: 'hindi',
-  ribbonLangTraditionalChinese: 'chino tradicional',
-  ribbonLangVietnamese: 'vietnamita',
-  ribbonGroupLanguage: 'Idioma',
   ribbonNewComment: 'Nuevo comentario',
   ribbonNewCommentTip: 'Agregar un comentario a la selección',
   ribbonNewCommentSelectTip: 'Seleccione primero el texto que quiere comentar',
@@ -714,16 +673,6 @@ export const es = {
   ribbonPrevCommentTip: 'Ir al comentario anterior',
   ribbonNextComment: 'Siguiente',
   ribbonNextCommentTip: 'Ir al comentario siguiente',
-  ribbonAiComments: 'Comentarios con IA',
-  ribbonAiRevisions: 'Resumen IA de revisiones',
-  ribbonAiRevisionsTip:
-    'La IA lee las {count} revisiones pendientes, resume los cambios por sección y señala riesgos',
-  ribbonAiRevisionsPrompt:
-    'Resume todas las revisiones pendientes del documento: primero estadísticas generales (número de inserciones/eliminaciones, autores, rango de fechas), luego describe los cambios sección por sección (cita los índices de bloque) y termina con los puntos de atención (obligaciones o matices eliminados, números/fechas/importes modificados). Solo resume: no modifiques el documento ni aceptes/rechaces ninguna revisión.',
-  ribbonAiCommentsTip:
-    'La IA procesa los {count} comentarios sin resolver: modifica, responde y resuelve',
-  ribbonAiCommentsPrompt:
-    'Atiende todos los comentarios sin resolver del documento: para cada uno, aplica el cambio solicitado, responde describiendo el cambio y márcalo como resuelto; si un comentario es una pregunta o es ambiguo, responde sin modificar el documento.',
   ribbonShowCommentsTip: 'Mostrar comentarios ({count})',
   ribbonTrackChanges: 'Control de cambios',
   ribbonTrackChangesTip:
@@ -835,8 +784,6 @@ export const es = {
   ribbonWholePage: 'Una página',
   ribbonWholePageTip: 'Ajustar el zoom para que la página completa quepa en la ventana',
   ribbonGroupZoom: 'Zoom',
-  ribbonAiPanel: 'Panel de IA',
-  ribbonAiPanelTip: 'Mostrar u ocultar el panel de IA',
   ribbonDarkMode: 'Modo oscuro',
   ribbonDarkModeTip: 'Mostrar el área de edición en colores oscuros sin cambiar el documento',
   ribbonGroupShow: 'Mostrar',

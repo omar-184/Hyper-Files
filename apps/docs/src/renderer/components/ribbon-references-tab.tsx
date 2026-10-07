@@ -426,12 +426,12 @@ export function ReferencesTab({
     const nodes: Array<Record<string, unknown>> = [
       {
         type: 'docHeading',
-        attrs: { docxIndex: null, styleId: null, aiChanged: false, level: 1 },
+        attrs: { docxIndex: null, styleId: null, level: 1 },
         content: [{ type: 'text', text: t('ribbonBibliographyHeading') }],
       },
       ...sources.map((s) => ({
         type: 'docParagraph',
-        attrs: { docxIndex: null, styleId: null, aiChanged: false },
+        attrs: { docxIndex: null, styleId: null },
         content: [{ type: 'text', text: bibliographyLine(s) }],
       })),
     ]

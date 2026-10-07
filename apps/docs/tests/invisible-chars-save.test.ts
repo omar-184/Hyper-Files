@@ -75,8 +75,22 @@ describe('invisible characters survive saving', () => {
 
   it('round-trips NBSP/ZWSP/NNBSP and hyphen elements through a regenerated paragraph', async () => {
     const { parsed, editor, host } = await openDoc(BODY_PARA)
-    // a text edit elsewhere in the paragraph regenerates every run
-    editor.commands.insertContentAt(1, 'z')
+    // retyping the invisible run in place regenerates the paragraph
+    let at = -1
+    editor.state.doc.descendants((node, pos) => {
+      const i = node.isText ? (node.text ?? '').indexOf(INVISIBLE) : -1
+      if (at < 0 && i >= 0) at = pos + i
+      return at < 0
+    })
+    expect(at).toBeGreaterThan(0)
+    const marks = editor.state.doc.resolve(at + 1).marks()
+    editor.view.dispatch(
+      editor.state.tr.replaceWith(
+        at,
+        at + INVISIBLE.length,
+        editor.state.schema.text(INVISIBLE, marks),
+      ),
+    )
     const plan = pmDocToSavePlan(editor.getJSON() as PmNode, parsed.blocks)
     const xml = await documentXml(await saveDocx(parsed, plan.saveBlocks))
     expect(xml).toContain(INVISIBLE)

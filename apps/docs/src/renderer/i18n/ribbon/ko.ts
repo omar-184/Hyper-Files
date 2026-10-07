@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const ko = {
-  ribbonAiCreditNote: 'AI를 호출하며 크레딧이 소모됩니다',
-  ribbonAiRewriteConfirm:
-    '이 작업은 AI를 호출합니다. 크레딧이 소모되며 전체 내용이 다시 작성될 수 있습니다. 계속하시겠습니까? (확인 후 다시 묻지 않습니다)',
   // Tabs
   ribbonTabFile: '파일',
   ribbonTabHome: '홈',
@@ -189,9 +186,6 @@ export const ko = {
   ribbonReplaceTip: '텍스트 찾아 바꾸기',
   ribbonSelectAll: '모두 선택',
   ribbonSelectAllTip: '문서 전체 선택',
-  // Home · AI
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'AI 도우미 열기',
   // Table Design
   ribbonRemoveTableStyleTip: '표 스타일 제거',
   ribbonNoStyle: '스타일 없음',
@@ -211,7 +205,6 @@ export const ko = {
   ribbonGroupBorders: '테두리',
   // Table Layout
   ribbonDeleteTable: '표 삭제',
-  ribbonGroupDelete: '삭제',
   ribbonInsertAbove: '위에 삽입',
   ribbonInsertBelow: '아래에 삽입',
   ribbonInsertLeft: '왼쪽에 삽입',
@@ -672,45 +665,10 @@ export const ko = {
   ribbonSourceSiteName: '사이트 이름',
   ribbonSourcePublisher: '출판사',
   // Review
-  ribbonEditorBtn: '편집기',
-  ribbonEditorTip: 'AI가 맞춤법, 문법 및 문장 부호 검사',
-  ribbonEditorPrompt:
-    '문서 전체를 교정해 주세요: 오탈자, 문장 부호, 문법 오류를 수정하되 원래 의미와 단락 구조는 유지해 주세요.',
   ribbonGroupProofing: '언어 교정',
   ribbonSpellcheckBtn: '맞춤법 검사',
   ribbonSpellcheckTip:
     '입력하는 동안 맞춤법을 검사하여 잘못 입력된 것으로 보이는 단어에 빨간 밑줄을 표시합니다',
-  ribbonTranslate: '번역',
-  ribbonTranslateTip: 'AI가 문서 번역',
-  ribbonTranslatePrompt:
-    '문서 전체를 {lang}(으)로 번역해 주세요. 단락 구조와 제목 수준은 유지해 주세요.',
-  ribbonTranslateSelectionPrompt:
-    '선택한 내용을 {lang}(으)로 번역해 주세요. 단락 구조는 유지해 주세요.',
-  ribbonEditorSelectionPrompt:
-    '선택한 내용을 교정해 주세요: 오탈자, 문장 부호, 문법 오류를 수정하되 원래 의미와 단락 구조는 유지해 주세요.',
-  ribbonTranslateTo: '{lang}(으)로 번역',
-  ribbonLangEnglish: '영어',
-  ribbonLangSimplifiedChinese: '중국어 간체',
-  ribbonLangJapanese: '일본어',
-  ribbonLangKorean: '한국어',
-  ribbonLangFrench: '프랑스어',
-  ribbonLangGerman: '독일어',
-  ribbonLangSpanish: '스페인어',
-  ribbonLangThai: '태국어',
-  ribbonLangIndonesian: '인도네시아어',
-  ribbonLangRussian: '러시아어',
-  ribbonLangArabic: '아랍어',
-  ribbonLangPortuguese: '포르투갈어',
-  ribbonLangItalian: '이탈리아어',
-  ribbonLangPolish: '폴란드어',
-  ribbonLangCzech: '체코어',
-  ribbonLangDutch: '네덜란드어',
-  ribbonLangMalay: '말레이어',
-  ribbonLangHebrew: '히브리어',
-  ribbonLangHindi: '힌디어',
-  ribbonLangTraditionalChinese: '중국어 번체',
-  ribbonLangVietnamese: '베트남어',
-  ribbonGroupLanguage: '언어',
   ribbonNewComment: '새 메모',
   ribbonNewCommentTip: '선택 영역에 메모 추가',
   ribbonNewCommentSelectTip: '먼저 메모를 달 텍스트를 선택하세요',
@@ -723,15 +681,6 @@ export const ko = {
   ribbonPrevCommentTip: '이전 메모로 이동',
   ribbonNextComment: '다음',
   ribbonNextCommentTip: '다음 메모로 이동',
-  ribbonAiComments: 'AI 메모 처리',
-  ribbonAiRevisions: 'AI 변경 내용 요약',
-  ribbonAiRevisionsTip:
-    '대기 중인 변경 내용 {count}건을 AI가 읽고 섹션별로 요약하며 위험 요소를 짚어 줍니다',
-  ribbonAiRevisionsPrompt:
-    '문서의 대기 중인 변경 내용을 모두 요약해 주세요: 먼저 전체 통계(삽입/삭제 수, 작성자, 날짜 범위), 다음으로 섹션별로 무엇이 바뀌었는지 설명하고(block 번호 표기), 마지막으로 주의할 점(의무나 한정 표현 삭제, 숫자·날짜·금액 변경 등)을 나열하세요. 요약만 하고 문서를 수정하거나 변경 내용을 적용/거부하지 마세요.',
-  ribbonAiCommentsTip: '해결되지 않은 메모 {count}건을 AI가 순서대로 처리합니다(수정·회신·해결)',
-  ribbonAiCommentsPrompt:
-    '문서의 해결되지 않은 메모를 모두 처리해 주세요: 각 메모의 요청대로 수정하고, 변경 내용을 회신한 뒤 해결로 표시하세요. 질문이거나 모호한 메모에는 회신만 하고 본문은 수정하지 마세요.',
   ribbonShowCommentsTip: '메모 표시({count}개)',
   ribbonTrackChanges: '변경 내용 추적',
   ribbonTrackChangesTip:
@@ -840,8 +789,6 @@ export const ko = {
   ribbonWholePage: '한 페이지',
   ribbonWholePageTip: '전체 페이지가 창에 맞도록 확대/축소',
   ribbonGroupZoom: '확대/축소',
-  ribbonAiPanel: 'AI 패널',
-  ribbonAiPanelTip: 'AI 패널 표시/숨기기',
   ribbonDarkMode: '다크 모드',
   ribbonDarkModeTip: '문서 내용은 바꾸지 않고 편집 영역을 어두운 색으로 표시',
   ribbonGroupShow: '표시',

@@ -277,7 +277,7 @@ describe('writers compose from the live maps, not a snapshot', () => {
     expect(linked.links).toEqual({ '30:footer': true })
   })
 
-  it('a first-page edit made on the canvas is what an AI read of that variant returns', () => {
+  it('a first-page edit made on the canvas is what a read of that variant returns', () => {
     const s: HfSectionState = {
       ...threeSections(),
       sections: [section(5)],
