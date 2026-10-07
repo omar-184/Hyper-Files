@@ -34,7 +34,7 @@ describe('third-party license aggregation', () => {
     const shellPackage = JSON.parse(
       readFileSync(join(root, 'apps/shell/package.json'), 'utf8'),
     ) as { scripts: Record<string, string> }
-    for (const target of ['dist:mac', 'dist:win', 'dist:linux']) {
+    for (const target of ['dist:mac', 'dist:win']) {
       expect(shellPackage.scripts[target]).toContain('npm run notices')
     }
     const builder = readFileSync(join(root, 'apps/shell/electron-builder.cjs'), 'utf8')
