@@ -26,8 +26,7 @@ export const cs = {
   charCount: '{n} znaků',
   previewNeedsSave: 'Relativní obrázky a styly se v náhledu zobrazí po uložení souboru',
   inspectHint: 'Klepnutím na prvek v náhledu ho vyberete, poklepáním upravíte text',
-  nodeDynamic:
-    'Tento prvek vytvořil skript stránky a nemá zdroj; upravte ho přes zdrojový kód nebo AI',
+  nodeDynamic: 'Tento prvek vytvořil skript stránky a nemá zdroj; upravte ho přes zdrojový kód',
   nodeDynamicShort: 'vytvořeno skriptem',
   nodeDirty: 'Skript stránky tento prvek změnil; úpravy zapsané do zdroje může skript přepsat',
   nodeDirtyShort: 'změněno skriptem',

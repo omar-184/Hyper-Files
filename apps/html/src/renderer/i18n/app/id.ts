@@ -37,8 +37,7 @@ export const id = {
   charCount: '{n} karakter',
   previewNeedsSave: 'Gambar dan gaya relatif akan tampil di pratinjau setelah file disimpan',
   inspectHint: 'Klik elemen di pratinjau untuk memilih, klik dua kali untuk mengedit teks',
-  nodeDynamic:
-    'Elemen ini dibuat oleh skrip halaman dan tidak ada di sumber; edit lewat sumber atau AI',
+  nodeDynamic: 'Elemen ini dibuat oleh skrip halaman dan tidak ada di sumber; edit lewat sumber',
   nodeDynamicShort: 'dibuat skrip',
   nodeDirty:
     'Skrip halaman mengubah elemen ini; perubahan yang ditulis ke sumber mungkin ditimpa oleh skrip',

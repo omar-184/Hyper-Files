@@ -37,8 +37,7 @@ export const ko = {
   charCount: '{n}자',
   previewNeedsSave: '파일을 저장하면 상대 경로의 이미지와 스타일이 미리보기에 표시됩니다',
   inspectHint: '미리보기에서 요소를 클릭해 선택, 더블클릭으로 텍스트 편집',
-  nodeDynamic:
-    '이 요소는 페이지 스크립트가 생성한 것으로 소스에 없습니다. 소스 또는 AI로 편집하세요',
+  nodeDynamic: '이 요소는 페이지 스크립트가 생성한 것으로 소스에 없습니다. 소스에서 편집하세요',
   nodeDynamicShort: '스크립트 생성',
   nodeDirty:
     '페이지 스크립트가 이 요소를 변경했습니다. 소스에 쓴 편집이 스크립트에 의해 덮어써질 수 있습니다',

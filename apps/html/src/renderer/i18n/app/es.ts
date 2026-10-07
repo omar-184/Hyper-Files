@@ -40,7 +40,7 @@ export const es = {
   inspectHint:
     'Haz clic en un elemento de la vista previa para seleccionarlo; doble clic para editar el texto',
   nodeDynamic:
-    'Este elemento fue creado por el script de la página y no existe en el código; edítalo desde el código o con IA',
+    'Este elemento fue creado por el script de la página y no existe en el código; edítalo desde el código',
   nodeDynamicShort: 'generado por script',
   nodeDirty:
     'El script de la página modificó este elemento; los cambios escritos en el código pueden ser sobrescritos',

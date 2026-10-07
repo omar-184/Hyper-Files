@@ -3,12 +3,9 @@ import {
   Dropdown,
   FindPanel,
   type FindFocusRequest,
-  type AiScopeQuoteData,
   useAutoSavePref,
   type FindPanelStrings,
   type FindTarget,
-  aiPanelInitiallyOpen,
-  rememberAiPanelOpen,
 } from '@genoffice/ui'
 import {
   pollUntilReady,
@@ -21,15 +18,6 @@ import { PreviewFrame, type PreviewFrameHandle } from './preview/PreviewFrame'
 import { instrumentForPreview } from './preview/instrument'
 import type { ComputedSnapshot, ElementRect, FromInspector } from './preview/inspector-protocol'
 import inspectorSource from './preview/inspector.js?raw'
-import { AiPanel, GensparkMark, type AiPreset, type HtmlAiDeps } from './ai/AiPanel'
-import { AiAskPopover, type AnchorRect, type AskMode } from './components/AiAskPopover'
-import {
-  EDIT_QUEUE_MAX,
-  buildSelectionInstruction,
-  excerptOf,
-  resolveQueueItem,
-  type EditQueueItem,
-} from './ai/edit-queue'
 import { Breadcrumb, type NodeState } from './components/Breadcrumb'
 import {
   Ribbon,
@@ -60,10 +48,9 @@ import {
   type ParseMap,
 } from './document/parse-map'
 import { compileOps, type HtmlOp, type OpError } from './document/ops'
-import { injectBrief, parseBrief, type Brief } from './document/brief'
 import { applyPatches } from './document/patch'
 import { adoptImageRewrites } from './document/image-rewrites'
-import { deriveAutoFileName, deriveNameFromPrompt, derivePageTitleName } from './document/auto-name'
+import { deriveAutoFileName } from './document/auto-name'
 import { runGuardedPrint } from './print-guard'
 import type { ExportFormat, SaveMode } from '../shared/ipc'
 
@@ -136,12 +123,7 @@ export default function App() {
   const [cursor, setCursor] = useState<CursorInfo>({ line: 1, col: 1, pos: 0 })
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewNonce, setPreviewNonce] = useState(0)
-  const [draftHtml, setDraftHtml] = useState<string | null>(null)
   const [historyState, setHistoryState] = useState({ undo: false, redo: false })
-  const [aiOpen, setAiOpen] = useState(() => aiPanelInitiallyOpen('htmlapp.showAi'))
-  const [aiPreset, setAiPreset] = useState<AiPreset | null>(null)
-  const [editQueue, setEditQueue] = useState<EditQueueItem[]>([])
-  const [askMode, setAskMode] = useState<AskMode | null>(null)
   const [selectedSid, setSelectedSid] = useState<number | null>(null)
   const [selectedState, setSelectedState] = useState<NodeState>('static')
   const [textSel, setTextSel] = useState<TextSel | null>(null)
@@ -213,20 +195,13 @@ export default function App() {
   const frameVersionsRef = useRef<Set<number>>(new Set())
   /** window scroll of the running frame, restored after an edit reloads it */
   const frameScrollRef = useRef<number | null>(null)
-  /** bumped on every text change; AI staleness checks compare against lastManualVersionRef */
+  /** bumped on every text change; keys the parse-map cache */
   const versionRef = useRef(0)
-  const lastManualVersionRef = useRef(0)
   const mapRef = useRef<ParseMap | null>(null)
   const mapSourceRef = useRef('')
   const pathRef = useRef<string | null>(null)
   const selectedSidRef = useRef<number | null>(null)
-  const editQueueRef = useRef<EditQueueItem[]>([])
   const canvasModeRef = useRef<CanvasMode>('edit')
-  const queueSeqRef = useRef(0)
-  /** brief confirmed on the AI card; pinned into the head of the next generated document */
-  const briefRef = useRef<Brief | null>(null)
-  /** name taken from the first AI request of an untitled document: tab title now, file name at the first save */
-  const provisionalNameRef = useRef<string | null>(null)
   const pendingStylesRef = useRef<Record<string, string | null>>({})
   const styleTimerRef = useRef<number | null>(null)
   const flushingStylesRef = useRef(false)
@@ -234,7 +209,6 @@ export default function App() {
   const barRef = useRef<HTMLDivElement>(null)
   pathRef.current = path
   textRef.current = text
-  editQueueRef.current = editQueue
   canvasModeRef.current = canvasMode
   savedTextRef.current = savedText
   statusRef.current = status
@@ -347,10 +321,6 @@ export default function App() {
   }, [canvasMode])
 
   useEffect(() => {
-    rememberAiPanelOpen('htmlapp.showAi', aiOpen)
-  }, [aiOpen])
-
-  useEffect(() => {
     localStorage.setItem('htmlapp.device', device)
   }, [device])
 
@@ -358,7 +328,7 @@ export default function App() {
     localStorage.setItem('htmlapp.stylePanel', panelOpen ? '1' : '0')
   }, [panelOpen])
 
-  // the device host is centred in the stage: any stage resize (split view, AI dock, device) moves it
+  // the device host is centred in the stage: any stage resize (split view, device) moves it
   useEffect(() => {
     const stage = stageRef.current
     if (!stage || status !== 'ready') return
@@ -388,10 +358,9 @@ export default function App() {
 
   /** every text change goes through here so the version counter and the map cache stay coherent */
   const commitText = useCallback(
-    (next: string, manual: boolean, preservePending = false) => {
+    (next: string, preservePending = false) => {
       textRef.current = next
       versionRef.current += 1
-      if (manual) lastManualVersionRef.current = versionRef.current
       // text-range coordinates never survive a document change
       setTextSel(null)
       // any other document change reloads the preview and drops the live pokes; forget them too rather than
@@ -408,28 +377,21 @@ export default function App() {
     [refreshHistory],
   )
 
-  const onEditorChange = useCallback(
-    (next: string) => {
-      editorRef.current?.clearHighlights()
-      commitText(next, true)
-    },
-    [commitText],
-  )
+  const onEditorChange = useCallback((next: string) => commitText(next), [commitText])
 
-  /** compile + apply one batch; manual batches are not highlighted and count as user edits for AI staleness */
+  /** compile + apply one batch as one undoable step */
   const applyOps = useCallback(
     (
       ops: HtmlOp[],
-      manual: boolean,
     ): { ok: true; ranges: Array<[number, number]> } | { ok: false; errors: OpError[] } => {
       const base = textRef.current
       const compiled = compileOps(base, getMap(), ops)
       if (compiled.errors.length > 0) return { ok: false, errors: compiled.errors }
       const editor = editorRef.current
       const ranges = editor
-        ? editor.applyPatches(compiled.patches, !manual)
+        ? editor.applyPatches(compiled.patches)
         : compiled.patches.map((p) => [p.from, p.from + p.text.length] as [number, number])
-      commitText(applyPatches(base, compiled.patches), manual)
+      commitText(applyPatches(base, compiled.patches))
       return { ok: true, ranges }
     },
     [commitText, getMap],
@@ -444,17 +406,12 @@ export default function App() {
   }, [])
 
   const replaceAll = useCallback(
-    (html: string, highlight: boolean) => {
+    (html: string) => {
       flushPending()
-      // a generated document carries the confirmed brief so later turns (and re-opens) stay anchored to it
-      const pinned =
-        highlight && briefRef.current && !parseBrief(html)
-          ? injectBrief(html, briefRef.current)
-          : html
-      editorRef.current?.replaceDoc(pinned, highlight)
+      editorRef.current?.replaceDoc(html)
       // a new page, not an edit of the one on screen: it opens at the top
       frameScrollRef.current = null
-      commitText(pinned, false)
+      commitText(html)
     },
     [commitText, flushPending],
   )
@@ -472,7 +429,7 @@ export default function App() {
       // live style pokes and open panel drafts are written first, while their sid still names the element they were made on
       flushPending()
       const before = selectedSidRef.current
-      const r = applyOps(ops, true)
+      const r = applyOps(ops)
       if (!r.ok) {
         setNotice(r.errors[0]?.message ?? 'edit rejected')
         return false
@@ -486,9 +443,7 @@ export default function App() {
         const map = getMap()
         // sids are matched by path, so after a move / rename / replace the old sid may now name the
         // sibling that took the old position; re-derive the target from the largest applied range
-        const relocates = ops.some(
-          (o) => o.op === 'move' || o.op === 'set_tag' || o.op === 'replace_element',
-        )
+        const relocates = ops.some((o) => o.op === 'move')
         const widest = r.ranges.reduce<[number, number] | null>(
           (best, cur) => (!best || cur[1] - cur[0] > best[1] - best[0] ? cur : best),
           null,
@@ -525,7 +480,7 @@ export default function App() {
     [applyOps, getMap, flushPending, pushPreview],
   )
 
-  // ── selection model: one current element shared by the preview, the source pane, the toolbar and the AI ──
+  // ── selection model: one current element shared by the preview, the source pane and the toolbar ──
 
   const selectSidRef = useRef<
     | ((
@@ -558,23 +513,6 @@ export default function App() {
   )
   selectSidRef.current = selectSid
 
-  /** numbered pins for queued edits; stale items (element gone) get no pin */
-  const postMarks = useCallback(() => {
-    const items = canvasModeRef.current === 'present' ? [] : editQueueRef.current
-    // no getMap() before the document is loaded: it would cache an empty map under version 0
-    const map = items.length ? getMap() : null
-    const src = textRef.current
-    // one pin per element; several queued edits on the same element share it and list their ordinals
-    const bySid = new Map<number, string[]>()
-    items.forEach((item, i) => {
-      const target = map && resolveQueueItem(src, map, item).target
-      if (target) bySid.set(target.sid, [...(bySid.get(target.sid) ?? []), String(i + 1)])
-    })
-    const marks = [...bySid].map(([sid, ordinals]) => ({ sid, label: ordinals.join('·') }))
-    previewRef.current?.post({ type: 'gx:mark', marks })
-  }, [getMap])
-  useEffect(postMarks, [editQueue, canvasMode, postMarks])
-
   const onInspectorMessage = useCallback(
     (msg: FromInspector) => {
       // a click that lands while the frame is reloading carries sids from the previous copy
@@ -591,18 +529,6 @@ export default function App() {
           if (editAfterLoadRef.current !== null && editAfterLoadRef.current === sid)
             previewRef.current?.post({ type: 'gx:beginTextEdit', sid })
           editAfterLoadRef.current = null
-          postMarks()
-          return
-        }
-        case 'gx:markClick': {
-          const map = getMap()
-          // a shared pin opens the most recent edit on that element; the others stay reachable from the queue card
-          const item = editQueueRef.current
-            .filter((q) => resolveQueueItem(textRef.current, map, q).target?.sid === msg.sid)
-            .at(-1)
-          if (!item) return
-          selectSid(item.sid, { reveal: true })
-          setAskMode({ kind: 'edit', qid: item.qid })
           return
         }
         case 'gx:select': {
@@ -709,7 +635,6 @@ export default function App() {
             moveSelectedRef.current(msg.command === 'moveUp' ? -1 : 1)
           else if (msg.command === 'delete') runManual([{ op: 'remove', sid }], 'clear')
           else if (msg.command === 'escape') selectSid(null)
-          else if (msg.command === 'askAi') setAskMode({ kind: 'new' })
           else if (msg.command === 'bold') wrapSelectionRef.current('strong')
           else if (msg.command === 'italic') wrapSelectionRef.current('em')
           else if (msg.command === 'parent' && e.parentSid !== null) {
@@ -745,7 +670,7 @@ export default function App() {
           return
       }
     },
-    [getMap, postMarks, runManual, selectSid, t, flushPending],
+    [getMap, runManual, selectSid, t, flushPending],
   )
 
   // the source cursor picks the covering element (no reveal: the user is already there)
@@ -779,9 +704,6 @@ export default function App() {
       setTextSel(null)
   }
   wrapSelectionRef.current = wrapSelection
-  const askAi = () => {
-    if (selectedEntry) setAskMode({ kind: 'new' })
-  }
   const setAttr = (name: string, value: string | null) => {
     // may run from the panel's unmount after the element was deleted
     if (selectedEntry && getMap().bySid.has(selectedEntry.sid))
@@ -804,7 +726,7 @@ export default function App() {
     // the menu is disabled once the page has content, and re-checked here so
     // the action cannot fire from a stale render (a keyboard path, a queued click)
     if (!isDocEmpty(textRef.current)) return
-    replaceAll(documentSkeleton(lang), false)
+    replaceAll(documentSkeleton(lang))
   }, [lang, replaceAll])
 
   /** ribbon Insert menu: a starter element after the selection (or at the end of the body), then straight into editing */
@@ -907,73 +829,6 @@ export default function App() {
     cropHint: t('imageCropHint'),
   }
 
-  // ── element-scoped AI edits: queue them on the selected element or run one right away ──
-  const askTarget = useMemo(() => {
-    if (!selectedEntry || STRUCTURAL.has(selectedEntry.tag)) return null
-    return {
-      sid: selectedEntry.sid,
-      tag: selectedEntry.tag,
-      excerpt: excerptOf(text, selectedEntry),
-      start: selectedEntry.range[0],
-    }
-  }, [selectedEntry, text])
-  const queueAdd = (instruction: string) => {
-    setAskMode(null)
-    if (!askTarget || editQueue.length >= EDIT_QUEUE_MAX) return
-    const qid = `q${++queueSeqRef.current}`
-    setEditQueue((prev) => [
-      ...prev,
-      { qid, sid: askTarget.sid, tag: askTarget.tag, capturedText: askTarget.excerpt, instruction },
-    ])
-    setAiOpen(true)
-  }
-  const queueUpdate = (qid: string, instruction: string) => {
-    setAskMode(null)
-    setEditQueue((prev) => prev.map((q) => (q.qid === qid ? { ...q, instruction } : q)))
-  }
-  const queueRemove = (qid: string) => {
-    setAskMode(null)
-    setEditQueue((prev) => prev.filter((q) => q.qid !== qid))
-  }
-  const queueConsume = (qids: string[]) =>
-    setEditQueue((prev) => prev.filter((q) => !qids.includes(q.qid)))
-  const queueFocus = (qid: string) => {
-    const item = editQueue.find((q) => q.qid === qid)
-    const target = item && resolveQueueItem(text, getMap(), item).target
-    if (target) selectSid(target.sid, { reveal: true })
-  }
-  const askSendNow = (instruction: string) => {
-    setAskMode(null)
-    if (!askTarget) return
-    flushPending()
-    setAiOpen(true)
-    const scope: AiScopeQuoteData = {
-      label: t('aiScopeElement', { tag: askTarget.tag }),
-      ...(askTarget.excerpt.trim() ? { text: askTarget.excerpt.trim() } : {}),
-    }
-    setAiPreset({
-      text: buildSelectionInstruction(askTarget, instruction),
-      displayText: instruction,
-      nonce: Date.now(),
-      scope,
-    })
-  }
-  /** viewport rect of the selected element, clipped to the stage; identity changes whenever the geometry does */
-  const getAskAnchorRect = useCallback((): AnchorRect | null => {
-    // stageTick: the stage moved or resized (AI dock, split view, device recentre) without the frame-local rect changing
-    void stageTick
-    const stage = stageRef.current?.getBoundingClientRect()
-    const host = stageRef.current?.querySelector('.preview-host')?.getBoundingClientRect()
-    if (!selRect || !stage || !host) return null
-    const z = zoom / 100
-    const left = Math.max(stage.left, host.left + selRect.x * z)
-    const top = Math.max(stage.top, host.top + selRect.y * z)
-    const right = Math.min(stage.right, host.left + (selRect.x + selRect.width) * z)
-    const bottom = Math.min(stage.bottom, host.top + (selRect.y + selRect.height) * z)
-    if (right <= left || bottom <= top) return null
-    return { left, top, right, bottom, viewTop: stage.top, viewBottom: stage.bottom }
-  }, [selRect, zoom, stageTick])
-
   // ── live style editing: poke the preview DOM now, write one set_style op to the source shortly after ──
   const flushStyles = useCallback(() => {
     if (styleTimerRef.current !== null) window.clearTimeout(styleTimerRef.current)
@@ -1022,7 +877,6 @@ export default function App() {
         return mode
       })
       flushPending()
-      setAskMode(null)
     },
     [flushPending, selectSid],
   )
@@ -1097,7 +951,7 @@ export default function App() {
   }
 
   const doSave = useCallback(
-    async (mode: SaveMode, suggestedName?: string): Promise<boolean> => {
+    async (mode: SaveMode): Promise<boolean> => {
       if (statusRef.current !== 'ready') return false
       // uncommitted live style pokes belong to the document being saved
       flushPending()
@@ -1109,18 +963,12 @@ export default function App() {
       try {
         const textAtSave = textRef.current
         const serialized = serializeDocText({ text: textAtSave, envelope: envelopeRef.current })
-        const result = await window.htmlApi.save({
-          text: serialized,
-          imageSources: [],
-          mode,
-          suggestedName,
-          defaultName: provisionalNameRef.current ?? undefined,
-        })
+        const result = await window.htmlApi.save({ text: serialized, imageSources: [], mode })
         if (result.ok && 'path' in result) {
           const adopted = adoptImageRewrites(textAtSave, textRef.current, result.imageRewrites)
           if (adopted.liveText !== textRef.current) {
             editorRef.current?.setDoc(adopted.liveText)
-            commitText(adopted.liveText, false, true)
+            commitText(adopted.liveText, true)
           }
           setPath((previous) => {
             if (previous !== result.path) setPreviewNonce((n) => n + 1)
@@ -1258,25 +1106,6 @@ export default function App() {
       }
       void doSave(mode)
     })
-    // MCP read of this open document: hand back the same serialization a save
-    // would write, so uncommitted edits are included. Staying silent while the
-    // editor is still loading keeps the main process retrying its request
-    // instead of failing on a document that is merely not ready yet.
-    const offReadText = window.htmlApi.onReadTextRequest(() => {
-      if (statusRef.current !== 'ready') return
-      try {
-        flushPending()
-        const serialized = serializeDocText({
-          text: textRef.current,
-          envelope: envelopeRef.current,
-        })
-        window.htmlApi.sendReadTextResult({ text: serialized })
-      } catch (err) {
-        window.htmlApi.sendReadTextResult({
-          error: err instanceof Error ? err.message : String(err),
-        })
-      }
-    })
     const offClose = window.htmlApi.onCloseSaveRequest(() => {
       void (async () => {
         while (savingRef.current) await new Promise((r) => setTimeout(r, 50))
@@ -1340,7 +1169,6 @@ export default function App() {
     window.addEventListener('keydown', onKeyDown, true)
     return () => {
       offSave()
-      offReadText()
       offClose()
       offRenamed()
       offExport()
@@ -1381,50 +1209,6 @@ export default function App() {
       window.removeEventListener('blur', tick)
     }
   }, [autoSave, path, doSave, flushPending])
-
-  const aiDeps: HtmlAiDeps = {
-    access: {
-      getText: () => textRef.current,
-      getVersion: () => versionRef.current,
-      getMap,
-      getLastManualVersion: () => lastManualVersionRef.current,
-      getFilePath: () => pathRef.current,
-      getSelectedSid: () => selectedSidRef.current,
-      applyOps: (ops) => {
-        flushPending()
-        return applyOps(ops, false)
-      },
-      replaceAll: (html) => replaceAll(html, true),
-    },
-    getSnapshot: () => ({ text: textRef.current }),
-    restoreSnapshot: (snapshot) => replaceAll(snapshot.text, false),
-    onPrompt: (text) => {
-      if (pathRef.current || provisionalNameRef.current) return
-      const name = deriveNameFromPrompt(text)
-      if (!name) return
-      provisionalNameRef.current = name
-      window.htmlApi.setProvisionalTitle(name)
-    },
-    onRunDone: (mutated) => {
-      // AI wrote into a never-saved document: save it silently under the page's own title,
-      // falling back to the name of the request that started it
-      if (!mutated || pathRef.current) return
-      const text = textRef.current
-      const name =
-        derivePageTitleName(text) || provisionalNameRef.current || deriveAutoFileName(text)
-      if (name) void doSave('save', name)
-    },
-    clearHighlights: () => editorRef.current?.clearHighlights(),
-    onBriefConfirmed: (brief) => {
-      briefRef.current = brief
-    },
-    previewDraft: setDraftHtml,
-    navigateTo: (sid) => {
-      const e = getMap().bySid.get(sid)
-      if (!e) return
-      selectSid(sid, { reveal: true })
-    },
-  }
 
   const statusText = useMemo(() => {
     if (saveState === 'saving') return t('saving')
@@ -1493,47 +1277,15 @@ export default function App() {
         onToggleAutoSave={setAutoSave}
         view={view}
         onView={setView}
-        aiOpen={aiOpen}
-        onToggleAi={() => setAiOpen((v) => !v)}
         canInsert={canvasMode === 'edit'}
         onInsert={(kind, opts) => void insertElement(kind, opts)}
         onInsertSkeleton={insertSkeleton}
         canInsertSkeleton={canvasMode === 'edit' && isDocEmpty(textRef.current)}
-        onAiPreset={(text) => {
-          flushPending()
-          setAiOpen(true)
-          setAiPreset({ text, nonce: Date.now() })
-        }}
         canvasMode={canvasMode}
         onPresent={startPresent}
       />
 
       <div className="app-main">
-        <div className={`ai-dock${aiOpen ? '' : ' collapsed'}`}>
-          {!aiOpen && (
-            <button
-              className="ai-rail"
-              data-tip={t('aiOpenAssistant')}
-              aria-label={t('aiOpenAssistant')}
-              onClick={() => setAiOpen(true)}
-            >
-              <GensparkMark size={18} />
-            </button>
-          )}
-          {/* stays mounted while collapsed: an in-flight run, its snapshots and the loop context survive */}
-          <AiPanel
-            deps={aiDeps}
-            filePath={path}
-            preset={aiPreset}
-            editQueue={editQueue}
-            onQueueEditInstruction={queueUpdate}
-            onQueueRemove={queueRemove}
-            onQueueClear={() => setEditQueue([])}
-            onQueueFocus={queueFocus}
-            onQueueConsume={queueConsume}
-            onCollapse={() => setAiOpen(false)}
-          />
-        </div>
         <div className="app-content">
           {findTarget && (
             <FindPanel
@@ -1569,7 +1321,6 @@ export default function App() {
                   zoom={zoom}
                   onMessage={onInspectorMessage}
                   onLoad={onPreviewLoad}
-                  draft={draftHtml}
                 />
                 {canvasMode === 'present' && (
                   <button
@@ -1602,8 +1353,6 @@ export default function App() {
                       onReplaceImage={replaceImage}
                       onCropImage={() => void openPictureDialog('crop')}
                       onCutoutImage={() => void openPictureDialog('cutout')}
-                      canAskAi={askTarget !== null}
-                      onAskAi={askAi}
                       tag={selectedEntry.tag}
                       onMove={moveSelected}
                       onDuplicate={duplicateSelected}
@@ -1721,26 +1470,6 @@ export default function App() {
           </footer>
         </div>
       </div>
-      {askTarget && askMode && canvasMode !== 'present' && (
-        <AiAskPopover
-          key={askMode.kind === 'edit' ? askMode.qid : 'new'}
-          target={askTarget}
-          mode={askMode}
-          initialText={
-            askMode.kind === 'edit'
-              ? editQueue.find((q) => q.qid === askMode.qid)?.instruction
-              : undefined
-          }
-          getAnchorRect={getAskAnchorRect}
-          onSubmit={(instruction) =>
-            askMode.kind === 'edit' ? queueUpdate(askMode.qid, instruction) : queueAdd(instruction)
-          }
-          onCancel={() => setAskMode(null)}
-          onSendNow={askSendNow}
-          onRemove={() => askMode.kind === 'edit' && queueRemove(askMode.qid)}
-          queueFull={editQueue.length >= EDIT_QUEUE_MAX}
-        />
-      )}
       {pictureDialog?.kind === 'cutout' && (
         <CutoutDialog
           labels={imageDialogLabels}

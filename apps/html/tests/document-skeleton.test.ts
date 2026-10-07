@@ -31,9 +31,9 @@ describe('documentSkeleton', () => {
     expect(html).toContain('<body></body>')
   })
 
-  it('leaves the page with no visible content, so the AI panel still offers generation', () => {
+  it('leaves the page with no visible content', () => {
     // inserting a skeleton must not make the document look written: the head
-    // carries no visible text, and isDocEmpty is what the AI panel branches on
+    // carries no visible text
     expect(isDocEmpty(documentSkeleton('en'))).toBe(true)
   })
 

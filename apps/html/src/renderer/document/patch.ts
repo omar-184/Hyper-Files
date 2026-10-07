@@ -5,7 +5,7 @@ export interface Patch {
   text: string
 }
 
-export type PatchOrigin = 'manual' | 'ai' | 'inspector' | 'format' | 'load'
+export type PatchOrigin = 'manual' | 'inspector' | 'format' | 'load'
 
 export interface PatchSet {
   patches: Patch[]

@@ -105,10 +105,8 @@
     [${MARK}-overlay="hover"] { outline: 1.5px dashed var(--gx-hover, #0f7fff); outline-offset: -1px; }
     [${MARK}-overlay="select"] { outline: 2px solid var(--gx-select, #0f7fff); outline-offset: -1px; background: rgba(15,127,255,0.05); }
     [${MARK}-overlay="dynamic"] { outline: 2px solid #f59e0b; outline-offset: -1px; }
-    [${MARK}-overlay="highlight"] { background: rgba(255,213,79,0.35); }
     [${MARK}-label] { position: fixed; z-index: 2147483647; pointer-events: none; font: 11px/1 -apple-system, system-ui, sans-serif; color: #fff; background: var(--gx-select, #0f7fff); padding: 2px 6px; border-radius: 3px; white-space: nowrap; }
     [${MARK}-editing] { outline: 2px solid #2563eb !important; outline-offset: -1px; }
-    [${MARK}-pin] { position: fixed; z-index: 2147483647; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--gx-select, #0f7fff); color: #fff; font: 600 11px/18px -apple-system, system-ui, sans-serif; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
     [${MARK}-handle] { position: fixed; z-index: 2147483647; width: 9px; height: 9px; box-sizing: border-box; border: 1.5px solid var(--gx-select, #0f7fff); border-radius: 2px; background: #fff; pointer-events: auto; }
     [${MARK}-handle="n"], [${MARK}-handle="s"] { cursor: ns-resize; }
     [${MARK}-handle="e"], [${MARK}-handle="w"] { cursor: ew-resize; }
@@ -140,8 +138,6 @@
   label.setAttribute(`${MARK}-label`, '')
   label.style.display = 'none'
   document.documentElement.appendChild(label)
-  let highlightBoxes = []
-  let markPins = []
   const HANDLE_DIRS = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
   const handles = HANDLE_DIRS.map((dir) => {
     const h = document.createElement('div')
@@ -293,16 +289,6 @@
       })
     })
   }
-  const placePin = (pin, el) => {
-    if (!el || !el.isConnected) {
-      pin.style.display = 'none'
-      return
-    }
-    const r = el.getBoundingClientRect()
-    pin.style.display = 'block'
-    pin.style.left = `${Math.max(0, r.right - 9)}px`
-    pin.style.top = `${Math.max(0, r.top - 9)}px`
-  }
   // the hover box is fixed-position: without re-hit-testing under the pointer it stays put while the page scrolls under it
   let pointer = null
   /** pointer feedback like PowerPoint/WPS: an I-beam over editable text (a click there places the
@@ -398,8 +384,6 @@
     placeLabel(selected)
     placeHandles(selected)
     placeGrip(selected)
-    for (const { box, el } of highlightBoxes) place(box, el)
-    for (const { pin, el } of markPins) placePin(pin, el)
     if (selected) postRect()
   }
 
@@ -430,7 +414,7 @@
   /** how the element's text edits inline: 'text' = one direct text node and no child elements
    * (committed as set_text_node, the smallest source diff); 'html' = text mixed with phrasing
    * children like <strong> / <a> / <br> (committed as the whole inner HTML); null = not inline
-   * editable (no text, or block children next to several runs: those edits go through AI or source) */
+   * editable (no text, or block children next to several runs: those edits go through the source) */
   const editMode = (el) => {
     if (!el || sidOf(el) === null || !TEXT_TAGS.has(el.tagName.toLowerCase())) return null
     if (!(el.textContent || '').trim()) return null
@@ -1020,7 +1004,7 @@
         ArrowRight: 'child',
         Escape: 'escape',
       }
-      const modKey = mod ? { k: 'askAi', b: 'bold', i: 'italic' }[e.key.toLowerCase()] : undefined
+      const modKey = mod ? { b: 'bold', i: 'italic' }[e.key.toLowerCase()] : undefined
       const altKey =
         e.altKey && !mod ? { ArrowUp: 'moveUp', ArrowDown: 'moveDown' }[e.key] : undefined
       const command = modKey || altKey || map[e.key]
@@ -1082,38 +1066,6 @@
         refresh()
         break
       }
-      case 'gx:highlight':
-        for (const { box } of highlightBoxes) box.remove()
-        highlightBoxes = msg.sids
-          .map((sid) => bySid(sid))
-          .filter(Boolean)
-          .map((el) => ({ box: overlay('highlight'), el }))
-        refresh()
-        break
-      case 'gx:mark':
-        for (const { pin } of markPins) pin.remove()
-        markPins = msg.marks
-          .map(({ sid, label }) => ({ el: bySid(sid), sid, label }))
-          .filter(({ el }) => el)
-          .map(({ el, sid, label }) => {
-            const pin = document.createElement('div')
-            pin.setAttribute(MARK, '')
-            pin.setAttribute(`${MARK}-pin`, '')
-            pin.textContent = label
-            pin.addEventListener('click', (e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              post({ type: 'gx:markClick', sid })
-            })
-            document.documentElement.appendChild(pin)
-            return { pin, el }
-          })
-        refresh()
-        break
-      case 'gx:clearHighlight':
-        for (const { box } of highlightBoxes) box.remove()
-        highlightBoxes = []
-        break
       case 'gx:endDrag':
         if (drag) endDrag(false)
         if (slide) endSlide(false)

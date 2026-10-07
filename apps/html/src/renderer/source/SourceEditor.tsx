@@ -3,7 +3,6 @@ import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { redo, redoDepth, undo, undoDepth } from '@codemirror/commands'
 import { External, buildExtensions } from './cm-setup'
-import { addAiRanges, clearAiRanges } from './cm-highlight'
 import { cmFindTarget } from './find-target'
 import type { FindTarget } from '@genoffice/ui'
 import type { Patch } from '../document/patch'
@@ -11,11 +10,10 @@ import type { Patch } from '../document/patch'
 export interface SourceEditorHandle {
   /** replace the whole document without touching the undo history (file load) */
   setDoc(text: string): void
-  /** replace the whole document as one undoable step (AI rewrite, rollback) */
-  replaceDoc(text: string, highlight: boolean): void
+  /** replace the whole document as one undoable step */
+  replaceDoc(text: string): void
   /** apply validated patches as one undoable step; returns the post-edit ranges */
-  applyPatches(patches: readonly Patch[], highlight: boolean): Array<[number, number]>
-  clearHighlights(): void
+  applyPatches(patches: readonly Patch[]): Array<[number, number]>
   /** select and scroll a source range into view; focus only when the user asked for the editor */
   revealRange(from: number, to: number, focus?: boolean): void
   undo(): boolean
@@ -104,19 +102,15 @@ export const SourceEditor = forwardRef<SourceEditorHandle, Props>(function Sourc
         annotations: [External.of(true)],
       })
     },
-    replaceDoc(text, highlight) {
+    replaceDoc(text) {
       const view = viewRef.current
       if (!view) return
-      const len = view.state.doc.length
       view.dispatch({
-        changes: { from: 0, to: len, insert: text },
+        changes: { from: 0, to: view.state.doc.length, insert: text },
         annotations: [External.of(true)],
-        effects: highlight
-          ? [clearAiRanges.of(null), addAiRanges.of([[0, text.length]])]
-          : [clearAiRanges.of(null)],
       })
     },
-    applyPatches(patches, highlight) {
+    applyPatches(patches) {
       const view = viewRef.current
       if (!view) return []
       const sorted = [...patches].sort((a, b) => a.from - b.from || a.to - b.to)
@@ -129,12 +123,8 @@ export const SourceEditor = forwardRef<SourceEditorHandle, Props>(function Sourc
       view.dispatch({
         changes: sorted.map((p) => ({ from: p.from, to: p.to, insert: p.text })),
         annotations: [External.of(true)],
-        effects: highlight ? [addAiRanges.of(ranges)] : [],
       })
       return ranges
-    },
-    clearHighlights() {
-      viewRef.current?.dispatch({ effects: [clearAiRanges.of(null)] })
     },
     revealRange(from, to, focus = true) {
       const view = viewRef.current

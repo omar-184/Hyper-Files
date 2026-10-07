@@ -40,7 +40,7 @@ export const fr = {
   inspectHint:
     "Cliquez sur un élément de l'aperçu pour le sélectionner, double-cliquez pour modifier le texte",
   nodeDynamic:
-    "Cet élément a été créé par le script de la page et n'existe pas dans la source ; modifiez via la source ou l'IA",
+    "Cet élément a été créé par le script de la page et n'existe pas dans la source ; modifiez via la source",
   nodeDynamicShort: 'généré par script',
   nodeDirty:
     'Le script de la page a modifié cet élément ; les modifications écrites dans la source peuvent être écrasées',

@@ -17,7 +17,6 @@ export {
   IconFlipV,
   IconLink,
   IconLock,
-  IconPalette,
   IconPicture,
   IconPilcrow,
   IconRedo,
@@ -27,11 +26,9 @@ export {
   IconRotateRight,
   IconSave,
   IconSearch,
-  IconSparkle,
   IconTable,
   IconTrash,
   IconUndo,
-  IconWand,
 } from '../../../../docs/src/renderer/components/icons'
 
 interface IconProps {
@@ -190,28 +187,5 @@ export function IconGlobe(props: IconProps) {
       <circle cx="8" cy="8" r="5.5" />
       <path d="M2.5 8h11M8 2.5c1.8 1.6 2.6 3.4 2.6 5.5S9.8 12 8 13.5C6.2 11.9 5.4 10.1 5.4 8S6.2 4.1 8 2.5Z" />
     </Svg>
-  )
-}
-
-/** docs "AI Summarize" glyph (24-grid, drawn at the ribbon's big-button size) */
-export function IconSummarize({ size = 24 }: IconProps) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M13.875 21H12H6.5C5.39543 21 4.5 20.1046 4.5 19V5C4.5 3.89543 5.39543 3 6.5 3H17.5C18.6046 3 19.5 3.89543 19.5 5V9V12V13" />
-      <path d="M8.00001 7H16" />
-      <path d="M8.00007 10.2032H14.0001" />
-      <path d="M8.00007 13.4062H12.0001" />
-      <path d="M17 14L17.2579 14.697C17.5961 15.611 17.7652 16.068 18.0986 16.4014C18.432 16.7348 18.889 16.9039 19.803 17.2421L20.5 17.5L19.803 17.7579C18.889 18.0961 18.432 18.2652 18.0986 18.5986C17.7652 18.932 17.5961 19.389 17.2579 20.303L17 21L16.7421 20.303C16.4039 19.389 16.2348 18.932 15.9014 18.5986C15.568 18.2652 15.111 18.0961 14.197 17.7579L13.5 17.5L14.197 17.2421C15.111 16.9039 15.568 16.7348 15.9014 16.4014C16.2348 16.068 16.4039 15.611 16.7421 14.697L17 14Z" />
-    </svg>
   )
 }

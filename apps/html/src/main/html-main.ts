@@ -1,12 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  statSync,
-  unlinkSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync } from 'node:fs'
 import { mkdtemp, open, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, extname, join, relative, resolve } from 'node:path'
@@ -41,8 +33,6 @@ import {
   readBodyCapped,
 } from '@genoffice/electron-utils'
 import { createI18n, getUiLang } from '@genoffice/i18n'
-import { generateImageTool, documentMediaRoots } from '@genoffice/ai-search'
-import { parseFileToText } from '@genoffice/file-parse'
 import { convertHtmlToDocx } from '../../../../packages/html2docx/src'
 import { atomicWriteFile } from './atomic-write'
 import { printHtmlDocument, type PrintDialogOutcome } from './print-window'
@@ -75,12 +65,8 @@ import {
   registerPrivilegedSchemes,
   registerPreviewProtocol,
 } from './preview-protocol'
-import { ATTACHMENT_IMAGE_EXTS, HTML_CHANNELS } from '../shared/ipc'
+import { HTML_CHANNELS } from '../shared/ipc'
 import type {
-  AttachmentAddResult,
-  AttachmentImageResult,
-  AttachmentMeta,
-  AttachmentReadResult,
   ExportDocxRequest,
   ExportHtmlRequest,
   ExportFormat,
@@ -106,18 +92,6 @@ const tDlg = createI18n({
     btnSave: '保存',
     btnDontSave: '不保存',
     btnCancel: '取消',
-    dlgAddAttachment: '添加附件',
-    filterSupported: '支持的文件',
-    filterAll: '所有文件',
-    errUnsupportedExt: '暂不支持 .{ext} 类型',
-    errNotFile: '不是文件',
-    errTooLarge: '超过 {mb}MB 上限',
-    errImageTooLarge: '图片超过 5MB 上限',
-    errUnreadable: '无法读取',
-    errFileTooLarge: '文件超过大小上限',
-    errParseFailed: '文件解析失败',
-    errImageNoText: '图片附件不提供文本,已作为图像随用户消息发送,直接看图即可',
-    errNotImage: '不是支持的图片类型',
   },
   en: {
     dlgSaveTitle: 'Save HTML Document',
@@ -130,18 +104,6 @@ const tDlg = createI18n({
     btnSave: 'Save',
     btnDontSave: "Don't Save",
     btnCancel: 'Cancel',
-    dlgAddAttachment: 'Add Attachments',
-    filterSupported: 'Supported Files',
-    filterAll: 'All Files',
-    errUnsupportedExt: '.{ext} files are not supported',
-    errNotFile: 'not a file',
-    errTooLarge: 'exceeds the {mb}MB limit',
-    errImageTooLarge: 'image exceeds the 5MB limit',
-    errUnreadable: 'cannot be read',
-    errFileTooLarge: 'File exceeds the size limit',
-    errParseFailed: 'Failed to parse file',
-    errImageNoText: 'Image attachments have no text; the image is sent along with the user message',
-    errNotImage: 'not a supported image type',
   },
   vi: {
     dlgSaveTitle: 'Lưu tài liệu HTML',
@@ -154,19 +116,6 @@ const tDlg = createI18n({
     btnSave: 'Lưu',
     btnDontSave: 'Không lưu',
     btnCancel: 'Hủy',
-    dlgAddAttachment: 'Thêm tệp đính kèm',
-    filterSupported: 'Các tệp được hỗ trợ',
-    filterAll: 'Tất cả các tệp',
-    errUnsupportedExt: 'Tệp .{ext} không được hỗ trợ',
-    errNotFile: 'không phải là tệp',
-    errTooLarge: 'vượt quá giới hạn {mb}MB',
-    errImageTooLarge: 'hình ảnh vượt quá giới hạn 5MB',
-    errUnreadable: 'không thể đọc được',
-    errFileTooLarge: 'Tệp vượt quá giới hạn kích thước',
-    errParseFailed: 'Không thể phân tích tệp',
-    errImageNoText:
-      'Tệp đính kèm hình ảnh không có văn bản; hình ảnh được gửi cùng với tin nhắn của người dùng',
-    errNotImage: 'loại hình ảnh không được hỗ trợ',
   },
   ja: {
     dlgSaveTitle: 'HTML ドキュメントを保存',
@@ -179,19 +128,6 @@ const tDlg = createI18n({
     btnSave: '保存',
     btnDontSave: '保存しない',
     btnCancel: 'キャンセル',
-    dlgAddAttachment: '添付ファイルの追加',
-    filterSupported: 'サポートされているファイル',
-    filterAll: 'すべてのファイル',
-    errUnsupportedExt: '.{ext} 形式には対応していません',
-    errNotFile: 'ファイルではありません',
-    errTooLarge: '{mb}MB の上限を超えています',
-    errImageTooLarge: '画像が 5MB の上限を超えています',
-    errUnreadable: '読み取れません',
-    errFileTooLarge: 'ファイルがサイズ上限を超えています',
-    errParseFailed: 'ファイルの解析に失敗しました',
-    errImageNoText:
-      '画像の添付ファイルはテキストを提供しません。画像としてユーザーメッセージと一緒に送信されるため、そのまま画像をご確認ください',
-    errNotImage: 'サポートされていない画像形式です',
   },
   ko: {
     dlgSaveTitle: 'HTML 문서 저장',
@@ -204,19 +140,6 @@ const tDlg = createI18n({
     btnSave: '저장',
     btnDontSave: '저장 안 함',
     btnCancel: '취소',
-    dlgAddAttachment: '첨부 파일 추가',
-    filterSupported: '지원되는 파일',
-    filterAll: '모든 파일',
-    errUnsupportedExt: '.{ext} 형식은 지원되지 않습니다',
-    errNotFile: '파일이 아닙니다',
-    errTooLarge: '{mb}MB 제한을 초과했습니다',
-    errImageTooLarge: '이미지가 5MB 제한을 초과했습니다',
-    errUnreadable: '읽을 수 없습니다',
-    errFileTooLarge: '파일이 크기 제한을 초과했습니다',
-    errParseFailed: '파일을 분석하지 못했습니다',
-    errImageNoText:
-      '이미지 첨부 파일은 텍스트를 제공하지 않으며, 이미지 형태로 사용자 메시지와 함께 전송되므로 이미지를 직접 확인하면 됩니다',
-    errNotImage: '지원되지 않는 이미지 형식입니다',
   },
   fr: {
     dlgSaveTitle: 'Enregistrer le document HTML',
@@ -229,19 +152,6 @@ const tDlg = createI18n({
     btnSave: 'Enregistrer',
     btnDontSave: 'Ne pas enregistrer',
     btnCancel: 'Annuler',
-    dlgAddAttachment: 'Ajouter des pièces jointes',
-    filterSupported: 'Fichiers pris en charge',
-    filterAll: 'Tous les fichiers',
-    errUnsupportedExt: 'les fichiers .{ext} ne sont pas pris en charge',
-    errNotFile: "n'est pas un fichier",
-    errTooLarge: 'dépasse la limite de {mb} Mo',
-    errImageTooLarge: "l'image dépasse la limite de 5 Mo",
-    errUnreadable: 'lecture impossible',
-    errFileTooLarge: 'Le fichier dépasse la taille maximale',
-    errParseFailed: "Échec de l'analyse du fichier",
-    errImageNoText:
-      "Les pièces jointes image ne fournissent pas de texte ; l'image est envoyée avec le message de l'utilisateur, consultez-la directement",
-    errNotImage: "type d'image non pris en charge",
   },
   de: {
     dlgSaveTitle: 'HTML-Dokument speichern',
@@ -254,19 +164,6 @@ const tDlg = createI18n({
     btnSave: 'Speichern',
     btnDontSave: 'Nicht speichern',
     btnCancel: 'Abbrechen',
-    dlgAddAttachment: 'Anlagen hinzufügen',
-    filterSupported: 'Unterstützte Dateien',
-    filterAll: 'Alle Dateien',
-    errUnsupportedExt: '.{ext}-Dateien werden nicht unterstützt',
-    errNotFile: 'keine Datei',
-    errTooLarge: 'überschreitet das Limit von {mb} MB',
-    errImageTooLarge: 'Bild überschreitet das Limit von 5 MB',
-    errUnreadable: 'kann nicht gelesen werden',
-    errFileTooLarge: 'Datei überschreitet die maximale Größe',
-    errParseFailed: 'Datei konnte nicht analysiert werden',
-    errImageNoText:
-      'Bildanlagen liefern keinen Text; das Bild wird mit der Benutzernachricht gesendet und kann direkt betrachtet werden',
-    errNotImage: 'kein unterstütztes Bildformat',
   },
   es: {
     dlgSaveTitle: 'Guardar documento HTML',
@@ -279,19 +176,6 @@ const tDlg = createI18n({
     btnSave: 'Guardar',
     btnDontSave: 'No guardar',
     btnCancel: 'Cancelar',
-    dlgAddAttachment: 'Agregar datos adjuntos',
-    filterSupported: 'Archivos compatibles',
-    filterAll: 'Todos los archivos',
-    errUnsupportedExt: 'los archivos .{ext} no son compatibles',
-    errNotFile: 'no es un archivo',
-    errTooLarge: 'supera el límite de {mb} MB',
-    errImageTooLarge: 'la imagen supera el límite de 5 MB',
-    errUnreadable: 'no se puede leer',
-    errFileTooLarge: 'El archivo supera el tamaño máximo',
-    errParseFailed: 'No se pudo analizar el archivo',
-    errImageNoText:
-      'Las imágenes adjuntas no proporcionan texto; la imagen se envía junto con el mensaje del usuario, puedes verla directamente',
-    errNotImage: 'no es un tipo de imagen compatible',
   },
   th: {
     dlgSaveTitle: 'บันทึกเอกสาร HTML',
@@ -304,19 +188,6 @@ const tDlg = createI18n({
     btnSave: 'บันทึก',
     btnDontSave: 'ไม่บันทึก',
     btnCancel: 'ยกเลิก',
-    dlgAddAttachment: 'เพิ่มสิ่งที่แนบ',
-    filterSupported: 'ไฟล์ที่รองรับ',
-    filterAll: 'ไฟล์ทั้งหมด',
-    errUnsupportedExt: 'ไม่รองรับไฟล์ .{ext}',
-    errNotFile: 'ไม่ใช่ไฟล์',
-    errTooLarge: 'เกินขีดจำกัด {mb}MB',
-    errImageTooLarge: 'รูปภาพเกินขีดจำกัด 5MB',
-    errUnreadable: 'ไม่สามารถอ่านได้',
-    errFileTooLarge: 'ไฟล์เกินขนาดสูงสุด',
-    errParseFailed: 'แยกวิเคราะห์ไฟล์ไม่สำเร็จ',
-    errImageNoText:
-      'สิ่งที่แนบเป็นรูปภาพไม่มีข้อความ รูปจะถูกส่งไปพร้อมข้อความของผู้ใช้ ดูรูปได้โดยตรง',
-    errNotImage: 'ไม่ใช่ชนิดรูปภาพที่รองรับ',
   },
   id: {
     dlgSaveTitle: 'Simpan dokumen HTML',
@@ -329,19 +200,6 @@ const tDlg = createI18n({
     btnSave: 'Simpan',
     btnDontSave: 'Jangan Simpan',
     btnCancel: 'Batal',
-    dlgAddAttachment: 'Tambahkan Lampiran',
-    filterSupported: 'File yang Didukung',
-    filterAll: 'Semua File',
-    errUnsupportedExt: 'file .{ext} tidak didukung',
-    errNotFile: 'bukan file',
-    errTooLarge: 'melebihi batas {mb}MB',
-    errImageTooLarge: 'gambar melebihi batas 5MB',
-    errUnreadable: 'tidak dapat dibaca',
-    errFileTooLarge: 'File melebihi batas ukuran',
-    errParseFailed: 'Gagal mengurai file',
-    errImageNoText:
-      'Lampiran gambar tidak menyediakan teks; gambar dikirim bersama pesan pengguna dan dapat dilihat langsung',
-    errNotImage: 'bukan jenis gambar yang didukung',
   },
   ru: {
     dlgSaveTitle: 'Сохранить документ HTML',
@@ -354,19 +212,6 @@ const tDlg = createI18n({
     btnSave: 'Сохранить',
     btnDontSave: 'Не сохранять',
     btnCancel: 'Отмена',
-    dlgAddAttachment: 'Добавить вложения',
-    filterSupported: 'Поддерживаемые файлы',
-    filterAll: 'Все файлы',
-    errUnsupportedExt: 'файлы .{ext} не поддерживаются',
-    errNotFile: 'не является файлом',
-    errTooLarge: 'превышает лимит {mb} МБ',
-    errImageTooLarge: 'изображение превышает лимит 5 МБ',
-    errUnreadable: 'не удается прочитать',
-    errFileTooLarge: 'Файл превышает максимальный размер',
-    errParseFailed: 'Не удалось разобрать файл',
-    errImageNoText:
-      'Вложенные изображения не содержат текста; изображение отправляется вместе с сообщением пользователя, смотрите его напрямую',
-    errNotImage: 'неподдерживаемый тип изображения',
   },
   ar: {
     dlgSaveTitle: 'حفظ مستند HTML',
@@ -379,19 +224,6 @@ const tDlg = createI18n({
     btnSave: 'حفظ',
     btnDontSave: 'عدم الحفظ',
     btnCancel: 'إلغاء',
-    dlgAddAttachment: 'إضافة مرفقات',
-    filterSupported: 'الملفات المدعومة',
-    filterAll: 'كل الملفات',
-    errUnsupportedExt: 'ملفات .{ext} غير مدعومة',
-    errNotFile: 'ليس ملفًا',
-    errTooLarge: 'يتجاوز الحد {mb}MB',
-    errImageTooLarge: 'الصورة تتجاوز حد 5MB',
-    errUnreadable: 'تعذرت القراءة',
-    errFileTooLarge: 'الملف يتجاوز الحد الأقصى للحجم',
-    errParseFailed: 'فشل تحليل الملف',
-    errImageNoText:
-      'مرفقات الصور لا توفر نصًا؛ تُرسل الصورة مع رسالة المستخدم ويمكن الاطلاع عليها مباشرة',
-    errNotImage: 'ليس نوع صورة مدعومًا',
   },
   pt: {
     dlgSaveTitle: 'Salvar documento HTML',
@@ -404,19 +236,6 @@ const tDlg = createI18n({
     btnSave: 'Salvar',
     btnDontSave: 'Não Salvar',
     btnCancel: 'Cancelar',
-    dlgAddAttachment: 'Adicionar Anexos',
-    filterSupported: 'Arquivos Compatíveis',
-    filterAll: 'Todos os Arquivos',
-    errUnsupportedExt: 'arquivos .{ext} não são suportados',
-    errNotFile: 'não é um arquivo',
-    errTooLarge: 'excede o limite de {mb}MB',
-    errImageTooLarge: 'a imagem excede o limite de 5MB',
-    errUnreadable: 'não é possível ler',
-    errFileTooLarge: 'O arquivo excede o limite de tamanho',
-    errParseFailed: 'Falha ao analisar o arquivo',
-    errImageNoText:
-      'Anexos de imagem não fornecem texto; a imagem é enviada junto com a mensagem do usuário, basta vê-la diretamente',
-    errNotImage: 'não é um tipo de imagem suportado',
   },
   it: {
     dlgSaveTitle: 'Salva documento HTML',
@@ -429,19 +248,6 @@ const tDlg = createI18n({
     btnSave: 'Salva',
     btnDontSave: 'Non salvare',
     btnCancel: 'Annulla',
-    dlgAddAttachment: 'Aggiungi allegati',
-    filterSupported: 'File supportati',
-    filterAll: 'Tutti i file',
-    errUnsupportedExt: 'i file .{ext} non sono supportati',
-    errNotFile: 'non è un file',
-    errTooLarge: 'supera il limite di {mb} MB',
-    errImageTooLarge: "l'immagine supera il limite di 5 MB",
-    errUnreadable: 'impossibile leggere',
-    errFileTooLarge: 'Il file supera il limite di dimensione',
-    errParseFailed: 'Impossibile analizzare il file',
-    errImageNoText:
-      "Gli allegati immagine non forniscono testo; l'immagine viene inviata insieme al messaggio dell'utente, basta guardarla direttamente",
-    errNotImage: 'tipo di immagine non supportato',
   },
   pl: {
     dlgSaveTitle: 'Zapisz dokument HTML',
@@ -454,19 +260,6 @@ const tDlg = createI18n({
     btnSave: 'Zapisz',
     btnDontSave: 'Nie zapisuj',
     btnCancel: 'Anuluj',
-    dlgAddAttachment: 'Dodaj załączniki',
-    filterSupported: 'Obsługiwane pliki',
-    filterAll: 'Wszystkie pliki',
-    errUnsupportedExt: 'pliki .{ext} nie są obsługiwane',
-    errNotFile: 'to nie jest plik',
-    errTooLarge: 'przekracza limit {mb} MB',
-    errImageTooLarge: 'obraz przekracza limit 5 MB',
-    errUnreadable: 'nie można odczytać',
-    errFileTooLarge: 'Plik przekracza limit rozmiaru',
-    errParseFailed: 'Nie udało się przeanalizować pliku',
-    errImageNoText:
-      'Załączniki graficzne nie zawierają tekstu; obraz jest wysyłany razem z wiadomością użytkownika, wystarczy na niego spojrzeć',
-    errNotImage: 'nieobsługiwany typ obrazu',
   },
   cs: {
     dlgSaveTitle: 'Uložit dokument HTML',
@@ -479,19 +272,6 @@ const tDlg = createI18n({
     btnSave: 'Uložit',
     btnDontSave: 'Neukládat',
     btnCancel: 'Zrušit',
-    dlgAddAttachment: 'Přidat přílohy',
-    filterSupported: 'Podporované soubory',
-    filterAll: 'Všechny soubory',
-    errUnsupportedExt: 'soubory .{ext} nejsou podporovány',
-    errNotFile: 'není soubor',
-    errTooLarge: 'překračuje limit {mb} MB',
-    errImageTooLarge: 'obrázek překračuje limit 5 MB',
-    errUnreadable: 'nelze přečíst',
-    errFileTooLarge: 'Soubor překračuje limit velikosti',
-    errParseFailed: 'Soubor se nepodařilo zpracovat',
-    errImageNoText:
-      'Obrázkové přílohy neobsahují text; obrázek se odesílá spolu se zprávou uživatele',
-    errNotImage: 'nepodporovaný typ obrázku',
   },
   nl: {
     dlgSaveTitle: 'HTML-document opslaan',
@@ -504,19 +284,6 @@ const tDlg = createI18n({
     btnSave: 'Opslaan',
     btnDontSave: 'Niet opslaan',
     btnCancel: 'Annuleren',
-    dlgAddAttachment: 'Bijlagen toevoegen',
-    filterSupported: 'Ondersteunde bestanden',
-    filterAll: 'Alle bestanden',
-    errUnsupportedExt: '.{ext}-bestanden worden niet ondersteund',
-    errNotFile: 'geen bestand',
-    errTooLarge: 'overschrijdt de limiet van {mb} MB',
-    errImageTooLarge: 'afbeelding overschrijdt de limiet van 5 MB',
-    errUnreadable: 'kan niet worden gelezen',
-    errFileTooLarge: 'Bestand overschrijdt de maximale grootte',
-    errParseFailed: 'Kan bestand niet parseren',
-    errImageNoText:
-      'Afbeeldingsbijlagen bevatten geen tekst; de afbeelding wordt samen met het gebruikersbericht verzonden en kan direct worden bekeken',
-    errNotImage: 'geen ondersteund afbeeldingstype',
   },
   ms: {
     dlgSaveTitle: 'Simpan dokumen HTML',
@@ -529,19 +296,6 @@ const tDlg = createI18n({
     btnSave: 'Simpan',
     btnDontSave: 'Jangan Simpan',
     btnCancel: 'Batal',
-    dlgAddAttachment: 'Tambah Lampiran',
-    filterSupported: 'Fail yang Disokong',
-    filterAll: 'Semua Fail',
-    errUnsupportedExt: 'fail .{ext} tidak disokong',
-    errNotFile: 'bukan fail',
-    errTooLarge: 'melebihi had {mb}MB',
-    errImageTooLarge: 'imej melebihi had 5MB',
-    errUnreadable: 'tidak dapat dibaca',
-    errFileTooLarge: 'Fail melebihi had saiz',
-    errParseFailed: 'Gagal menghurai fail',
-    errImageNoText:
-      'Lampiran imej tidak menyediakan teks; imej dihantar bersama mesej pengguna dan boleh dilihat terus',
-    errNotImage: 'bukan jenis imej yang disokong',
   },
   he: {
     dlgSaveTitle: 'שמירת מסמך HTML',
@@ -554,19 +308,6 @@ const tDlg = createI18n({
     btnSave: 'שמירה',
     btnDontSave: 'אל תשמור',
     btnCancel: 'ביטול',
-    dlgAddAttachment: 'הוספת קבצים מצורפים',
-    filterSupported: 'קבצים נתמכים',
-    filterAll: 'כל הקבצים',
-    errUnsupportedExt: 'קובצי .{ext} אינם נתמכים',
-    errNotFile: 'אינו קובץ',
-    errTooLarge: 'חורג מהמגבלה של {mb}MB',
-    errImageTooLarge: 'התמונה חורגת מהמגבלה של 5MB',
-    errUnreadable: 'לא ניתן לקרוא',
-    errFileTooLarge: 'הקובץ חורג ממגבלת הגודל',
-    errParseFailed: 'ניתוח הקובץ נכשל',
-    errImageNoText:
-      'קבצים מצורפים מסוג תמונה אינם מספקים טקסט; התמונה נשלחת יחד עם הודעת המשתמש וניתן לצפות בה ישירות',
-    errNotImage: 'סוג תמונה שאינו נתמך',
   },
   hi: {
     dlgSaveTitle: 'HTML दस्तावेज़ सहेजें',
@@ -579,19 +320,6 @@ const tDlg = createI18n({
     btnSave: 'सहेजें',
     btnDontSave: 'न सहेजें',
     btnCancel: 'रद्द करें',
-    dlgAddAttachment: 'अनुलग्नक जोड़ें',
-    filterSupported: 'समर्थित फ़ाइलें',
-    filterAll: 'सभी फ़ाइलें',
-    errUnsupportedExt: '.{ext} फ़ाइलें समर्थित नहीं हैं',
-    errNotFile: 'फ़ाइल नहीं है',
-    errTooLarge: '{mb}MB की सीमा से अधिक है',
-    errImageTooLarge: 'छवि 5MB की सीमा से अधिक है',
-    errUnreadable: 'पढ़ा नहीं जा सकता',
-    errFileTooLarge: 'फ़ाइल आकार सीमा से अधिक है',
-    errParseFailed: 'फ़ाइल पार्स करने में विफल',
-    errImageNoText:
-      'छवि अनुलग्नक टेक्स्ट प्रदान नहीं करते; छवि उपयोगकर्ता संदेश के साथ भेजी जाती है, उसे सीधे देखें',
-    errNotImage: 'समर्थित छवि प्रकार नहीं है',
   },
   'zh-TW': {
     dlgSaveTitle: '儲存 HTML 文件',
@@ -604,18 +332,6 @@ const tDlg = createI18n({
     btnSave: '儲存',
     btnDontSave: '不儲存',
     btnCancel: '取消',
-    dlgAddAttachment: '新增附件',
-    filterSupported: '支援的檔案',
-    filterAll: '所有檔案',
-    errUnsupportedExt: '暫不支援 .{ext} 類型',
-    errNotFile: '不是檔案',
-    errTooLarge: '超過 {mb}MB 上限',
-    errImageTooLarge: '圖片超過 5MB 上限',
-    errUnreadable: '無法讀取',
-    errFileTooLarge: '檔案超過大小上限',
-    errParseFailed: '檔案解析失敗',
-    errImageNoText: '圖片附件不提供文字,已作為影像隨使用者訊息傳送,直接看圖即可',
-    errNotImage: '不是支援的圖片類型',
   },
 })
 type DlgKey =
@@ -629,168 +345,7 @@ type DlgKey =
   | 'btnSave'
   | 'btnDontSave'
   | 'btnCancel'
-  | 'dlgAddAttachment'
-  | 'filterSupported'
-  | 'filterAll'
-  | 'errUnsupportedExt'
-  | 'errNotFile'
-  | 'errTooLarge'
-  | 'errImageTooLarge'
-  | 'errUnreadable'
-  | 'errFileTooLarge'
-  | 'errParseFailed'
-  | 'errImageNoText'
-  | 'errNotImage'
 const tm = (key: DlgKey, vars?: Record<string, string | number>) => tDlg(getUiLang(), key, vars)
-
-// ---- chat attachments: local files parsed for the agent (same contract as the docs panel) ----
-
-const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024
-const TEXT_EXTS = new Set([
-  'txt',
-  'md',
-  'markdown',
-  'csv',
-  'tsv',
-  'json',
-  'yaml',
-  'yml',
-  'xml',
-  'html',
-  'htm',
-  'log',
-  'js',
-  'ts',
-  'tsx',
-  'jsx',
-  'py',
-  'java',
-  'c',
-  'h',
-  'cpp',
-  'go',
-  'rs',
-  'rb',
-  'sh',
-  'sql',
-  'css',
-])
-/** office/pdf formats get text extracted via @genoffice/file-parse; images skip extraction and go multimodal */
-const ATTACHMENT_EXTS = new Set([
-  ...TEXT_EXTS,
-  'doc',
-  'docx',
-  'pdf',
-  'pptx',
-  'ppt',
-  'xlsx',
-  'xlsm',
-  'xls',
-  ...ATTACHMENT_IMAGE_EXTS,
-])
-const ATTACHMENT_IMAGE_MIME: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-}
-const ATTACHMENT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
-
-/** extracted text cache keyed by path; invalidated by mtime+size */
-const attachmentTextCache = new Map<string, { stamp: string; text: string }>()
-
-function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: string } {
-  const name = basename(filePath)
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
-  if (!ATTACHMENT_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
-  try {
-    const stat = statSync(filePath)
-    if (!stat.isFile()) return { error: `${name}: ${tm('errNotFile')}` }
-    if (stat.size > ATTACHMENT_MAX_BYTES) {
-      return {
-        error: `${name}: ${tm('errTooLarge', { mb: Math.round(ATTACHMENT_MAX_BYTES / 1024 / 1024) })}`,
-      }
-    }
-    if (ATTACHMENT_IMAGE_EXTS.has(ext) && stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
-      return { error: `${name}: ${tm('errImageTooLarge')}` }
-    }
-    return { meta: { path: filePath, name, ext, sizeBytes: stat.size } }
-  } catch {
-    return { error: `${name}: ${tm('errUnreadable')}` }
-  }
-}
-
-function collectAttachments(paths: string[]): AttachmentAddResult {
-  const accepted: AttachmentMeta[] = []
-  const rejected: string[] = []
-  for (const p of paths) {
-    const { meta, error } = statAttachment(p)
-    if (meta) accepted.push(meta)
-    else if (error) rejected.push(error)
-  }
-  return { accepted, rejected }
-}
-
-let pastedImageSeq = 0
-let pastedDirPruned = false
-
-/** drop pasted-image temp files older than 7 days (once per app run) */
-function prunePastedImages(dir: string): void {
-  if (pastedDirPruned) return
-  pastedDirPruned = true
-  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
-  try {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name)
-      try {
-        if (statSync(p).mtimeMs < cutoff) unlinkSync(p)
-      } catch {
-        // another tab may have removed it already
-      }
-    }
-  } catch {
-    // directory may not exist yet
-  }
-}
-
-/** clipboard-pasted image bytes → temp file (shared with the docs panel), null for non-images or empty data */
-function savePastedImage(data: unknown, ext: unknown): string | null {
-  const cleanExt = typeof ext === 'string' ? ext.toLowerCase() : ''
-  if (!ATTACHMENT_IMAGE_EXTS.has(cleanExt)) return null
-  const bytes =
-    data instanceof ArrayBuffer
-      ? Buffer.from(data)
-      : ArrayBuffer.isView(data)
-        ? Buffer.from(data.buffer, data.byteOffset, data.byteLength)
-        : null
-  if (!bytes || bytes.byteLength === 0) return null
-  const dir = join(app.getPath('temp'), 'genoffice-pasted')
-  mkdirSync(dir, { recursive: true })
-  prunePastedImages(dir)
-  const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-')
-  const filePath = join(dir, `pasted-${stamp}-${++pastedImageSeq}.${cleanExt}`)
-  writeFileSync(filePath, bytes)
-  return filePath
-}
-
-async function extractAttachmentText(filePath: string): Promise<string> {
-  const stat = statSync(filePath)
-  const stamp = `${stat.mtimeMs}:${stat.size}`
-  const cached = attachmentTextCache.get(filePath)
-  if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > ATTACHMENT_MAX_BYTES) throw new Error(tm('errFileTooLarge'))
-  const parsed = await parseFileToText(filePath)
-  if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
-    throw new Error(parsed.error ?? tm('errParseFailed'))
-  }
-  attachmentTextCache.set(filePath, { stamp, text: parsed.text })
-  if (attachmentTextCache.size > 8) {
-    const oldest = attachmentTextCache.keys().next().value
-    if (oldest) attachmentTextCache.delete(oldest)
-  }
-  return parsed.text
-}
 
 interface RuntimePaths {
   preloadPath: string
@@ -836,23 +391,12 @@ const previewTextByWc = new Map<number, string>()
 const closeSaveWaiters = new Map<number, (ok: boolean) => void>()
 /** Resolvers for menu-triggered saves, resolved when the renderer's save invoke completes */
 const saveWaiters = new Map<number, (ok: boolean) => void>()
-/** Resolvers for MCP reads of the live document source, resolved by the renderer's reply */
-const readTextWaiters = new Map<number, (result: { text: string } | { error: string }) => void>()
-/** one read per tab at a time: concurrent callers share this promise */
-const readTextInFlight = new Map<number, Promise<string>>()
 
 /** Fired after a save lands on a NEW path (untitled first save / Save As) — the shell syncs tab title, recents, projects */
 let fileSavedHook: ((wc: WebContents, path: string) => void) | null = null
 
 export function setHtmlFileSavedHook(hook: (wc: WebContents, path: string) => void): void {
   fileSavedHook = hook
-}
-
-/** An untitled document got a provisional name from the user's first AI request — the shell titles its tab */
-let provisionalTitleHook: ((wc: WebContents, title: string) => void) | null = null
-
-export function setHtmlProvisionalTitleHook(hook: (wc: WebContents, title: string) => void): void {
-  provisionalTitleHook = hook
 }
 
 /** After a Word export the shell opens the new .docx in a docs tab; standalone reveals it */
@@ -998,10 +542,6 @@ export function htmlIsDirty(webContentsId: number): boolean {
   return dirtyByWc.has(webContentsId)
 }
 
-export function htmlFilePath(webContentsId: number): string | undefined {
-  return savePathByWc.get(webContentsId)
-}
-
 /** The file was renamed on disk — re-grant the new path and tell the renderer */
 export function htmlFileRenamed(contents: WebContents, oldPath: string, newPath: string): void {
   const wcId = contents.id
@@ -1062,20 +602,6 @@ export async function requestHtmlClose(
   })
 }
 
-/**
- * Drop assets staged next to the document but never written into it — the MCP
- * "discard unsaved changes" path, same cleanup the interactive close prompt
- * runs when the user picks "Don't Save".
- */
-export async function htmlDiscardPendingAssets(contents: WebContents): Promise<void> {
-  const documentPath = savePathByWc.get(contents.id)
-  if (!documentPath) return
-  const discarded = await discardPendingOwnedAssets(documentPath)
-  if (discarded.errors.length > 0) {
-    console.warn('[html] pending asset discard incomplete:', discarded.errors)
-  }
-}
-
 /** Menu Save / Save As: ask the renderer to serialize and save; clean views resolve true immediately on plain save */
 export function requestHtmlSave(contents: WebContents, mode: SaveMode): Promise<boolean> {
   if (contents.isDestroyed()) return Promise.resolve(false)
@@ -1096,128 +622,21 @@ export function requestHtmlSave(contents: WebContents, mode: SaveMode): Promise<
   })
 }
 
-/**
- * Read the live document source for an MCP `open_documents` read. The buffer the
- * renderer pushes for the preview is instrumented for the iframe, so it cannot
- * be reused here: this asks for the saved serialization instead, unsaved edits
- * included.
- */
-export function htmlReadText(contents: WebContents): Promise<string> {
-  if (contents.isDestroyed()) return Promise.reject(new Error('the document is no longer open'))
-  const wcId = contents.id
-  const inFlight = readTextInFlight.get(wcId)
-  if (inFlight) return inFlight
-  const request = new Promise<string>((resolve, reject) => {
-    // The renderer registers its listener while mounting, which can land after
-    // the tab appears; a request sent before that is dropped silently. Re-send
-    // on an interval until the renderer answers, the way the shell's own
-    // control channel polls for a not-yet-ready editor.
-    let settled = false
-    const settle = (finish: () => void): void => {
-      if (settled) return
-      settled = true
-      clearInterval(retry)
-      clearTimeout(timer)
-      readTextWaiters.delete(wcId)
-      readTextInFlight.delete(wcId)
-      finish()
-    }
-    const retry = setInterval(() => {
-      if (contents.isDestroyed()) {
-        settle(() => reject(new Error('the document is no longer open')))
-        return
-      }
-      contents.send(HTML_CHANNELS.readTextRequest)
-    }, 250)
-    const timer = setTimeout(
-      () => settle(() => reject(new Error('timed out reading the document'))),
-      30_000,
-    )
-    readTextWaiters.set(wcId, (result) => {
-      settle(() => {
-        if ('text' in result) resolve(result.text)
-        else reject(new Error(result.error))
-      })
-    })
-    contents.send(HTML_CHANNELS.readTextRequest)
-  })
-  readTextInFlight.set(wcId, request)
-  return request
-}
-
-/**
- * Save the live document to `filePath` with no dialog — the MCP close path
- * ("save before closing"). Pointing the view's save target at `filePath` first
- * keeps `resolveSaveTarget` from opening the save dialog, so the renderer's
- * normal save runs unattended.
- */
-export function htmlSaveToPath(contents: WebContents, filePath: string): Promise<void> {
-  if (contents.isDestroyed()) return Promise.reject(new Error('the document is no longer open'))
-  const wcId = contents.id
-  const previousPath = savePathByWc.get(wcId)
-  const previousOpenPath = openPathByWc.get(wcId)
-  savePathByWc.set(wcId, filePath)
-  const allowed = allowedByWc.get(wcId) ?? new Set<string>()
-  allowed.add(filePath)
-  allowedByWc.set(wcId, allowed)
-  return new Promise<void>((resolve, reject) => {
-    const restore = (): void => {
-      if (previousPath === undefined) savePathByWc.delete(wcId)
-      else savePathByWc.set(wcId, previousPath)
-      if (previousOpenPath === undefined) openPathByWc.delete(wcId)
-      else openPathByWc.set(wcId, previousOpenPath)
-    }
-    const timer = setTimeout(() => {
-      saveWaiters.delete(wcId)
-      restore()
-      reject(new Error('timed out saving the document'))
-    }, 120_000)
-    saveWaiters.set(wcId, (ok) => {
-      clearTimeout(timer)
-      if (ok) resolve()
-      else {
-        restore()
-        reject(new Error('could not save the document'))
-      }
-    })
-    contents.send(HTML_CHANNELS.saveRequest, 'save')
-  })
-}
-
 async function writeTextAtomic(path: string, text: string): Promise<void> {
   await atomicWriteFile(path, Buffer.from(text, 'utf8'))
-}
-
-function fileNameBase(name: string | undefined): string {
-  return (name ?? '')
-    .replace(/[/\\:*?"<>|]/g, '_')
-    .slice(0, 80)
-    .trim()
 }
 
 async function resolveSaveTarget(
   e: Electron.IpcMainInvokeEvent,
   mode: SaveMode,
-  suggestedName?: string,
-  defaultName?: string,
 ): Promise<string | null | 'canceled'> {
   const current = savePathByWc.get(e.sender.id)
   if (mode === 'save' && current) return current
-  // AI auto-naming: silent first save of an untitled document
-  if (mode === 'save' && !current && suggestedName) {
-    const base = fileNameBase(suggestedName)
-    if (base) {
-      const dir = configuredDefaultSaveDir(app)
-      let target = join(dir, `${base}.html`)
-      for (let n = 1; existsSync(target); n++) target = join(dir, `${base}-${n}.html`)
-      return target
-    }
-  }
   const win =
     BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
   const defaultPath = current
     ? join(dirname(current), basename(current))
-    : join(configuredDefaultSaveDir(app), `${fileNameBase(defaultName) || tm('untitledFile')}.html`)
+    : join(configuredDefaultSaveDir(app), `${tm('untitledFile')}.html`)
   const picked = await showSaveDialogWithMemory(dialog, win, {
     title: tm('dlgSaveTitle'),
     defaultPath,
@@ -1410,11 +829,7 @@ function registerHtmlIpc(): void {
         ? await pendingOwnedAssetsForDocument(pathAtRequest)
         : []
       try {
-        const suggestedName =
-          typeof request.suggestedName === 'string' ? request.suggestedName : undefined
-        const defaultName =
-          typeof request.defaultName === 'string' ? request.defaultName : undefined
-        const target = await resolveSaveTarget(e, mode, suggestedName, defaultName)
+        const target = await resolveSaveTarget(e, mode)
         if (target === 'canceled') return done({ ok: true, canceled: true })
         if (!target) return done({ ok: false, error: 'html: no save target' })
         const currentPath = pathAtRequest
@@ -1476,80 +891,6 @@ function registerHtmlIpc(): void {
     },
   )
 
-  ipcMain.handle(HTML_CHANNELS.filesPick, async (e): Promise<AttachmentAddResult | null> => {
-    const win =
-      BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
-    const picked = await showOpenDialogWithMemory(dialog, win, {
-      title: tm('dlgAddAttachment'),
-      filters: [
-        { name: tm('filterSupported'), extensions: [...ATTACHMENT_EXTS] },
-        { name: tm('filterAll'), extensions: ['*'] },
-      ],
-      properties: ['openFile', 'multiSelections'],
-    })
-    if (picked.canceled || picked.filePaths.length === 0) return null
-    return collectAttachments(picked.filePaths)
-  })
-
-  ipcMain.handle(HTML_CHANNELS.filesAdd, (_e, paths: unknown) =>
-    collectAttachments(Array.isArray(paths) ? paths.filter((p) => typeof p === 'string') : []),
-  )
-
-  ipcMain.handle(
-    HTML_CHANNELS.filesAddPastedImage,
-    (_e, data: unknown, ext: unknown): AttachmentAddResult => {
-      const filePath = savePastedImage(data, ext)
-      return filePath
-        ? collectAttachments([filePath])
-        : { accepted: [], rejected: [tm('errNotImage')] }
-    },
-  )
-
-  ipcMain.handle(
-    HTML_CHANNELS.filesRead,
-    async (
-      _e,
-      filePath: string,
-      offset: number,
-      maxChars: number,
-    ): Promise<AttachmentReadResult> => {
-      const name = basename(filePath)
-      const ext = name.split('.').pop()?.toLowerCase() ?? ''
-      if (!ATTACHMENT_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
-      if (ATTACHMENT_IMAGE_EXTS.has(ext)) return { ok: false, error: tm('errImageNoText') }
-      try {
-        const text = await extractAttachmentText(filePath)
-        const start = Math.max(0, Math.floor(offset) || 0)
-        const size = Math.min(Math.max(1, Math.floor(maxChars) || 1), 48_000)
-        return {
-          ok: true,
-          name,
-          totalChars: text.length,
-          offset: start,
-          text: text.slice(start, start + size),
-        }
-      } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) }
-      }
-    },
-  )
-
-  ipcMain.handle(HTML_CHANNELS.filesReadImage, (_e, filePath: string): AttachmentImageResult => {
-    const name = basename(filePath)
-    const ext = name.split('.').pop()?.toLowerCase() ?? ''
-    const mime = ATTACHMENT_IMAGE_MIME[ext]
-    if (!mime) return { ok: false, error: `${name}: ${tm('errNotImage')}` }
-    try {
-      const stat = statSync(filePath)
-      if (stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
-        return { ok: false, error: `${name}: ${tm('errImageTooLarge')}` }
-      }
-      return { ok: true, base64: readFileSync(filePath).toString('base64'), mime }
-    } catch {
-      return { ok: false, error: `${name}: ${tm('errUnreadable')}` }
-    }
-  })
-
   ipcMain.handle(HTML_CHANNELS.pickImage, async (e): Promise<string | null> => {
     const docPath = savePathByWc.get(e.sender.id)
     if (!docPath) return null
@@ -1578,26 +919,6 @@ function registerHtmlIpc(): void {
     },
   )
 
-  // html-owned (like docs:ai-generate-image): the shared ai:* handlers are
-  // shell-registered, but image generation is gated per app
-  ipcMain.handle(
-    HTML_CHANNELS.aiGenerateImage,
-    (e, op: { prompt?: unknown; aspectRatio?: unknown }) =>
-      generateImageTool(
-        join(app.getPath('userData'), 'ai-settings.json'),
-        {
-          prompt: String(op?.prompt ?? ''),
-          aspectRatio: op?.aspectRatio ? String(op.aspectRatio) : undefined,
-        },
-        {
-          mediaRoots: documentMediaRoots(
-            htmlFilePath(e.sender.id),
-            join(app.getPath('temp'), 'genoffice-pasted'),
-          ),
-        },
-      ),
-  )
-
   const MIME_BY_EXT: Record<string, ImageData['mime']> = {
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
@@ -1621,7 +942,7 @@ function registerHtmlIpc(): void {
     }
   })
 
-  // remote pictures (AI-generated or hot-linked) are downloaded here: the frame's fetch is
+  // hot-linked remote pictures are downloaded here: the frame's fetch is
   // CORS-bound, and fetchRemoteImage refuses private/link-local targets
   ipcMain.handle(HTML_CHANNELS.fetchImage, async (_e, url: unknown): Promise<ImageData | null> => {
     if (typeof url !== 'string' || !/^https?:/i.test(url)) return null
@@ -1676,7 +997,7 @@ function registerHtmlIpc(): void {
         const htmlPath = join(workDir, 'export.html')
         await writeFile(htmlPath, buildPreviewDocument(request.html, base), 'utf8')
         driver = await ElectronBrowserDriver.create(HTML2DOCX_VIEWPORT)
-        // AI-generated markup with a script that never yields keeps
+        // Markup with a script that never yields keeps
         // executeJavaScript pending forever, which would strand the hidden
         // window and this handler; race a watchdog and destroy the window on
         // timeout (same shape as the slides export guard).
@@ -1796,12 +1117,6 @@ function registerHtmlIpc(): void {
     },
   )
 
-  ipcMain.on(HTML_CHANNELS.provisionalTitle, (e, title: unknown) => {
-    if (typeof title !== 'string' || savePathByWc.has(e.sender.id)) return
-    const clean = title.replace(/\s+/g, ' ').trim().slice(0, 80)
-    if (clean) provisionalTitleHook?.(e.sender, clean)
-  })
-
   ipcMain.on(HTML_CHANNELS.dirtyChanged, (e, dirty: unknown) => {
     if (dirty === true) dirtyByWc.add(e.sender.id)
     else dirtyByWc.delete(e.sender.id)
@@ -1811,17 +1126,6 @@ function registerHtmlIpc(): void {
     const waiter = closeSaveWaiters.get(e.sender.id)
     closeSaveWaiters.delete(e.sender.id)
     waiter?.(ok === true)
-  })
-
-  ipcMain.on(HTML_CHANNELS.readTextResult, (e, result: unknown) => {
-    const waiter = readTextWaiters.get(e.sender.id)
-    readTextWaiters.delete(e.sender.id)
-    if (!waiter) return
-    if (result && typeof result === 'object' && 'text' in result) {
-      waiter({ text: String((result as { text: unknown }).text) })
-    } else {
-      waiter({ error: 'the document could not be read' })
-    }
   })
 
   // safety net for menu saves the renderer declined without invoking save()

@@ -48,7 +48,7 @@ describe('patches', () => {
   })
 
   it('rejects stale, out-of-bounds and overlapping sets', () => {
-    const base = { origin: 'ai' as const, label: 't' }
+    const base = { origin: 'manual' as const, label: 't' }
     expect(validatePatchSet({ ...base, baseVersion: 1, patches: [] }, 2, 10)).toEqual({
       kind: 'stale',
       baseVersion: 1,

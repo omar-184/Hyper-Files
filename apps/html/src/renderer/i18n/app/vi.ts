@@ -39,7 +39,7 @@ export const vi = {
     'Hình ảnh và kiểu dáng có đường dẫn tương đối sẽ hiển thị trong bản xem trước sau khi tệp được lưu',
   inspectHint: 'Nhấp vào một phần tử trong bản xem trước để chọn, nhấp đúp để chỉnh sửa văn bản',
   nodeDynamic:
-    'Phần tử này được tạo bởi tập lệnh trang và không có mã nguồn; hãy chỉnh sửa qua mã nguồn hoặc AI',
+    'Phần tử này được tạo bởi tập lệnh trang và không có mã nguồn; hãy chỉnh sửa qua mã nguồn',
   nodeDynamicShort: 'tạo bởi tập lệnh',
   nodeDirty:
     'Tập lệnh trang đã thay đổi phần tử này; các chỉnh sửa ghi vào mã nguồn có thể bị tập lệnh ghi đè',

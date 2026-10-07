@@ -28,7 +28,6 @@ import {
   IconRotateLeft,
   IconRotateRight,
   IconSliders,
-  IconSparkle,
   IconTrash,
 } from './icons'
 
@@ -43,14 +42,11 @@ interface Props {
   pending: Record<string, string | null>
   /** the element has one editable text run */
   canEditText: boolean
-  /** the element can carry an AI instruction (structural nodes cannot) */
-  canAskAi: boolean
   onStyle: StyleEdit
   onEditText: () => void
   onReplaceImage: () => void
   onCropImage: () => void
   onCutoutImage: () => void
-  onAskAi: () => void
   tag: string
   onMove: (dir: -1 | 1) => void
   onDuplicate: () => void
@@ -293,7 +289,7 @@ function ImageTools(p: Props) {
   )
 }
 
-/** floating toolbar over the selected preview element (MaxGen / AI Design style) */
+/** floating toolbar over the selected preview element */
 export function FloatToolbar(p: Props) {
   const { t } = useI18n()
 
@@ -369,21 +365,6 @@ export function FloatToolbar(p: Props) {
       >
         <IconSliders size={16} />
       </button>
-      {p.canAskAi && (
-        <>
-          <span className="hx-float-sep" />
-          <button
-            type="button"
-            className="hx-float-btn text ask"
-            data-tip={t('aiAskTitle')}
-            onMouseDown={stop}
-            onClick={p.onAskAi}
-          >
-            <IconSparkle size={15} />
-            {t('aiAskBtn')}
-          </button>
-        </>
-      )}
     </div>
   )
 }

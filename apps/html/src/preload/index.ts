@@ -1,10 +1,7 @@
-import type { AiPanelPrefs } from '@genoffice/ui'
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import type { Lang } from '@genoffice/i18n'
-import type { AiStreamChunk } from '@genoffice/ai-provider'
-import type { ProjectApi } from '@genoffice/project-store'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
-import { AI_CHANNELS, HTML_CHANNELS } from '../shared/ipc'
+import { HTML_CHANNELS } from '../shared/ipc'
 import type { AutoSaveDefault, ExportFormat, HtmlApi, SaveMode, UiTheme } from '../shared/ipc'
 
 const api: HtmlApi = {
@@ -31,28 +28,14 @@ const api: HtmlApi = {
   },
   sendCloseSaveResult: (ok) => ipcRenderer.send(HTML_CHANNELS.closeSaveResult, ok),
   sendSaveRequestAck: (ok) => ipcRenderer.send(HTML_CHANNELS.saveRequestAck, ok),
-  onReadTextRequest: (handler) => {
-    const listener = () => handler()
-    ipcRenderer.on(HTML_CHANNELS.readTextRequest, listener)
-    return () => ipcRenderer.removeListener(HTML_CHANNELS.readTextRequest, listener)
-  },
-  sendReadTextResult: (result) => ipcRenderer.send(HTML_CHANNELS.readTextResult, result),
   onFileRenamed: (handler) => {
     const listener = (_e: Electron.IpcRendererEvent, newPath: string) => handler(newPath)
     ipcRenderer.on(HTML_CHANNELS.fileRenamed, listener)
     return () => ipcRenderer.removeListener(HTML_CHANNELS.fileRenamed, listener)
   },
-  setProvisionalTitle: (title) => ipcRenderer.send(HTML_CHANNELS.provisionalTitle, title),
   pickImage: () => ipcRenderer.invoke(HTML_CHANNELS.pickImage),
   saveImage: (data) => ipcRenderer.invoke(HTML_CHANNELS.saveImage, data),
   readImage: (src) => ipcRenderer.invoke(HTML_CHANNELS.readImage, src),
-  pickAttachments: () => ipcRenderer.invoke(HTML_CHANNELS.filesPick),
-  addAttachmentPaths: (paths) => ipcRenderer.invoke(HTML_CHANNELS.filesAdd, paths),
-  addPastedImage: (data, ext) => ipcRenderer.invoke(HTML_CHANNELS.filesAddPastedImage, data, ext),
-  readAttachment: (path, offset, maxChars) =>
-    ipcRenderer.invoke(HTML_CHANNELS.filesRead, path, offset, maxChars),
-  readAttachmentImage: (path) => ipcRenderer.invoke(HTML_CHANNELS.filesReadImage, path),
-  getPathForFile: (file) => webUtils.getPathForFile(file),
   onExportRequest: (handler) => {
     const listener = (_e: Electron.IpcRendererEvent, format: ExportFormat) => handler(format)
     ipcRenderer.on(HTML_CHANNELS.exportRequest, listener)
@@ -85,44 +68,15 @@ const api: HtmlApi = {
     ipcRenderer.on(HTML_CHANNELS.autoSaveDefaultChanged, listener)
     return () => ipcRenderer.removeListener(HTML_CHANNELS.autoSaveDefaultChanged, listener)
   },
-  getAiPanelPrefs: () => ipcRenderer.invoke(HTML_CHANNELS.getAiPanelPrefs),
-  setAiPanelPrefs: (patch) => ipcRenderer.invoke('app:set-ai-panel-prefs', patch),
-  onAiPanelPrefsChanged: (handler) => {
-    const listener = (_event: Electron.IpcRendererEvent, prefs: AiPanelPrefs) => handler(prefs)
-    ipcRenderer.on(HTML_CHANNELS.aiPanelPrefsChanged, listener)
-    return () => ipcRenderer.removeListener(HTML_CHANNELS.aiPanelPrefsChanged, listener)
-  },
   onChromePressed: (handler) => {
     const listener = () => handler()
     ipcRenderer.on('app:chrome-pressed', listener)
     return () => ipcRenderer.removeListener('app:chrome-pressed', listener)
   },
-  getAiSettings: () => ipcRenderer.invoke(AI_CHANNELS.getSettings),
-  aiGskStatus: () => ipcRenderer.invoke(AI_CHANNELS.gskStatus),
-  aiStream: (request) => ipcRenderer.invoke(AI_CHANNELS.stream, request),
-  aiStreamCancel: (requestId) => ipcRenderer.invoke(AI_CHANNELS.streamCancel, requestId),
-  onAiStream: (handler) => {
-    const listener = (_e: Electron.IpcRendererEvent, chunk: AiStreamChunk) => handler(chunk)
-    ipcRenderer.on(AI_CHANNELS.streamChunk, listener)
-    return () => ipcRenderer.removeListener(AI_CHANNELS.streamChunk, listener)
-  },
-  webSearch: (query, maxResults) => ipcRenderer.invoke(AI_CHANNELS.webSearch, query, maxResults),
-  imageSearch: (query, maxResults) =>
-    ipcRenderer.invoke(AI_CHANNELS.imageSearch, query, maxResults),
   fetchImage: (url) => ipcRenderer.invoke(HTML_CHANNELS.fetchImage, url),
-  aiGenerateImage: (op) => ipcRenderer.invoke(HTML_CHANNELS.aiGenerateImage, op),
-}
-
-/** Chat persistence: the shared project:* handlers are registered once by the shell (docs-main registerProjectIpc) */
-const projectApi: Pick<ProjectApi, 'resolveChat' | 'appendChat' | 'loadChat' | 'rebindChat'> = {
-  resolveChat: (args) => ipcRenderer.invoke('project:resolveChat', args),
-  appendChat: (args) => ipcRenderer.invoke('project:appendChat', args),
-  loadChat: (args) => ipcRenderer.invoke('project:loadChat', args),
-  rebindChat: (args) => ipcRenderer.invoke('project:rebindChat', args),
 }
 
 contextBridge.exposeInMainWorld('htmlApi', api)
-contextBridge.exposeInMainWorld('projectApi', projectApi)
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

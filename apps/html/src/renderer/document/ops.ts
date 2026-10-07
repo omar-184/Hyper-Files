@@ -1,17 +1,13 @@
-import { findSnippet, lineOf, type MatchFailure } from './match'
 import type { ParseMap } from './parse-map'
 import type { Patch } from './patch'
 
 /**
- * The single edit vocabulary shared by the AI (`apply_ops`) and the manual UI.
- * Every op compiles to text patches against one base version; the batch is
- * validated as a whole and applied atomically.
+ * The edit vocabulary of the manual UI. Every op compiles to text patches
+ * against one base version; the batch is validated as a whole and applied
+ * atomically.
  */
 export type HtmlOp =
-  | { op: 'str_replace'; old: string; new: string; sid?: number; replace_all?: boolean }
-  | { op: 'replace_element'; sid: number; html: string }
   | { op: 'set_inner_html'; sid: number; html: string }
-  | { op: 'set_text'; sid: number; text: string }
   | {
       op: 'insert_html'
       sid: number
@@ -22,8 +18,6 @@ export type HtmlOp =
   | { op: 'move'; sid: number; position: 'before' | 'after'; ref_sid: number }
   | { op: 'set_attr'; sid: number; name: string; value: string | null }
   | { op: 'set_style'; sid: number; styles: Record<string, string | null> }
-  /** rename the element (both tags); attributes and content stay */
-  | { op: 'set_tag'; sid: number; tag: string }
   /** replace one direct child text node (index into the element's text nodes) */
   | { op: 'set_text_node'; sid: number; index: number; text: string }
   /** wrap a character range of one text node in a new inline element */
@@ -36,18 +30,8 @@ export type HtmlOp =
       tag: string
       attrs?: Record<string, string>
     }
-  /** drop the element's own tags, keeping its content in place */
-  | { op: 'unwrap'; sid: number }
 
-export type OpErrorKind =
-  | 'unknown_op'
-  | 'bad_args'
-  | 'no_such_sid'
-  | 'void_element'
-  | 'not_found'
-  | 'ambiguous'
-  | 'noop'
-  | 'overlap'
+export type OpErrorKind = 'unknown_op' | 'bad_args' | 'no_such_sid' | 'void_element' | 'overlap'
 
 export interface OpError {
   index: number
@@ -76,7 +60,7 @@ const VOID_TAGS = new Set([
   'wbr',
 ])
 
-export function escapeText(text: string): string {
+function escapeText(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
@@ -185,20 +169,6 @@ function startTagInsertPoint(startTag: string): number {
   return m ? m.index : startTag.length
 }
 
-function matchFailureMessage(text: string, f: MatchFailure, old: string): string {
-  if (f.kind === 'ambiguous') {
-    const lines = f.candidates
-      .slice(0, 8)
-      .map((o) => lineOf(text, o))
-      .join(', ')
-    return `old text matches ${f.candidates.length} locations (lines ${lines}). Add surrounding lines or a unique attribute so it matches once, or set replace_all.`
-  }
-  const preview = old.split('\n')[0]!.slice(0, 60)
-  if (!f.nearest) return `no match for "${preview}…" and nothing similar nearby.`
-  const snippet = text.slice(f.nearest.from, f.nearest.to).split('\n').slice(0, 6).join('\n')
-  return `no exact match for "${preview}…". Nearest (lines ${lineOf(text, f.nearest.from)}–${lineOf(text, f.nearest.to)}, ${Math.round(f.nearest.similarity * 100)}% similar):\n${snippet}`
-}
-
 /** Compile a batch against one text + map; never applies anything. */
 export function compileOps(text: string, map: ParseMap, ops: readonly HtmlOp[]): CompiledOps {
   const patches: Array<Patch & { index: number }> = []
@@ -207,72 +177,18 @@ export function compileOps(text: string, map: ParseMap, ops: readonly HtmlOp[]):
     errors.push({ index, kind, message })
   const element = (index: number, sid: unknown) => {
     const e = typeof sid === 'number' ? map.bySid.get(sid) : undefined
-    if (!e)
-      fail(
-        index,
-        'no_such_sid',
-        `sid ${String(sid)} does not exist in the current document; call get_outline again.`,
-      )
+    if (!e) fail(index, 'no_such_sid', `sid ${String(sid)} does not exist in the current document.`)
     return e
   }
 
   ops.forEach((raw, index) => {
     const op = raw as HtmlOp
     switch (op.op) {
-      case 'str_replace': {
-        if (typeof op.old !== 'string' || typeof op.new !== 'string')
-          return fail(index, 'bad_args', 'str_replace needs string old/new')
-        if (op.old === '')
-          return fail(index, 'bad_args', 'old must not be empty; use insert_html to add content')
-        if (op.old === op.new) return fail(index, 'noop', 'old and new are identical')
-        let within: [number, number] | undefined
-        if (op.sid !== undefined) {
-          const e = element(index, op.sid)
-          if (!e) return
-          within = e.range
-        }
-        if (op.replace_all) {
-          // every exact occurrence; the tolerant rungs cannot enumerate safely
-          const end = within ? within[1] : text.length
-          let i = text.indexOf(op.old, within ? within[0] : 0)
-          let count = 0
-          while (i >= 0 && i + op.old.length <= end) {
-            patches.push({ from: i, to: i + op.old.length, text: op.new, index })
-            count++
-            i = text.indexOf(op.old, i + op.old.length)
-          }
-          if (count === 0) {
-            const probe = findSnippet(text, op.old, { within })
-            const hint = probe.ok
-              ? `the text only matches loosely (line ${lineOf(text, probe.from)}); replace_all needs the exact source text — read it and retry, or drop replace_all.`
-              : matchFailureMessage(text, probe, op.old)
-            return fail(index, 'not_found', hint)
-          }
-          return
-        }
-        const r = findSnippet(text, op.old, { within })
-        if (!r.ok) return fail(index, r.kind, matchFailureMessage(text, r, op.old))
-        patches.push({ from: r.from, to: r.to, text: op.new, index })
-        return
-      }
-      case 'replace_element': {
-        const e = element(index, op.sid)
-        if (!e) return
-        if (typeof op.html !== 'string')
-          return fail(index, 'bad_args', 'replace_element needs html')
-        patches.push({ from: e.range[0], to: e.range[1], text: op.html, index })
-        return
-      }
-      case 'set_inner_html':
-      case 'set_text': {
+      case 'set_inner_html': {
         const e = element(index, op.sid)
         if (!e) return
         if (VOID_TAGS.has(e.tag)) return fail(index, 'void_element', `<${e.tag}> has no content`)
-        const value =
-          op.op === 'set_text'
-            ? escapeText(String((op as { text: string }).text ?? ''))
-            : String((op as { html: string }).html ?? '')
-        patches.push({ from: e.inner[0], to: e.inner[1], text: value, index })
+        patches.push({ from: e.inner[0], to: e.inner[1], text: String(op.html ?? ''), index })
         return
       }
       case 'insert_html': {
@@ -430,32 +346,6 @@ export function compileOps(text: string, map: ParseMap, ops: readonly HtmlOp[]):
         }
         return
       }
-      case 'set_tag': {
-        const e = element(index, op.sid)
-        if (!e) return
-        if (typeof op.tag !== 'string' || !/^[a-zA-Z][a-zA-Z0-9-]*$/.test(op.tag))
-          return fail(index, 'bad_args', 'invalid tag name')
-        const tag = op.tag.toLowerCase()
-        if (tag === e.tag) return fail(index, 'noop', `already a <${tag}>`)
-        if (VOID_TAGS.has(e.tag) !== VOID_TAGS.has(tag))
-          return fail(index, 'bad_args', 'cannot convert between void and container elements')
-        // start tag name sits right after `<`
-        patches.push({
-          from: e.startTag[0] + 1,
-          to: e.startTag[0] + 1 + e.tag.length,
-          text: tag,
-          index,
-        })
-        if (e.endTag) {
-          patches.push({
-            from: e.endTag[0] + 2,
-            to: e.endTag[0] + 2 + e.tag.length,
-            text: tag,
-            index,
-          })
-        }
-        return
-      }
       case 'set_text_node': {
         const e = element(index, op.sid)
         if (!e) return
@@ -487,14 +377,6 @@ export function compileOps(text: string, map: ParseMap, ops: readonly HtmlOp[]):
           index,
         })
         patches.push({ from: node[0] + end, to: node[0] + end, text: `</${op.tag}>`, index })
-        return
-      }
-      case 'unwrap': {
-        const e = element(index, op.sid)
-        if (!e) return
-        if (!e.endTag) return fail(index, 'void_element', `<${e.tag}> cannot be unwrapped`)
-        patches.push({ from: e.startTag[0], to: e.startTag[1], text: '', index })
-        patches.push({ from: e.endTag[0], to: e.endTag[1], text: '', index })
         return
       }
       default:

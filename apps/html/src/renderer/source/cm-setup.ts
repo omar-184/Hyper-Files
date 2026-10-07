@@ -24,7 +24,6 @@ import { highlightSelectionMatches } from '@codemirror/search'
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { html } from '@codemirror/lang-html'
 import { tags } from '@lezer/highlight'
-import { aiHighlight } from './cm-highlight'
 import { findHighlight } from './cm-find'
 
 /** Marks transactions that replace the document from outside the editor (load, patches) */
@@ -101,7 +100,6 @@ export function buildExtensions(onDocChanged: (view: EditorView) => void): Exten
       indentWithTab,
     ]),
     html(),
-    aiHighlight(),
     findHighlight,
     EditorView.lineWrapping,
     theme,

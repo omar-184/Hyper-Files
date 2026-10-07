@@ -36,7 +36,7 @@ export const zh = {
   charCount: '{n} 字符',
   previewNeedsSave: '保存文件后，相对路径的图片和样式才会在预览中显示',
   inspectHint: '单击预览中的元素选中，双击编辑文字',
-  nodeDynamic: '此元素由页面脚本生成，源码中不存在；请通过源码或 AI 修改',
+  nodeDynamic: '此元素由页面脚本生成，源码中不存在；请通过源码修改',
   nodeDynamicShort: '脚本生成',
   nodeDirty: '页面脚本改动过此元素，写回源码的修改可能被脚本覆盖',
   nodeDirtyShort: '脚本已改动',

@@ -3,7 +3,6 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Breadcrumb } from '../src/renderer/components/Breadcrumb'
 import { PreviewFrame } from '../src/renderer/preview/PreviewFrame'
-import { DraftPreview } from '../src/renderer/preview/DraftPreview'
 import { buildParseMap } from '../src/renderer/document/parse-map'
 
 beforeEach(() => vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true))
@@ -58,13 +57,5 @@ describe('aria-label/title i18n (existing keys)', () => {
     expect(frame).not.toBeNull()
     expect(frame!.getAttribute('title')).toBe('\u9884\u89c8')
     expect(frame!.getAttribute('title')).not.toBe('preview')
-  })
-
-  it('DraftPreview reuses the translated preview key, not the English literal', () => {
-    const container = mount(createElement(DraftPreview, { html: '<p>hi</p>' }))
-    const frame = container.querySelector('iframe.draft-preview-frame')
-    expect(frame).not.toBeNull()
-    expect(frame!.getAttribute('title')).toBe('\u9884\u89c8')
-    expect(frame!.getAttribute('title')).not.toBe('draft')
   })
 })

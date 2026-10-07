@@ -1,6 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { isFromInspector, type FromInspector, type ToInspector } from './inspector-protocol'
-import { DraftPreview } from './DraftPreview'
 import { useI18n } from '../i18n/locale'
 
 export interface PreviewFrameHandle {
@@ -16,8 +15,6 @@ interface Props {
   onMessage: (msg: FromInspector) => void
   /** fires for every document the frame loads, link navigations included */
   onLoad?: () => void
-  /** page the AI is still writing: mirrored over the frame until it lands */
-  draft?: string | null
 }
 
 /**
@@ -27,7 +24,7 @@ interface Props {
  * cross-origin to us; the inspector talks back over postMessage.
  */
 export const PreviewFrame = forwardRef<PreviewFrameHandle, Props>(function PreviewFrame(
-  { url, nonce, zoom, onMessage, onLoad, draft },
+  { url, nonce, zoom, onMessage, onLoad },
   ref,
 ) {
   const frameRef = useRef<HTMLIFrameElement>(null)
@@ -62,7 +59,6 @@ export const PreviewFrame = forwardRef<PreviewFrameHandle, Props>(function Previ
         sandbox="allow-scripts allow-forms allow-popups allow-modals"
         referrerPolicy="no-referrer"
       />
-      {draft != null && <DraftPreview html={draft} />}
     </div>
   )
 })

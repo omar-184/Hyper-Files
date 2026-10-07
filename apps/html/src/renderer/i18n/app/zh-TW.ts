@@ -37,7 +37,7 @@ export const zhTW = {
   charCount: '{n} 字元',
   previewNeedsSave: '儲存檔案後，相對路徑的圖片和樣式才會在預覽中顯示',
   inspectHint: '點選預覽中的元素以選取，雙擊編輯文字',
-  nodeDynamic: '此元素由頁面腳本產生，原始碼中不存在；請透過原始碼或 AI 修改',
+  nodeDynamic: '此元素由頁面腳本產生，原始碼中不存在；請透過原始碼修改',
   nodeDynamicShort: '腳本產生',
   nodeDirty: '頁面腳本改動過此元素，寫回原始碼的修改可能被腳本覆蓋',
   nodeDirtyShort: '腳本已改動',
