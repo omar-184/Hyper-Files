@@ -26,7 +26,7 @@ test.describe('sheets: Enter runs the context-menu insert-N action', () => {
         electronApp.setPath('documents', dir)
       }, scratch)
 
-      await expect(page.locator('.quick-card').nth(1)).toContainText('AI Sheets')
+      await expect(page.locator('.quick-card').nth(1)).toContainText('Sheets')
       await page.locator('.quick-card').nth(1).click()
 
       const sheets = await waitForPageWithUrl(app, '://sheets/')

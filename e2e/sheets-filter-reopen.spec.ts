@@ -41,7 +41,7 @@ test.describe('sheets: filter criteria survive save and reopen', () => {
         join(saveDir, 'filtered.xlsx'),
       )
 
-      await expect(page.locator('.quick-card').nth(1)).toContainText('AI Sheets')
+      await expect(page.locator('.quick-card').nth(1)).toContainText('Sheets')
       await page.locator('.quick-card').nth(1).click()
 
       const sheets = await waitForPageWithUrl(app, '://sheets/')

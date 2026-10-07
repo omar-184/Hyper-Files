@@ -30,7 +30,7 @@ test.describe('sheets: new blank workbook', () => {
         dialog.showSaveDialog = async () => ({ canceled: false, filePath: target })
       }, workbook)
 
-      await expect(page.locator('.quick-card').nth(1)).toContainText('AI Sheets')
+      await expect(page.locator('.quick-card').nth(1)).toContainText('Sheets')
       await page.locator('.quick-card').nth(1).click()
 
       const sheets = await waitForPageWithUrl(app, '://sheets/')

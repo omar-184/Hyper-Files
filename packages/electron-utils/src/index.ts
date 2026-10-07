@@ -18,10 +18,8 @@ export {
 export {
   aboutMenuItem,
   appMenuLabels,
-  checkUpdatesMenuItem,
   editMenuTemplate,
   helpMenuTemplate,
-  setUpdateCheckInvoker,
   toggleDevToolsItem,
   viewMenuTemplate,
   windowMenuTemplate,

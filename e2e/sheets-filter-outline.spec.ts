@@ -105,7 +105,7 @@ test.describe('sheets: no outline around a filtered range', () => {
     try {
       const { app, page } = launched
 
-      await expect(page.locator('.quick-card').nth(1)).toContainText('AI Sheets')
+      await expect(page.locator('.quick-card').nth(1)).toContainText('Sheets')
       await page.locator('.quick-card').nth(1).click()
 
       const sheets = await waitForPageWithUrl(app, '://sheets/')

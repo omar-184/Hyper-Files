@@ -23,7 +23,7 @@ test.describe('docs paste split button', () => {
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'docs-paste-split' })
     const { app, page } = launched
     try {
-      await expect(page.locator('.quick-card').first()).toContainText('AI Docs')
+      await expect(page.locator('.quick-card').first()).toContainText('Docs')
       await page.locator('.quick-card').first().click()
       const editorPage = await waitForPageWithUrl(app, '://docs/')
       await editorPage.waitForFunction(

@@ -54,7 +54,7 @@ test.describe('markdown editor', () => {
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'new-markdown-tab' })
     const { app, page } = launched
     try {
-      const card = page.locator('.quick-card', { hasText: 'AI Markdown' })
+      const card = page.locator('.quick-card', { hasText: 'Markdown' })
       await expect(card).toHaveCount(1)
       await card.click()
 

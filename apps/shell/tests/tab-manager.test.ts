@@ -318,7 +318,6 @@ describe('spare sheets view', () => {
     manager.openSheetsTab('/tmp/budget.xlsx')
     expect(createSheetsView).toHaveBeenCalledTimes(1)
     expect(createSheetsView).toHaveBeenCalledWith({
-      includeAiHandlers: false,
       openingWorkbook: true,
     })
     expect(nudgeQueuedWorkbook).not.toHaveBeenCalled()
@@ -327,7 +326,6 @@ describe('spare sheets view', () => {
   it('starts a new blank view without the opening state', () => {
     manager.openSheetsTab()
     expect(createSheetsView).toHaveBeenCalledWith({
-      includeAiHandlers: false,
       openingWorkbook: false,
     })
   })

@@ -1,10 +1,8 @@
 import { execSync, spawn } from 'node:child_process'
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
-  readdirSync,
   renameSync,
   rmSync,
   statSync,
@@ -20,7 +18,6 @@ import {
   ipcMain,
   nativeImage,
   nativeTheme,
-  session,
   shell,
   webContents,
 } from 'electron'
@@ -62,8 +59,6 @@ import {
   showSaveDialogWithMemory,
   windowMenuTemplate,
   aboutMenuItem,
-  checkUpdatesMenuItem,
-  setUpdateCheckInvoker,
   installRendererProtocol,
 } from '@genoffice/electron-utils'
 import {
@@ -72,50 +67,9 @@ import {
   writeAppSettings,
   writeAppSettingThen,
 } from './app-settings'
-import { OPEN_DOCUMENTS_FILE, clearOpenDocuments, publishOpenDocuments } from './open-documents'
-import { startControlServer, type ControlServer } from './control-server'
-import { controlHandler } from './control-handlers'
-import { installCliLinkBestEffort } from './cli-link'
 import { createDefaultAppService, execFileRunner } from './default-app'
-import { registerIntegrationsIpc } from './integrations-ipc'
-import {
-  ANALYTICS_ENABLED_KEY,
-  analyticsEnabledFrom,
-  createAnalytics,
-  ensureAnalyticsClientState,
-  extractPackagedAnalyticsKeys,
-  markAnalyticsFirstLaunchSent,
-} from './analytics'
-import type { Analytics, AnalyticsKeys } from './analytics'
-import {
-  LAST_RUN_VERSION_KEY,
-  STAR_PROMPT_KEY,
-  asStarPromptState,
-  isUpgradeLaunch,
-  shouldShowStarPrompt,
-  shouldShowUpgradeStarPrompt,
-  withDocOpen,
-  withFirstRun,
-  withResolved,
-  withShown,
-} from './star-prompt'
-import {
-  clearCloudProjectsStore,
-  cloudProjectExternalUrl,
-  readCloudProjectsStore,
-  syncCloudProjects,
-} from './cloud-projects'
 import { handleDroppedFiles } from './dropped-files'
 import { collectLaunchPaths } from './launch-paths'
-import {
-  genofficeLogout,
-  gskLoginInfo,
-  loadGenofficeAuth,
-  setGskProxyUrl,
-  startGenofficeLogin,
-  watchGskApiKey,
-} from '@genoffice/ai-search'
-
 import {
   buildDocsMenu,
   configureDocsRuntime,
@@ -126,59 +80,31 @@ import {
   removeRecentFiles,
   removeStarredFiles,
   replaceRecentFile,
-  registerAiIpc,
-  registerProjectIpc,
   toggleStarredFile,
   registerDocsIpc,
   exportDocsHeadless,
   setDocsExtraFileMenuItems,
   setDocsMenuGate,
   setDocsShellHooks,
-  createAiDocument,
-  projectFilePaths,
-  projectFileRenamed,
   setDocsHostWindowHook,
   setDocsShellWindow,
   setDocsFileSavedHook,
   setDocsFileOpenedHook,
-  setSessionPathResolver,
   defaultSaveDir,
   uniquePathIn,
-  authorizeMcpDocWrite,
 } from '../../../docs/src/main/docs-main'
 import { blankXlsxBuffer } from '@genoffice/xlsx-gateway/gateway/csv-import'
 import { blankPdfBuffer } from '../../../pdf/src/main/blank-pdf'
-import {
-  applyMcpSettings,
-  clearMcpLogs,
-  configureMcpRuntime,
-  getMcpRecentLogs,
-  mcpLogFilePath,
-  mcpStatus,
-  revealMcpLogFile,
-  startMcpFromSettings,
-  stopMcpSync,
-  type McpSettings,
-} from './mcp/app-mcp'
-import { createCliRunner } from './mcp/cli-runner'
-import { DEFAULT_MCP_PORT } from './mcp/mcp-server'
-import { createDocsControl, installDocsBridge } from './mcp/docs-bridge'
-import { createSlidesControl } from './mcp/slides-bridge'
-import { createSheetsControl, installSheetsBridge } from './mcp/sheets-bridge'
-import { createOpenDocumentsControl, createOpenTargetResolver } from './mcp/open-documents-bridge'
 import {
   configureSheetsRuntime,
   exportSheetsPdfHeadless,
   hasActiveQueuedWorkbook,
   installSheetsMenu,
   markSheetsShuttingDown,
-  resolveSheetsSessionPath,
   markSheetsUnsavedNew,
-  markSheetsUntitledPath,
   pendingUnsavedNewRecoveries,
   unmarkSheetsUnsavedNew,
   sheetsSuggestedPathTaken,
-  authorizeMcpSheetWrite,
   sendSheetsMenuAction,
   sheetsFileRenamed,
   setSheetsCloseTabHook,
@@ -191,7 +117,6 @@ import {
 } from '../../../sheets/src/main/sheets-main'
 import {
   configureSlidesRuntime,
-  discardSlidesRecovery,
   exportSlidesPdfHeadless,
   installSlidesMenu,
   readSlidesRecentFiles,
@@ -224,10 +149,7 @@ import { closePdfPasswordDialog, promptPdfPassword } from './pdf-password-dialog
 import {
   configureMarkdownRuntime,
   exportMarkdownPdfHeadless,
-  markdownDiscardPendingAssets,
   markdownFileRenamed,
-  markdownReadText,
-  markdownSaveToPath,
   requestMarkdownSave,
   sendMarkdownExportRequest,
   sendMarkdownPrintRequest,
@@ -237,10 +159,7 @@ import {
 import {
   configureHtmlRuntime,
   exportHtmlHeadless,
-  htmlDiscardPendingAssets,
   htmlFileRenamed,
-  htmlReadText,
-  htmlSaveToPath,
   registerPrivilegedSchemes,
   requestHtmlSave,
   sendHtmlExportRequest,
@@ -249,10 +168,8 @@ import {
   setHtmlDocxExportedHook,
   setHtmlFileSavedHook,
   setHtmlPresentHooks,
-  setHtmlProvisionalTitleHook,
 } from '../../../html/src/main/html-main'
 import type {
-  AccountLoginEvent,
   AutoSaveDefault,
   FolderListing,
   FolderRoot,
@@ -263,19 +180,11 @@ import type {
   RecentPage,
   RenameResult,
   DocTheme,
-  StarPromptShow,
   UiTheme,
   FileSearchPage,
   FileSearchQuery,
-  FileSearchRerank,
-  FileSearchSettings,
 } from '../shared/home-api'
 import { HOME_CHANNELS } from '../shared/home-api'
-import {
-  normalizeAiPanelPrefs,
-  sameAiPanelPrefs,
-  type AiPanelPrefs,
-} from '@genoffice/ui/ai-panel-prefs'
 import type { TabKind } from '../shared/tabs-api'
 import { TABS_CHANNELS } from '../shared/tabs-api'
 import { showErrorDialog } from './error-dialog'
@@ -321,37 +230,26 @@ import {
 import extractWorkerPath from './file-index/extract-worker?modulePath'
 import { FileIndexer } from './file-index/indexer'
 import { FileIndexStore } from './file-index/store'
-import { normalizeFileSearchSettings, probeDecision, SearchReranker } from './file-index/rerank'
 import { runHeadlessExport, type HeadlessExporters } from './headless-export'
 import { TabManager } from './tab-manager'
 import { installShellCloseGuard } from './window-close-guard'
 import {
-  activateDetached,
-  closeDetachedWithoutPrompt,
   createDetachedEditorWindow,
   detachedFilePaths,
-  detachedOpenDocuments,
   detachedRenameFile,
   detachedSetFileFor,
-  detachedWebContentsFor,
-  detachedSetTitleFor,
   detachedWindowForWebContents,
   dockBandFor,
   dragTornWindow,
   endTornDrag,
-  findDetachedTabByPath,
   focusDetachedByPath,
   focusedDetachedKind,
   focusedDetachedTab,
   isDetachedEditorWindow,
-  isDetachedTabId,
   isTearingOff,
-  setDetachedChangedListener,
   setDockHost,
   takeTornTab,
 } from './detached-windows'
-import { applyUpdateChannel, checkForUpdatesNow, initAutoUpdater } from './updater'
-import { isUpdateChannel, type UpdateChannel } from '../shared/update-api'
 
 /**
  * GenOffice unified shell: ONE Electron app, ONE BrowserWindow, hosting the
@@ -383,14 +281,6 @@ const headlessArgv = parseHeadlessExportArgv(process.argv)
 if (headlessArgv.kind !== 'none') {
   setHeadlessMode(true)
   app.dock?.hide()
-}
-
-// The product rename from "AI Office" to GenOffice changed the userData path; migrate old user data once
-if (app.isPackaged) {
-  const oldDir = join(app.getPath('appData'), 'AI Office')
-  const newDir = app.getPath('userData')
-  const newEmpty = !existsSync(newDir) || readdirSync(newDir).length === 0
-  if (newEmpty && existsSync(oldDir)) cpSync(oldDir, newDir, { recursive: true })
 }
 
 // module build outputs: packaged builds carry them as extraResources
@@ -431,9 +321,6 @@ configureSheetsRuntime({
   rendererFile: join(SHEETS_OUT, 'renderer', 'index.html'),
   sidecarPath: SIDECAR_BIN,
   openGeneratedPath: (path) => openGeneratedDocument(path),
-  // The sheets AI's create_document (docx/pdf/md) funnels into the docs-owned
-  // creation flow, like the pdf app below.
-  createDocument: createAiDocument,
 })
 configureSlidesRuntime({
   preloadPath: join(SLIDES_OUT, 'preload', 'index.js'),
@@ -446,7 +333,6 @@ configurePdfRuntime({
   rendererUrl: process.env.PDF_RENDERER_URL,
   rendererFile: join(PDF_OUT, 'renderer', 'index.html'),
   openGeneratedPath: (path) => openGeneratedDocument(path),
-  createDocument: createAiDocument,
 })
 configureMarkdownRuntime({
   preloadPath: join(MARKDOWN_OUT, 'preload', 'index.js'),
@@ -468,20 +354,6 @@ registerPrivilegedSchemes()
 // same file when they pick up i18n later. GENOFFICE_LANG overrides for tests.
 
 const APP_SETTINGS_PATH = () => join(app.getPath('userData'), 'app-settings.json')
-const OPEN_DOCUMENTS_PATH = () => join(app.getPath('userData'), OPEN_DOCUMENTS_FILE)
-/** only the instance holding the single-instance lock may write or remove the registry */
-let ownsOpenDocumentsRegistry = false
-let stopAuthWatch: (() => void) | null = null
-const publishOpenDocumentsIfOwner = (paths: readonly string[]) => {
-  if (ownsOpenDocumentsRegistry) publishOpenDocuments(OPEN_DOCUMENTS_PATH(), paths)
-}
-
-/** every open file: the shell's tabs plus the detached editor windows */
-function publishAllOpenDocuments(): void {
-  publishOpenDocumentsIfOwner([...(tabManager?.openFilePaths() ?? []), ...detachedFilePaths()])
-}
-setDetachedChangedListener(publishAllOpenDocuments)
-
 let uiLang: Lang | null = null
 
 function currentLang(): Lang {
@@ -505,15 +377,6 @@ function persistLang(lang: Lang): void {
     uiLang = persisted
     setUiLang(persisted)
   })
-}
-
-let cachedUpdateChannel: UpdateChannel | null = null
-
-function currentUpdateChannel(): UpdateChannel {
-  if (cachedUpdateChannel) return cachedUpdateChannel
-  const saved = readAppSettings(APP_SETTINGS_PATH()).updateChannel
-  cachedUpdateChannel = isUpdateChannel(saved) ? saved : 'stable'
-  return cachedUpdateChannel
 }
 
 let cachedTheme: UiTheme | null = null
@@ -547,162 +410,6 @@ function currentAutoSaveDefault(): AutoSaveDefault {
   return cachedAutoSaveDefault
 }
 
-/** MCP server settings (persisted in userData/app-settings.json; default off). */
-function currentMcpSettings(): McpSettings {
-  const saved = readAppSettings(APP_SETTINGS_PATH())
-  const port = saved.mcpPort
-  return {
-    enabled: saved.mcpEnabled === true,
-    port:
-      typeof port === 'number' && Number.isInteger(port) && port > 0 && port < 65536
-        ? port
-        : DEFAULT_MCP_PORT,
-    background: saved.mcpBackground === true,
-    logging: saved.mcpLogging === true,
-  }
-}
-
-let cachedAiPanelPrefs: AiPanelPrefs | null = null
-function currentAiPanelPrefs(): AiPanelPrefs {
-  if (cachedAiPanelPrefs) return cachedAiPanelPrefs
-  const saved = readAppSettings(APP_SETTINGS_PATH())
-  cachedAiPanelPrefs = normalizeAiPanelPrefs({
-    side: saved.aiPanelSide,
-    fontSize: saved.aiPanelFontSize,
-    customFontSize: saved.aiPanelCustomFontSize,
-    spellcheck: saved.aiPanelSpellcheck,
-    openInNewDocs: saved.aiPanelOpenInNewDocs,
-  })
-  return cachedAiPanelPrefs
-}
-
-// ---- anonymous usage analytics (see src/main/analytics.ts) ----
-// Stays a no-op until initAnalytics() runs at startup; keyless builds
-// (source/forks) keep the no-op forever, so every track() call is safe.
-
-let analytics: Analytics = { active: false, track: () => {} }
-
-let cachedAnalyticsEnabled: boolean | null = null
-
-function analyticsEnabled(): boolean {
-  cachedAnalyticsEnabled ??= analyticsEnabledFrom(readAppSettings(APP_SETTINGS_PATH()))
-  return cachedAnalyticsEnabled
-}
-
-function resolveAnalyticsKeys(): AnalyticsKeys | null {
-  // Only packaged extraMetadata is authoritative. Source/dev runs never read
-  // runtime credentials and therefore remain a strict no-op.
-  if (!app.isPackaged) return null
-  try {
-    return extractPackagedAnalyticsKeys(
-      JSON.parse(readFileSync(join(app.getAppPath(), 'package.json'), 'utf8')),
-      app.isPackaged,
-    )
-  } catch {
-    return null
-  }
-}
-
-function persistAnalyticsPreference(enabled: boolean): boolean {
-  const previous = cachedAnalyticsEnabled
-  // Change the in-memory gate before touching disk. The synchronous atomic
-  // write prevents another event from being handled in between.
-  cachedAnalyticsEnabled = enabled
-  try {
-    writeAppSettings(APP_SETTINGS_PATH(), { [ANALYTICS_ENABLED_KEY]: enabled })
-    return true
-  } catch (error) {
-    cachedAnalyticsEnabled = previous
-    throw error
-  }
-}
-
-function initAnalytics(): void {
-  try {
-    let clientState: ReturnType<typeof ensureAnalyticsClientState> | null = null
-    const getClientState = () => (clientState ??= ensureAnalyticsClientState(APP_SETTINGS_PATH()))
-    analytics = createAnalytics({
-      keys: resolveAnalyticsKeys(),
-      getClientId: () => getClientState().clientId,
-      isEnabled: analyticsEnabled,
-      shouldTrackFirstLaunch: () => getClientState().firstLaunchPending,
-      onFirstLaunchSent: () => markAnalyticsFirstLaunchSent(APP_SETTINGS_PATH()),
-      // Country-only approximation from OS regional settings. This avoids an
-      // IP lookup while populating GA4's built-in Country dimension.
-      getCountryCode: () => app.getLocaleCountryCode(),
-      // evaluated per event: ui_lang follows live language switches
-      baseParams: () => ({
-        app_version: app.getVersion(),
-        platform: process.platform,
-        os_version: process.getSystemVersion(),
-        ui_lang: currentLang(),
-      }),
-    })
-  } catch {
-    // analytics must never block startup
-  }
-}
-
-// ---- first-run onboarding ----
-// The GenTeam community page opened from the onboarding's second slide.
-// Stable short link served by the genoffice.ai site; it 302s to the tokened
-// invite link, which stays out of this repo and rotates server-side.
-const GENTEAM_URL = 'https://genoffice.ai/join'
-
-// Genspark credit-usage page opened from the account menu's credits row.
-// Kept main-side so the renderer never supplies the URL.
-const CREDIT_USAGE_URL = 'https://www.genspark.ai/credit-usage'
-
-// ---- "star us on GitHub" prompt (see star-prompt.ts for the rules) ----
-
-const readStarPrompt = () =>
-  asStarPromptState(readAppSettings(APP_SETTINGS_PATH())[STAR_PROMPT_KEY])
-const writeStarPrompt = (state: ReturnType<typeof readStarPrompt>) =>
-  writeAppSetting(APP_SETTINGS_PATH(), STAR_PROMPT_KEY, state)
-
-/** set at startup when this is the first launch after an upgrade; consumed by
- * the first starPromptShouldShow query of the session */
-let upgradeStarPromptPending = false
-
-/** a granted show, cached for the session: repeated queries (React StrictMode
- * double-effects, AppFrame remounts) must return the same answer instead of
- * burning another lifetime show or flipping to a snoozed "false" */
-let starPromptSessionGrant: StarPromptShow | null = null
-
-/** every successful document open counts toward the prompt's value threshold */
-function recordStarPromptDocOpen(): void {
-  try {
-    const state = readStarPrompt()
-    const next = withDocOpen(state)
-    if (next !== state) writeStarPrompt(next)
-  } catch {
-    // settings write failures must never break opening a document
-  }
-}
-
-// Stargazer count for the settings About pane; fetched main-side (the
-// renderer CSP has no api.github.com) and cached per session — the exact
-// number is decoration, staleness is fine.
-let cachedGithubStars: number | null = null
-
-async function fetchGithubStars(): Promise<number | null> {
-  if (cachedGithubStars !== null) return cachedGithubStars
-  try {
-    const response = await fetch('https://api.github.com/repos/genspark-ai/genoffice', {
-      headers: { Accept: 'application/vnd.github+json' },
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!response.ok) return null
-    const body: unknown = await response.json()
-    const count = (body as { stargazers_count?: unknown }).stargazers_count
-    if (typeof count !== 'number' || !Number.isFinite(count)) return null
-    cachedGithubStars = count
-    return count
-  } catch {
-    return null
-  }
-}
-
 const tMain = createI18n({
   zh: {
     dlgAddFolderRoot: '添加文件夹到首页',
@@ -715,18 +422,18 @@ const tMain = createI18n({
     menuFile: '文件',
     menuSectionNew: '新建',
     menuOpenInNewWindow: '在新窗口中打开',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: '未命名表格',
     untitledDoc: '未命名文档',
     untitledDeck: '未命名演示文稿',
     untitledMarkdown: '未命名 Markdown',
     untitledHtml: '未命名 HTML',
     untitledPdf: '未命名 PDF',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: '导出为 PDF…',
     menuExportImages: '导出为图片…',
     menuExportHtml: '导出为单文件 HTML…',
@@ -808,18 +515,18 @@ const tMain = createI18n({
     menuFile: 'File',
     menuSectionNew: 'New',
     menuOpenInNewWindow: 'Open in New Window',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Untitled Spreadsheet',
     untitledDoc: 'Untitled Document',
     untitledDeck: 'Untitled Presentation',
     untitledMarkdown: 'Untitled Markdown',
     untitledHtml: 'Untitled HTML',
     untitledPdf: 'Untitled PDF',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Export as PDF…',
     menuExportImages: 'Export as Images…',
     menuExportHtml: 'Export as Single-File HTML…',
@@ -909,18 +616,18 @@ const tMain = createI18n({
     menuFile: 'Tệp',
     menuSectionNew: 'Mới',
     menuOpenInNewWindow: 'Mở trong cửa sổ mới',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Bảng tính chưa có tiêu đề',
     untitledDoc: 'Tài liệu chưa có tiêu đề',
     untitledDeck: 'Bản trình bày chưa có tiêu đề',
     untitledMarkdown: 'Markdown chưa có tiêu đề',
     untitledHtml: 'HTML chưa có tiêu đề',
     untitledPdf: 'PDF chưa có tiêu đề',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Xuất dưới dạng PDF…',
     menuExportImages: 'Xuất dưới dạng hình ảnh…',
     menuExportHtml: 'Xuất dưới dạng HTML một tệp…',
@@ -1010,18 +717,18 @@ const tMain = createI18n({
     menuFile: 'ファイル',
     menuSectionNew: '新規作成',
     menuOpenInNewWindow: '新しいウィンドウで開く',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: '無題のスプレッドシート',
     untitledDoc: '無題のドキュメント',
     untitledDeck: '無題のプレゼンテーション',
     untitledMarkdown: '無題の Markdown',
     untitledHtml: '無題の HTML',
     untitledPdf: '無題の PDF',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'PDF として書き出す…',
     menuExportImages: '画像としてエクスポート…',
     menuExportHtml: '単一ファイル HTML として書き出す…',
@@ -1111,18 +818,18 @@ const tMain = createI18n({
     menuFile: '파일',
     menuSectionNew: '새로 만들기',
     menuOpenInNewWindow: '새 창에서 열기',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: '제목 없는 스프레드시트',
     untitledDoc: '제목 없는 문서',
     untitledDeck: '제목 없는 프레젠테이션',
     untitledMarkdown: '제목 없는 Markdown',
     untitledHtml: '제목 없는 HTML',
     untitledPdf: '제목 없는 PDF',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'PDF로 내보내기…',
     menuExportImages: '이미지로 내보내기…',
     menuExportHtml: '단일 파일 HTML로 내보내기…',
@@ -1211,18 +918,18 @@ const tMain = createI18n({
     menuFile: 'Fichier',
     menuSectionNew: 'Nouveau',
     menuOpenInNewWindow: 'Ouvrir dans une nouvelle fenêtre',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Feuille de calcul sans titre',
     untitledDoc: 'Document sans titre',
     untitledDeck: 'Présentation sans titre',
     untitledMarkdown: 'Markdown sans titre',
     untitledHtml: 'HTML sans titre',
     untitledPdf: 'PDF sans titre',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Exporter en PDF…',
     menuExportImages: 'Exporter en images…',
     menuExportHtml: 'Exporter en HTML (fichier unique)…',
@@ -1313,18 +1020,18 @@ const tMain = createI18n({
     menuFile: 'Datei',
     menuSectionNew: 'Neu',
     menuOpenInNewWindow: 'In neuem Fenster öffnen',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Unbenannte Tabelle',
     untitledDoc: 'Unbenanntes Dokument',
     untitledDeck: 'Unbenannte Präsentation',
     untitledMarkdown: 'Unbenanntes Markdown',
     untitledHtml: 'Unbenanntes HTML',
     untitledPdf: 'Unbenanntes PDF',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Als PDF exportieren…',
     menuExportImages: 'Als Bilder exportieren…',
     menuExportHtml: 'Als Einzeldatei-HTML exportieren…',
@@ -1416,18 +1123,18 @@ const tMain = createI18n({
     menuFile: 'Archivo',
     menuSectionNew: 'Nuevo',
     menuOpenInNewWindow: 'Abrir en una ventana nueva',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Hoja de cálculo sin título',
     untitledDoc: 'Documento sin título',
     untitledDeck: 'Presentación sin título',
     untitledMarkdown: 'Markdown sin título',
     untitledHtml: 'HTML sin título',
     untitledPdf: 'PDF sin título',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Exportar como PDF…',
     menuExportImages: 'Exportar como imágenes…',
     menuExportHtml: 'Exportar como HTML de archivo único…',
@@ -1518,18 +1225,18 @@ const tMain = createI18n({
     menuFile: 'ไฟล์',
     menuSectionNew: 'สร้างใหม่',
     menuOpenInNewWindow: 'เปิดในหน้าต่างใหม่',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'สเปรดชีตไม่มีชื่อ',
     untitledDoc: 'เอกสารไม่มีชื่อ',
     untitledDeck: 'งานนำเสนอไม่มีชื่อ',
     untitledMarkdown: 'Markdown ไม่มีชื่อ',
     untitledHtml: 'HTML ไม่มีชื่อ',
     untitledPdf: 'PDF ไม่มีชื่อ',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'ส่งออกเป็น PDF…',
     menuExportImages: 'ส่งออกเป็นรูปภาพ…',
     menuExportHtml: 'ส่งออกเป็น HTML ไฟล์เดียว…',
@@ -1616,18 +1323,18 @@ const tMain = createI18n({
     menuFile: 'File',
     menuSectionNew: 'Baru',
     menuOpenInNewWindow: 'Buka di Jendela Baru',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Spreadsheet tanpa judul',
     untitledDoc: 'Dokumen tanpa judul',
     untitledDeck: 'Presentasi tanpa judul',
     untitledMarkdown: 'Markdown tanpa judul',
     untitledHtml: 'HTML tanpa judul',
     untitledPdf: 'PDF tanpa judul',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Ekspor sebagai PDF…',
     menuExportImages: 'Ekspor sebagai gambar…',
     menuExportHtml: 'Ekspor sebagai HTML satu file…',
@@ -1718,18 +1425,18 @@ const tMain = createI18n({
     menuFile: 'Файл',
     menuSectionNew: 'Создать',
     menuOpenInNewWindow: 'Открыть в новом окне',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Таблица без названия',
     untitledDoc: 'Документ без названия',
     untitledDeck: 'Презентация без названия',
     untitledMarkdown: 'Markdown без названия',
     untitledHtml: 'HTML без названия',
     untitledPdf: 'PDF без названия',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Экспортировать в PDF…',
     menuExportImages: 'Экспорт в изображения…',
     menuExportHtml: 'Экспортировать в один файл HTML…',
@@ -1820,18 +1527,18 @@ const tMain = createI18n({
     menuFile: 'ملف',
     menuSectionNew: 'جديد',
     menuOpenInNewWindow: 'فتح في نافذة جديدة',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'جدول بيانات بلا عنوان',
     untitledDoc: 'مستند بدون عنوان',
     untitledDeck: 'عرض تقديمي بدون عنوان',
     untitledMarkdown: 'Markdown بدون عنوان',
     untitledHtml: 'HTML بدون عنوان',
     untitledPdf: 'PDF بدون عنوان',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'تصدير بتنسيق PDF…',
     menuExportImages: 'تصدير كصور…',
     menuExportHtml: 'تصدير كملف HTML واحد…',
@@ -1918,18 +1625,18 @@ const tMain = createI18n({
     menuFile: 'Arquivo',
     menuSectionNew: 'Novo',
     menuOpenInNewWindow: 'Abrir em nova janela',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Planilha sem título',
     untitledDoc: 'Documento sem título',
     untitledDeck: 'Apresentação sem título',
     untitledMarkdown: 'Markdown sem título',
     untitledHtml: 'HTML sem título',
     untitledPdf: 'PDF sem título',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Exportar como PDF…',
     menuExportImages: 'Exportar como imagens…',
     menuExportHtml: 'Exportar como HTML de arquivo único…',
@@ -2020,18 +1727,18 @@ const tMain = createI18n({
     menuFile: 'File',
     menuSectionNew: 'Nuovo',
     menuOpenInNewWindow: 'Apri in una nuova finestra',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Foglio di calcolo senza titolo',
     untitledDoc: 'Documento senza titolo',
     untitledDeck: 'Presentazione senza titolo',
     untitledMarkdown: 'Markdown senza titolo',
     untitledHtml: 'HTML senza titolo',
     untitledPdf: 'PDF senza titolo',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Esporta come PDF…',
     menuExportImages: 'Esporta come immagini…',
     menuExportHtml: 'Esporta come HTML a file singolo…',
@@ -2122,18 +1829,18 @@ const tMain = createI18n({
     menuFile: 'Plik',
     menuSectionNew: 'Nowy',
     menuOpenInNewWindow: 'Otwórz w nowym oknie',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Arkusz bez tytułu',
     untitledDoc: 'Dokument bez tytułu',
     untitledDeck: 'Prezentacja bez tytułu',
     untitledMarkdown: 'Markdown bez tytułu',
     untitledHtml: 'HTML bez tytułu',
     untitledPdf: 'PDF bez tytułu',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Eksportuj jako PDF…',
     menuExportImages: 'Eksportuj jako obrazy…',
     menuExportHtml: 'Eksportuj jako pojedynczy plik HTML…',
@@ -2224,18 +1931,18 @@ const tMain = createI18n({
     menuFile: 'Soubor',
     menuSectionNew: 'Nový',
     menuOpenInNewWindow: 'Otevřít v novém okně',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Sešit bez názvu',
     untitledDoc: 'Dokument bez názvu',
     untitledDeck: 'Prezentace bez názvu',
     untitledMarkdown: 'Markdown bez názvu',
     untitledHtml: 'HTML bez názvu',
     untitledPdf: 'PDF bez názvu',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Exportovat jako PDF…',
     menuExportImages: 'Exportovat jako obrázky…',
     menuExportHtml: 'Exportovat jako samostatné HTML…',
@@ -2324,18 +2031,18 @@ const tMain = createI18n({
     menuFile: 'Bestand',
     menuSectionNew: 'Nieuw',
     menuOpenInNewWindow: 'Openen in nieuw venster',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Naamloze spreadsheet',
     untitledDoc: 'Naamloos document',
     untitledDeck: 'Naamloze presentatie',
     untitledMarkdown: 'Naamloos Markdown',
     untitledHtml: 'Naamloos HTML',
     untitledPdf: 'Naamloze PDF',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Exporteren als PDF…',
     menuExportImages: 'Exporteren als afbeeldingen…',
     menuExportHtml: 'Exporteren als één HTML-bestand…',
@@ -2426,18 +2133,18 @@ const tMain = createI18n({
     menuFile: 'Fail',
     menuSectionNew: 'Baharu',
     menuOpenInNewWindow: 'Buka dalam Tetingkap Baharu',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'Hamparan tanpa tajuk',
     untitledDoc: 'Dokumen tanpa tajuk',
     untitledDeck: 'Persembahan tanpa tajuk',
     untitledMarkdown: 'Markdown tanpa tajuk',
     untitledHtml: 'HTML tanpa tajuk',
     untitledPdf: 'PDF tanpa tajuk',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'Eksport sebagai PDF…',
     menuExportImages: 'Eksport sebagai imej…',
     menuExportHtml: 'Eksport sebagai HTML fail tunggal…',
@@ -2527,18 +2234,18 @@ const tMain = createI18n({
     menuFile: 'קובץ',
     menuSectionNew: 'חדש',
     menuOpenInNewWindow: 'פתח בחלון חדש',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'גיליון אלקטרוני ללא שם',
     untitledDoc: 'מסמך ללא שם',
     untitledDeck: 'מצגת ללא שם',
     untitledMarkdown: 'Markdown ללא שם',
     untitledHtml: 'HTML ללא שם',
     untitledPdf: 'PDF ללא שם',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'ייצוא כ-PDF…',
     menuExportImages: 'ייצוא כתמונות…',
     menuExportHtml: 'ייצוא כ-HTML בקובץ יחיד…',
@@ -2626,18 +2333,18 @@ const tMain = createI18n({
     menuFile: 'फ़ाइल',
     menuSectionNew: 'नया',
     menuOpenInNewWindow: 'नई विंडो में खोलें',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: 'शीर्षकहीन स्प्रेडशीट',
     untitledDoc: 'बिना शीर्षक दस्तावेज़',
     untitledDeck: 'बिना शीर्षक प्रस्तुति',
     untitledMarkdown: 'अनाम Markdown',
     untitledHtml: 'अनाम HTML',
     untitledPdf: 'अनाम PDF',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: 'PDF के रूप में निर्यात…',
     menuExportImages: 'छवियों के रूप में निर्यात…',
     menuExportHtml: 'एकल-फ़ाइल HTML के रूप में निर्यात…',
@@ -2728,18 +2435,18 @@ const tMain = createI18n({
     menuFile: '檔案',
     menuSectionNew: '新增',
     menuOpenInNewWindow: '在新視窗中開啟',
-    menuNewDoc: 'AI Docs',
-    menuNewSheet: 'AI Sheets',
+    menuNewDoc: 'Docs',
+    menuNewSheet: 'Sheets',
     untitledSheet: '未命名試算表',
     untitledDoc: '未命名文件',
     untitledDeck: '未命名簡報',
     untitledMarkdown: '未命名 Markdown',
     untitledHtml: '未命名 HTML',
     untitledPdf: '未命名 PDF',
-    menuNewSlide: 'AI Slides',
-    menuNewMarkdown: 'AI Markdown',
-    menuNewHtml: 'AI HTML',
-    menuNewPdf: 'AI PDF',
+    menuNewSlide: 'Slides',
+    menuNewMarkdown: 'Markdown',
+    menuNewHtml: 'HTML',
+    menuNewPdf: 'PDF',
     menuExportPdf: '匯出為 PDF…',
     menuExportImages: '匯出為圖片…',
     menuExportHtml: '匯出為單檔 HTML…',
@@ -2919,12 +2626,10 @@ function applyPendingDir(wcId: number, filePath: string): string {
 
 /**
  * Everything that keys on a file path follows a rename/move: recents, stars,
- * the AI chat history (project-store), the slides start-screen list and any
- * open tab (which re-grants the new path and refreshes its title).
+ * the slides start-screen list and any open tab (which re-grants the new path and refreshes its title).
  */
 function afterFileMoved(oldPath: string, newPath: string): void {
   replaceRecentFile(oldPath, newPath)
-  projectFileRenamed(oldPath, newPath)
   if (/\.pptx$/i.test(newPath)) void replaceSlidesRecentFile(oldPath, newPath)
   const affected = tabManager?.renameTabFile(oldPath, newPath) ?? []
   const detachedAffected = detachedRenameFile(oldPath, newPath)
@@ -2943,7 +2648,6 @@ function trackedFilesUnder(dir: string): string[] {
   return pathsUnder(dir, [
     ...readRecentFiles(),
     ...readStarredFiles(),
-    ...projectFilePaths(),
     ...readSlidesRecentFiles(),
     ...(tabManager?.openFilePaths() ?? []),
     ...detachedFilePaths(),
@@ -2966,7 +2670,6 @@ function fileTargetSources(): FileTargetSources {
     trackedPaths: [
       ...readRecentFiles(),
       ...readStarredFiles(),
-      ...projectFilePaths(),
       ...readSlidesRecentFiles(),
       ...(tabManager?.openFilePaths() ?? []),
       ...detachedFilePaths(),
@@ -2983,11 +2686,6 @@ const folderWatchers = new Map<string, FolderWatcher>()
 
 let fileIndexStore: FileIndexStore | null = null
 let fileIndexer: FileIndexer | null = null
-let searchReranker: SearchReranker | null = null
-
-function readFileSearchSettings(): FileSearchSettings {
-  return normalizeFileSearchSettings(readAppSettings(APP_SETTINGS_PATH()).fileSearch)
-}
 
 /** the search index lives in userData and follows the save folder plus recents/starred */
 function ensureFileIndexer(): FileIndexer | null {
@@ -3108,7 +2806,6 @@ function createShellWindow(): void {
     win,
     () => {
       win.webContents.send(TABS_CHANNELS.changed, manager.list())
-      publishOpenDocumentsIfOwner([...manager.openFilePaths(), ...detachedFilePaths()])
     },
     applyMenuFor,
     // no extension: these tabs have no file on disk yet; the title becomes the
@@ -3177,8 +2874,6 @@ function createShellWindow(): void {
   // then reach the live tab manager (recreating the shell), never this closure's.
   setDocsShellHooks({
     openTab: (openPath, options) => ensureTabManager().openDocsTab(openPath, options),
-    openAiDocTab: (content) =>
-      ensureTabManager().openDocsTab(undefined, { newBlank: true, aiContent: content }),
     listTabs: () =>
       (tabManager?.list() ?? [])
         .filter((t) => t.kind === 'docs')
@@ -3246,10 +2941,6 @@ function createShellWindow(): void {
     recordRecentFile(path)
     applyPendingDir(wc.id, path)
   })
-  setHtmlProvisionalTitleHook((wc, title) => {
-    manager.setTabTitleFor(wc.id, title)
-    detachedSetTitleFor(wc.id, title)
-  })
   // A redacted copy becomes this tab's document; the source still exists.
   setPdfRedactionSavedHook((wc, path) => {
     manager.setTabFileFor(wc.id, path)
@@ -3262,7 +2953,6 @@ function createShellWindow(): void {
     manager.setTabFileFor(wc.id, newPath)
     detachedSetFileFor(wc.id, newPath)
     replaceRecentFile(oldPath, newPath)
-    projectFileRenamed(oldPath, newPath)
   })
   // markdown "convert & open in Docs" → route the fresh .docx to a docs tab
   setMarkdownDocxExportedHook((path) => {
@@ -3293,7 +2983,6 @@ function createShellWindow(): void {
     if (tabManager === manager) {
       tabManager = null
       setDockHost(null)
-      publishAllOpenDocuments()
     }
   })
 
@@ -3367,13 +3056,7 @@ function registerDroppedFilesIpc(): void {
 
 /** the single router: extension decides which module owns the file; false = nothing opened */
 function openDocumentPath(filePath: string): boolean {
-  const opened = routeDocumentPath(filePath)
-  if (opened) {
-    recordStarPromptDocOpen()
-    // extension only — never the file name or path
-    analytics.track('file_open', { ext: extname(filePath).slice(1).toLowerCase() })
-  }
-  return opened
+  return routeDocumentPath(filePath)
 }
 
 /**
@@ -3485,22 +3168,14 @@ async function newSheetTab(recoverAs?: string): Promise<void> {
       unmarkSheetsUnsavedNew(backingPath)
       throw err
     }
-    // eligible for content-derived auto-rename after the first AI generation
-    markSheetsUntitledPath(backingPath)
     tabManager?.openSheetsTab(backingPath)
     startQueuedWorkbookNudge()
     // no recent-file entry yet: there is no user-visible file until it is saved
-    recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'xlsx' })
   } catch (err) {
     console.warn('[shell] temp workbook create failed, writing to the default folder:', err)
     try {
       await atomicWriteFile(suggestedPath, await blankXlsxBuffer())
-      markSheetsUntitledPath(suggestedPath)
-      // route directly (not via openDocumentPath) so creating a sheet emits
-      // only file_new — the file_open event is reserved for opening existing files
-      if (routeDocumentPath(suggestedPath)) recordStarPromptDocOpen()
-      analytics.track('file_new', { kind: 'xlsx' })
+      routeDocumentPath(suggestedPath)
     } catch (fallbackErr) {
       console.warn(
         '[shell] blank workbook create failed, opening in-memory blank tab:',
@@ -3529,118 +3204,14 @@ function surfaceNewTabError(err: unknown): void {
 function newDocTab(): void {
   try {
     bindPendingDir('doc', tabManager?.openDocsTab(undefined, { newBlank: true }))
-    // creating a document is as much a value moment as opening one
-    recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'docx' })
   } catch (err) {
     surfaceNewTabError(err)
   }
 }
 
-/** MCP: open a blank docs tab and return its webContents id, for the visible-editor bridge */
-function openBlankDocsTabForMcp(): number {
-  if (!tabManager) throw new Error('GenOffice is not ready')
-  const tabId = tabManager.openDocsTab(undefined, { newBlank: true })
-  const view = tabManager.docsTabs().find((t) => t.id === tabId)
-  if (!view) throw new Error('the new document tab could not be opened')
-  recordStarPromptDocOpen()
-  analytics.track('file_new', { kind: 'docx' })
-  return view.webContents.id
-}
-
-/**
- * MCP: open a blank sheets tab and return its webContents id, for the
- * visible-grid bridge. Like the app's own "new spreadsheet", a real blank
- * .xlsx is created up front (the save pipeline needs an on-disk workbook;
- * the fallback in-memory demo grid cannot save) — but the AI auto-rename
- * marking is skipped, the file name is the agent's business.
- */
-async function openBlankSheetsTabForMcp(): Promise<number> {
-  if (!tabManager) throw new Error('GenOffice is not ready')
-  const filePath = uniquePathIn(defaultSaveDir(), `${tm('untitledSheet')}.xlsx`)
-  await atomicWriteFile(filePath, await blankXlsxBuffer())
-  const tabId = tabManager.openSheetsTab(filePath)
-  const view = tabManager.sheetsTabs().find((t) => t.id === tabId)
-  if (!view) {
-    // the tab never appeared, so nothing will ever consume this file
-    try {
-      rmSync(filePath)
-    } catch (error) {
-      console.warn('[mcp] could not remove the unused blank workbook:', error)
-    }
-    throw new Error('the new spreadsheet tab could not be opened')
-  }
-  const wcId = view.webContents.id
-  mcpBlankSheetPaths.set(wcId, filePath)
-  view.webContents.once('destroyed', () => mcpBlankSheetPaths.delete(wcId))
-  // Same nudge the interactive path uses: the renderer subscribes to the open
-  // action only after Univer mounts, so a single push can land in the void on a
-  // cold start and leave the tab sitting on a blank in-memory workbook.
-  startQueuedWorkbookNudge()
-  recordStarPromptDocOpen()
-  analytics.track('file_new', { kind: 'xlsx' })
-  return view.webContents.id
-}
-
-/** backing files of blank sheets tabs created by the MCP session tools */
-const mcpBlankSheetPaths = new Map<number, string>()
-
-/**
- * MCP: drop a blank sheets tab whose session never became ready, and delete the
- * empty workbook created for it. Without this a failed `create_session` leaves
- * an orphan tab plus an .xlsx in the default save folder that the user never
- * asked for — and nothing in the MCP surface can clean either one up.
- */
-function abandonBlankSheetsTabForMcp(wcId: number): void {
-  const manager = tabManager
-  const filePath = mcpBlankSheetPaths.get(wcId)
-  mcpBlankSheetPaths.delete(wcId)
-  if (!manager) return
-  // the grid may already be usable while the MCP bridge is not: keep anything the user typed
-  if (manager.dirtySheetsTabs().some((t) => t.webContents.id === wcId)) return
-  if (!abandonBlankTabForMcp(manager.sheetsTabs(), wcId)) return
-  if (!filePath) return
-  try {
-    if (existsSync(filePath)) rmSync(filePath)
-  } catch (error) {
-    console.warn('[mcp] could not remove the unused blank workbook:', error)
-  }
-}
-
-/**
- * MCP: close a tab whose session never became ready. Returns false when the
- * tab could not be closed (it is already gone, or the close failed).
- */
-function abandonBlankTabForMcp(
-  tabs: Array<{ id: string; webContents: WebContents }>,
-  wcId: number,
-): boolean {
-  const tab = tabs.find((t) => t.webContents.id === wcId)
-  if (!tab || !tabManager) return false
-  try {
-    return tabManager.closeTabWithoutPrompt(tab.id)
-  } catch (error) {
-    console.warn('[mcp] could not close the unused tab:', error)
-    return false
-  }
-}
-
-/** MCP: open a blank slides tab and return its webContents id, for the visible-deck bridge */
-function openBlankSlidesTabForMcp(): number {
-  if (!tabManager) throw new Error('GenOffice is not ready')
-  const tabId = tabManager.openSlidesTab()
-  const view = tabManager.slidesTabs().find((t) => t.id === tabId)
-  if (!view) throw new Error('the new presentation tab could not be opened')
-  recordStarPromptDocOpen()
-  analytics.track('file_new', { kind: 'pptx' })
-  return view.webContents.id
-}
-
 function newSlideTab(): void {
   try {
     bindPendingDir('slide', tabManager?.openSlidesTab())
-    recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'pptx' })
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -3649,8 +3220,6 @@ function newSlideTab(): void {
 function newMarkdownTab(): void {
   try {
     bindPendingDir('markdown', tabManager?.openMarkdownTab())
-    recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'md' })
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -3659,8 +3228,6 @@ function newMarkdownTab(): void {
 function newHtmlTab(): void {
   try {
     bindPendingDir('html', tabManager?.openHtmlTab())
-    recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'html' })
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -3677,10 +3244,7 @@ async function newPdfTab(): Promise<void> {
     await atomicWriteFile(filePath, await blankPdfBuffer())
     // Opt the file into content-derived auto-naming on its first save
     markPdfUntitledPath(filePath)
-    // route directly (not via openDocumentPath) so creating a pdf emits only
-    // file_new and counts one doc-open — same as the blank workbook above
-    if (routeDocumentPath(filePath)) recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'pdf' })
+    routeDocumentPath(filePath)
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -3722,55 +3286,6 @@ function statEntries(paths: string[]): RecentEntry[] {
 }
 
 function registerHomeIpc(): void {
-  // signed-in means GenOffice's own device-code login; the shared gsk CLI key
-  // is only a silent fallback, deliberately not shown here to nudge users onto our key
-  ipcMain.handle(HOME_CHANNELS.accountStatus, async () => {
-    if (!loadGenofficeAuth()) return { loggedIn: false }
-    await proxyBootstrap
-    const info = await gskLoginInfo()
-    return info
-      ? { loggedIn: true, email: info.email, creditBalance: info.creditBalance }
-      : { loggedIn: true }
-  })
-
-  // login progress is streamed to the requesting renderer; the auth URL is
-  // kept main-side so the "open manually" rescue never opens a renderer-supplied URL
-  let pendingLoginUrl = ''
-  ipcMain.handle(HOME_CHANNELS.accountLogin, async (event) => {
-    analytics.track('login_click')
-    const sender = event.sender
-    pendingLoginUrl = ''
-    await proxyBootstrap
-    const send = (payload: AccountLoginEvent) => {
-      if (!sender.isDestroyed()) sender.send(HOME_CHANNELS.accountLoginEvent, payload)
-    }
-    // open the browser on the first url event only; later events refresh the rescue URL
-    let opened = false
-    const launched = startGenofficeLogin((progress) => {
-      if (progress.url) {
-        pendingLoginUrl = progress.url
-        if (!opened) {
-          opened = true
-          void shell.openExternal(progress.url)
-        }
-      }
-      if (progress.phase === 'success') analytics.track('login_success')
-      send(progress)
-    })
-    if (launched) send({ phase: 'launched' })
-    return launched
-  })
-
-  ipcMain.handle(HOME_CHANNELS.accountLoginOpenUrl, () => {
-    if (pendingLoginUrl) void shell.openExternal(pendingLoginUrl)
-  })
-
-  ipcMain.handle(HOME_CHANNELS.accountLogout, async () => {
-    await genofficeLogout()
-    // the cloud projects cache belongs to the account that just signed out
-    clearCloudProjectsStore(cloudProjectsStorePath())
-  })
-
   ipcMain.handle(HOME_CHANNELS.getAppVersion, (): string => app.getVersion())
 
   ipcMain.handle(HOME_CHANNELS.recents, (_event, query: unknown): RecentPage =>
@@ -3798,45 +3313,6 @@ function registerHomeIpc(): void {
       index: indexer.progress(),
     }
   })
-
-  ipcMain.handle(
-    HOME_CHANNELS.rerankSearch,
-    async (_event, raw: unknown): Promise<FileSearchRerank | null> => {
-      const settings = readFileSearchSettings()
-      if (!settings.rerank) return null
-      const query = (raw && typeof raw === 'object' ? raw : {}) as { q?: unknown; paths?: unknown }
-      const q = typeof query.q === 'string' ? query.q.trim().slice(0, 200) : ''
-      const paths = Array.isArray(query.paths)
-        ? query.paths.filter((p): p is string => typeof p === 'string').slice(0, 20)
-        : []
-      if (!q || paths.length < 2 || !ensureFileIndexer() || !fileIndexStore) return null
-      searchReranker ??= new SearchReranker(fileIndexStore)
-      return searchReranker.rerank(q, paths, settings)
-    },
-  )
-
-  ipcMain.handle(HOME_CHANNELS.getFileSearchSettings, (): FileSearchSettings =>
-    readFileSearchSettings(),
-  )
-
-  ipcMain.handle(
-    HOME_CHANNELS.setFileSearchSettings,
-    (_event, patch: unknown): FileSearchSettings => {
-      const current = readFileSearchSettings()
-      const p = (patch && typeof patch === 'object' ? patch : {}) as Partial<FileSearchSettings>
-      const next = normalizeFileSearchSettings({
-        ...current,
-        ...p,
-        keys: { ...current.keys, ...(p.keys ?? {}) },
-      })
-      writeAppSetting(APP_SETTINGS_PATH(), 'fileSearch', next)
-      return next
-    },
-  )
-
-  ipcMain.handle(HOME_CHANNELS.testFileSearchRerank, (_event, input: unknown) =>
-    probeDecision(normalizeFileSearchSettings(input)),
-  )
 
   // Starred files sort by mtime, which requires stat-ing them all first; they are hand-picked and few, so this is fine
   ipcMain.handle(HOME_CHANNELS.starred, (_event, query: unknown): RecentPage => {
@@ -4024,29 +3500,6 @@ function registerHomeIpc(): void {
     for (const wc of webContents.getAllWebContents()) wc.send('app:language-changed', lang)
   })
 
-  ipcMain.handle(HOME_CHANNELS.getUpdateChannel, (): UpdateChannel => currentUpdateChannel())
-
-  ipcMain.handle(HOME_CHANNELS.setUpdateChannel, (_event, channel: unknown) => {
-    if (!isUpdateChannel(channel) || channel === currentUpdateChannel()) return
-    cachedUpdateChannel = channel
-    writeAppSetting(APP_SETTINGS_PATH(), 'updateChannel', channel)
-    applyUpdateChannel(channel)
-  })
-
-  ipcMain.handle(
-    HOME_CHANNELS.onboardingSeen,
-    (): boolean => readAppSettings(APP_SETTINGS_PATH()).onboardingSeen === true,
-  )
-
-  ipcMain.handle(HOME_CHANNELS.setOnboardingSeen, (): boolean => {
-    try {
-      writeAppSetting(APP_SETTINGS_PATH(), 'onboardingSeen', true)
-      return true
-    } catch {
-      return false
-    }
-  })
-
   ipcMain.handle(HOME_CHANNELS.getTheme, (): UiTheme => currentTheme())
   // editor tabs ask via the app-wide channel (symmetric with app:get-language)
   ipcMain.handle('app:get-theme', (): UiTheme => currentTheme())
@@ -4088,91 +3541,6 @@ function registerHomeIpc(): void {
     })
     for (const wc of webContents.getAllWebContents()) wc.send('app:auto-save-default-changed', next)
   })
-
-  ipcMain.handle(HOME_CHANNELS.getMcpStatus, () => mcpStatus())
-
-  ipcMain.handle(HOME_CHANNELS.setMcpSettings, async (_event, patch: unknown) => {
-    if (!patch || typeof patch !== 'object') return mcpStatus()
-    const request = patch as {
-      enabled?: unknown
-      port?: unknown
-      background?: unknown
-      logging?: unknown
-    }
-    const current = currentMcpSettings()
-    const enabled = typeof request.enabled === 'boolean' ? request.enabled : current.enabled
-    const port =
-      typeof request.port === 'number' &&
-      Number.isInteger(request.port) &&
-      request.port > 0 &&
-      request.port < 65536
-        ? request.port
-        : current.port
-    const background =
-      typeof request.background === 'boolean' ? request.background : current.background
-    const logging = typeof request.logging === 'boolean' ? request.logging : current.logging
-    writeAppSettings(APP_SETTINGS_PATH(), {
-      mcpEnabled: enabled,
-      mcpPort: port,
-      mcpBackground: background,
-      mcpLogging: logging,
-    })
-    try {
-      return await applyMcpSettings({ enabled, port, background, logging })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      return { ...mcpStatus(), error: message }
-    }
-  })
-
-  ipcMain.handle(HOME_CHANNELS.getMcpLogs, () => getMcpRecentLogs())
-
-  ipcMain.handle(HOME_CHANNELS.clearMcpLogs, () => {
-    clearMcpLogs()
-  })
-
-  ipcMain.handle(HOME_CHANNELS.openMcpLogFile, () => {
-    revealMcpLogFile()
-    const logPath = mcpLogFilePath()
-    if (logPath) shell.showItemInFolder(logPath)
-  })
-
-  ipcMain.handle(HOME_CHANNELS.getAnalyticsEnabled, (): boolean => analyticsEnabled())
-
-  ipcMain.handle(HOME_CHANNELS.setAnalyticsEnabled, (_event, enabled: unknown): boolean => {
-    if (typeof enabled !== 'boolean') return false
-    return persistAnalyticsPreference(enabled)
-  })
-
-  ipcMain.handle(HOME_CHANNELS.getAiPanelPrefs, (): AiPanelPrefs => currentAiPanelPrefs())
-  ipcMain.handle('app:get-ai-panel-prefs', (): AiPanelPrefs => currentAiPanelPrefs())
-
-  const setAiPanelPrefs = (patch: unknown): AiPanelPrefs => {
-    const prev = currentAiPanelPrefs()
-    const raw =
-      patch !== null && typeof patch === 'object' ? (patch as Record<string, unknown>) : {}
-    // unknown/malformed fields fall back to the previous value, not the default
-    const next = normalizeAiPanelPrefs({
-      side: raw.side === 'left' || raw.side === 'right' ? raw.side : prev.side,
-      fontSize: 'fontSize' in raw ? raw.fontSize : prev.fontSize,
-      customFontSize: 'customFontSize' in raw ? raw.customFontSize : prev.customFontSize,
-      spellcheck: 'spellcheck' in raw ? raw.spellcheck : prev.spellcheck,
-      openInNewDocs: 'openInNewDocs' in raw ? raw.openInNewDocs : prev.openInNewDocs,
-    })
-    if (sameAiPanelPrefs(next, prev)) return prev
-    cachedAiPanelPrefs = next
-    writeAppSettings(APP_SETTINGS_PATH(), {
-      aiPanelSide: next.side,
-      aiPanelFontSize: next.fontSize,
-      aiPanelCustomFontSize: next.customFontSize,
-      aiPanelSpellcheck: next.spellcheck,
-      aiPanelOpenInNewDocs: next.openInNewDocs,
-    })
-    for (const wc of webContents.getAllWebContents()) wc.send('app:ai-panel-prefs-changed', next)
-    return next
-  }
-  ipcMain.handle(HOME_CHANNELS.setAiPanelPrefs, (_event, patch) => setAiPanelPrefs(patch))
-  ipcMain.handle('app:set-ai-panel-prefs', (_event, patch) => setAiPanelPrefs(patch))
 
   // effective folder where new/untitled files land; the editor mains resolve
   // the same setting themselves (configuredDefaultSaveDir via docs' defaultSaveDir)
@@ -4305,7 +3673,6 @@ function registerHomeIpc(): void {
               displaced.push(parked)
               removeRecentFiles(files)
               removeStarredFiles(files)
-              for (const file of files) projectFileRenamed(file, rebasePath(file, path, parked))
             },
             rollback: () => renameSync(parked, path),
           }
@@ -4368,71 +3735,10 @@ function registerHomeIpc(): void {
     return picked
   })
 
-  ipcMain.handle(HOME_CHANNELS.openGenTeam, () => {
-    shell.openExternal(GENTEAM_URL).catch(() => {
-      // no browser handler available; nothing actionable for the user here
-    })
-  })
-
-  ipcMain.handle(HOME_CHANNELS.openCreditUsage, () => {
-    shell.openExternal(CREDIT_USAGE_URL).catch(() => {
-      // no browser handler available; nothing actionable for the user here
-    })
-  })
-
   ipcMain.handle(HOME_CHANNELS.openGitHubRepo, () => {
     shell.openExternal(GITHUB_REPO_URL).catch(() => {
       // no browser handler available; nothing actionable for the user here
     })
-  })
-
-  ipcMain.handle(HOME_CHANNELS.githubStars, () => fetchGithubStars())
-
-  // returning true also counts as "shown": the renderer displays it
-  // unconditionally, so no separate mark-shown round-trip is needed
-  ipcMain.handle(HOME_CHANNELS.starPromptShouldShow, (): StarPromptShow => {
-    if (starPromptSessionGrant) return starPromptSessionGrant
-    const now = Date.now()
-    const state = readStarPrompt()
-    const docOpens = state.docOpens ?? 0
-    // dev preview of the card without waiting out the value thresholds
-    // (same pattern as GENOFFICE_FAKE_UPDATE); nothing is recorded
-    if (!app.isPackaged && process.env.GENOFFICE_FORCE_STAR_PROMPT) return { show: true, docOpens }
-    const grant = (): StarPromptShow => {
-      writeStarPrompt(withShown(state, now))
-      starPromptSessionGrant = { show: true, docOpens }
-      return starPromptSessionGrant
-    }
-    // first launch after an upgrade: skip the value gates once for a
-    // never-prompted user (they are a proven repeat user already)
-    if (upgradeStarPromptPending) {
-      upgradeStarPromptPending = false
-      if (shouldShowUpgradeStarPrompt(state)) return grant()
-    }
-    if (!shouldShowStarPrompt(state, now)) return { show: false, docOpens }
-    return grant()
-  })
-
-  ipcMain.handle(HOME_CHANNELS.starPromptAction, (_event, action: unknown) => {
-    if (action !== 'starred' && action !== 'later') return
-    // the card was reacted to — drop the session grant so a later query (new
-    // shell window on macOS) re-evaluates the real rules (snooze / resolved)
-    starPromptSessionGrant = null
-    // 'later' needs no write: the display was already counted by the query
-    if (action === 'starred') writeStarPrompt(withResolved(readStarPrompt()))
-  })
-
-  const cloudProjectsStorePath = () => join(app.getPath('userData'), 'cloud-projects.json')
-
-  ipcMain.handle(HOME_CHANNELS.cloudProjectsCached, () =>
-    readCloudProjectsStore(cloudProjectsStorePath()),
-  )
-
-  ipcMain.handle(HOME_CHANNELS.cloudProjects, () => syncCloudProjects(cloudProjectsStorePath()))
-
-  ipcMain.handle(HOME_CHANNELS.openCloudProject, (_event, projectUrl: unknown) => {
-    const url = cloudProjectExternalUrl(projectUrl)
-    if (url) void shell.openExternal(url)
   })
 }
 
@@ -4755,7 +4061,6 @@ function buildHomeMenu(): void {
       submenu: [
         { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
         { type: 'separator' },
-        checkUpdatesMenuItem(appMenuLabels(currentLang())),
         aboutMenuItem(appMenuLabels(currentLang())),
       ],
     },
@@ -4838,7 +4143,6 @@ function buildPdfMenu(): void {
       submenu: [
         { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
         { type: 'separator' },
-        checkUpdatesMenuItem(appMenuLabels(currentLang())),
         aboutMenuItem(appMenuLabels(currentLang())),
       ],
     },
@@ -4937,7 +4241,6 @@ function buildMarkdownMenu(): void {
       submenu: [
         { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
         { type: 'separator' },
-        checkUpdatesMenuItem(appMenuLabels(currentLang())),
         aboutMenuItem(appMenuLabels(currentLang())),
       ],
     },
@@ -5029,7 +4332,6 @@ function buildHtmlMenu(): void {
       submenu: [
         { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
         { type: 'separator' },
-        checkUpdatesMenuItem(appMenuLabels(currentLang())),
         aboutMenuItem(appMenuLabels(currentLang())),
       ],
     },
@@ -5495,52 +4797,9 @@ function installDockMenu(): void {
   )
 }
 
-// On mainland-China networks the main process's Node fetch (undici) bypasses the system proxy,
-// so direct calls to overseas LLM/image-search APIs time out or get region-blocked (403).
-// Prefer proxy env vars (terminal launch); a packaged app launched from Finder inherits no shell
-// env vars, so fall back to the system HTTP proxy. The renderer uses Chromium's system proxy and
-// is unaffected. Same bootstrap as slides-main startSlidesStandalone.
-// awaited by login IPC so the first status probe / login click cannot race the proxy resolution
-let proxyBootstrap: Promise<void> = Promise.resolve()
-
-async function installMainProcessProxy(): Promise<void> {
-  let proxyUrl = [
-    process.env.HTTPS_PROXY,
-    process.env.https_proxy,
-    process.env.HTTP_PROXY,
-    process.env.http_proxy,
-    process.env.ALL_PROXY,
-    process.env.all_proxy,
-  ].find((v) => v && /^https?:\/\//.test(v))
-  if (!proxyUrl) {
-    try {
-      // PAC/rule proxies answer per-host: probe the host the login flow, the
-      // Genspark LLM proxy and the gsk CLI actually target
-      const resolved = await session.defaultSession.resolveProxy('https://www.genspark.ai/')
-      const m = /PROXY\s+([^;\s]+)/.exec(resolved)
-      if (m) proxyUrl = `http://${m[1]}`
-    } catch {
-      /* no system proxy */
-    }
-  }
-  if (!proxyUrl) return
-  // spawned gsk CLI children (login/search/…) do their own fetch and never see
-  // the dispatcher below — forward the proxy to them via env
-  setGskProxyUrl(proxyUrl)
-  try {
-    const { ProxyAgent, setGlobalDispatcher } = await import('undici')
-    setGlobalDispatcher(new ProxyAgent(proxyUrl))
-    // strip user:pass credentials before logging
-    console.log('[proxy] main-process fetch via', proxyUrl.replace(/\/\/[^@/]*@/, '//***@'))
-  } catch (e) {
-    console.warn('[proxy] failed to set ProxyAgent:', e)
-  }
-}
-
 // ---- lifecycle (the shell is the only owner) ----
 
 let pendingLaunchPaths = collectLaunchPaths(process.argv)
-let controlServer: ControlServer | null = null
 
 // show() does not un-minimize, and on macOS ⌘W destroys the shell window while the
 // app keeps running — either way a file opened from Finder would land out of sight.
@@ -5579,28 +4838,10 @@ app.on('second-instance', (_event, argv, _cwd, additionalData) => {
 
 installNavigationGuard(app)
 installContextMenu(app, () => contextMenuLabels(currentLang()))
-registerAiIpc()
-registerProjectIpc()
 registerDocsIpc()
 registerHomeIpc()
-registerIntegrationsIpc({
-  settingsPath: APP_SETTINGS_PATH,
-  window: () => shellWindow,
-  cliDir: app.isPackaged
-    ? join(process.resourcesPath, 'cli')
-    : join(APPS_ROOT, '..', 'packages', 'cli', 'bin'),
-  skillPath: app.isPackaged
-    ? join(process.resourcesPath, 'cli', 'skills', 'genoffice', 'SKILL.md')
-    : join(APPS_ROOT, '..', 'skills', 'genoffice', 'SKILL.md'),
-  cliPackageJson: app.isPackaged
-    ? join(process.resourcesPath, 'cli', 'package.json')
-    : join(APPS_ROOT, '..', 'packages', 'cli', 'package.json'),
-})
 registerTabsIpc()
 registerDroppedFilesIpc()
-
-// sheets' project:resolveChat goes through the handler registered by docs-main; the sessionId reverse lookup hooks in here
-setSessionPathResolver(resolveSheetsSessionPath)
 
 /** Dev-only pid marker for the takeover below; scoped to userData like the lock itself. */
 const devPidFile = () => join(app.getPath('userData'), 'dev-instance.pid')
@@ -5691,17 +4932,6 @@ app.whenReady().then(async () => {
     app.quit()
     return
   }
-  // another GenOffice-family app re-logging in rotates the shared key; the
-  // home page re-reads its account status. A logout that leaves only the
-  // gsk CLI fallback key is not a login
-  stopAuthWatch = watchGskApiKey(() => {
-    if (!loadGenofficeAuth()) return
-    for (const w of BrowserWindow.getAllWindows())
-      w.webContents.send(HOME_CHANNELS.accountLoginEvent, { phase: 'success' })
-  })
-  // a registry left by a crashed instance must not block genoffice writes
-  ownsOpenDocumentsRegistry = true
-  publishOpenDocuments(OPEN_DOCUMENTS_PATH(), [])
   if (!app.isPackaged) {
     try {
       writeFileSync(devPidFile(), String(process.pid))
@@ -5710,7 +4940,6 @@ app.whenReady().then(async () => {
     }
   }
 
-  proxyBootstrap = installMainProcessProxy()
   app.setAccessibilitySupportEnabled(true)
   // Settle the shared uiLang from saved settings BEFORE any tab renderer can
   // ask 'app:get-language': the editor handlers return the i18n module's
@@ -5719,132 +4948,11 @@ app.whenReady().then(async () => {
   currentLang()
   // native menus/dialogs/scrollbars follow the persisted theme from first paint
   nativeTheme.themeSource = currentTheme()
-  // stamp the star-prompt install-age clock on the first launch carrying the feature,
-  // and detect upgrade launches (version changed since the previous run)
-  try {
-    const settings = readAppSettings(APP_SETTINGS_PATH())
-    const starState = readStarPrompt()
-    const stamped = withFirstRun(starState, Date.now())
-    if (stamped !== starState) writeStarPrompt(stamped)
-
-    const prevVersion =
-      typeof settings[LAST_RUN_VERSION_KEY] === 'string'
-        ? (settings[LAST_RUN_VERSION_KEY] as string)
-        : null
-    const currentVersion = app.getVersion()
-    upgradeStarPromptPending = isUpgradeLaunch(
-      prevVersion,
-      currentVersion,
-      settings.onboardingSeen === true,
-    )
-    if (prevVersion !== currentVersion)
-      writeAppSetting(APP_SETTINGS_PATH(), LAST_RUN_VERSION_KEY, currentVersion)
-  } catch {
-    // settings write failures must never block startup
-  }
-  // off the startup path: a symlink / registry write nobody is waiting for
-  setTimeout(() => installCliLinkBestEffort(APP_SETTINGS_PATH()), 3000)
-  initAnalytics()
-  analytics.track('app_launch')
   startSheetsCaptureServer()
-  // Register the docs renderer bridge listeners before the MCP server can take
-  // a visible-editing request.
-  installDocsBridge()
-  installSheetsBridge()
-  // MCP server: localhost-only, docx generation for external agents. Deps are
-  // injected so the mcp module never imports this file back.
-  // family controls are referenced twice (their own tools + the open-documents
-  // tool), so create them once here
-  const mcpDocsControl = createDocsControl({
-    openBlankTab: () => openBlankDocsTabForMcp(),
-    authorizeSave: authorizeMcpDocWrite,
-    abandonBlankTab: (wcId) => {
-      if (tabManager) abandonBlankTabForMcp(tabManager.docsTabs(), wcId)
-    },
-  })
-  const mcpSlidesControl = createSlidesControl({
-    openBlankTab: () => openBlankSlidesTabForMcp(),
-    abandonBlankTab: (wcId) => {
-      if (tabManager) abandonBlankTabForMcp(tabManager.slidesTabs(), wcId)
-    },
-  })
-  const mcpSheetsControl = createSheetsControl({
-    openBlankTab: () => openBlankSheetsTabForMcp(),
-    authorizeSave: authorizeMcpSheetWrite,
-    abandonBlankTab: (wcId) => abandonBlankSheetsTabForMcp(wcId),
-  })
-  configureMcpRuntime({
-    version: app.getVersion(),
-    defaultSaveDir: () => defaultSaveDir(),
-    openPath: (filePath) => routeDocumentPath(filePath),
-    docsControl: mcpDocsControl,
-    slidesControl: mcpSlidesControl,
-    sheetsControl: mcpSheetsControl,
-    // documents the user has open: the tab list plus each family's own bridge,
-    // so an agent reaches a tab nobody but the user opened
-    openDocumentsControl: createOpenDocumentsControl({
-      list: async () => {
-        const tabs = tabManager ? await tabManager.openDocuments() : []
-        return [...tabs, ...(await detachedOpenDocuments())]
-      },
-      webContentsFor: (tabId) =>
-        tabManager?.webContentsForTab(tabId) ?? detachedWebContentsFor(tabId),
-      closeTab: (tabId) =>
-        closeDetachedWithoutPrompt(tabId) || (tabManager?.closeTabWithoutPrompt(tabId) ?? false),
-      defaultSaveDir: () => defaultSaveDir(),
-      docs: mcpDocsControl,
-      sheets: mcpSheetsControl,
-      slides: mcpSlidesControl,
-      slidesDiscard: discardSlidesRecovery,
-      markdown: {
-        read: markdownReadText,
-        save: markdownSaveToPath,
-        discard: markdownDiscardPendingAssets,
-      },
-      html: {
-        read: htmlReadText,
-        save: htmlSaveToPath,
-        discard: htmlDiscardPendingAssets,
-      },
-    }),
-    // the headless create_*/read_* tools delegate to the bundled genoffice CLI
-    // (the same engines, no second implementation); it runs on the app's own
-    // Node runtime via ELECTRON_RUN_AS_NODE
-    cliRunner: createCliRunner({
-      executable: process.execPath,
-      entry: app.isPackaged
-        ? join(process.resourcesPath, 'cli', 'genoffice.cjs')
-        : join(APPS_ROOT, '..', 'packages', 'cli', 'dist', 'genoffice.cjs'),
-    }),
-    // lets the content tools take a `document` argument (tab id or path) and edit
-    // a tab the *user* has open, with no create_session involved
-    resolveTarget: createOpenTargetResolver({
-      list: async () => {
-        const tabs = tabManager ? await tabManager.openDocuments() : []
-        return [...tabs, ...(await detachedOpenDocuments())]
-      },
-      webContentsFor: (tabId) =>
-        tabManager?.webContentsForTab(tabId) ?? detachedWebContentsFor(tabId),
-      // an agent editing a background tab would otherwise work where nobody can
-      // see it: switch to that tab and bring its window forward first
-      activate: (tabId) => {
-        if (!activateDetached(tabId)) tabManager?.activateTab(tabId)
-      },
-      revealWindow: (tabId) => {
-        if (!isDetachedTabId(tabId)) revealShellWindow()
-      },
-    }),
-    logFilePath: join(app.getPath('userData'), 'mcp-log.txt'),
-  })
-  void startMcpFromSettings(currentMcpSettings()).catch((error) => {
-    console.error('[mcp] failed to start on boot:', error)
-  })
   createShellWindow()
   // deferred to ready: labels need currentLang(), which reads app.getLocale()
   installBackToHomeItems()
   installDockMenu()
-  setUpdateCheckInvoker(() => void checkForUpdatesNow())
-  initAutoUpdater(() => shellWindow, currentUpdateChannel())
   // resource watchdog: a renderer that stays hot for minutes gets diagnostics
   // recorded and the user an offer to close the document (headless exports
   // are short-lived and unattended)
@@ -5865,23 +4973,6 @@ app.whenReady().then(async () => {
   pendingLaunchPaths = []
   for (const recoverAs of pendingUnsavedNewRecoveries()) void newSheetTab(recoverAs)
 
-  startControlServer(
-    app.getPath('userData'),
-    controlHandler({
-      reveal: revealShellWindow,
-      openDocument: openDocumentPath,
-      activateTab: (id) => {
-        if (!activateDetached(id)) tabManager?.activateTab(id)
-      },
-      findTab: (path) => tabManager?.findTabByPath(path) ?? findDetachedTabByPath(path),
-    }),
-  ).then(
-    (server) => {
-      controlServer = server
-    },
-    (err: unknown) => console.warn('[control] not listening:', err),
-  )
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createShellWindow()
   })
@@ -5898,18 +4989,10 @@ app.on('before-quit', () => {
   // No close prompt may fall through to "Save" during shutdown
   markSheetsShuttingDown()
   stopSheetsSidecar()
-  // release the MCP port synchronously (macOS keeps the process alive after
-  // the last window closes, so window-all-closed is not enough)
-  stopMcpSync()
 })
 
-// after every window has closed, so the shell window's own 'closed' republish cannot revive the file
 app.on('will-quit', () => {
   fileIndexer?.stop()
   fileIndexStore?.close()
-  stopAuthWatch?.()
   for (const watcher of folderWatchers.values()) watcher.close()
-  controlServer?.close()
-  // a second instance that lost the lock quits too; it must not delete the running editor's list
-  if (ownsOpenDocumentsRegistry) clearOpenDocuments(OPEN_DOCUMENTS_PATH())
 })

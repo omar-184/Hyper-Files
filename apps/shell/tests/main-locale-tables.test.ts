@@ -40,16 +40,11 @@ describe('the text-file dialog filter', () => {
   })
 })
 
-/**
- * The app is still called AI Markdown. A rename of the app's name was started in
- * this branch and then dropped — the name is the maintainers' call, and README
- * and the docs still say Markdown — so no locale of the File > New menu may say
- * otherwise.
- */
+/** The Markdown editor has one name; no locale of the File > New menu may say otherwise. */
 describe('the File > New menu label', () => {
-  it('reads AI Markdown in every locale', () => {
+  it('reads Markdown in every locale', () => {
     const labels = [...source.matchAll(/menuNewMarkdown: '([^']*)'/g)].map((match) => match[1])
     expect(labels.length).toBeGreaterThanOrEqual(19)
-    expect(new Set(labels)).toEqual(new Set(['AI Markdown']))
+    expect(new Set(labels)).toEqual(new Set(['Markdown']))
   })
 })

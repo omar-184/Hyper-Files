@@ -151,61 +151,6 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('detachedOpenDocuments', () => {
-  it('lists live windows', async () => {
-    detached.createDetachedEditorWindow({
-      view: fakeView(22) as never,
-      kind: 'sheets',
-      title: 'b',
-      filePath: 'C:/docs/b.txt',
-      applyMenuFor: () => {},
-    })
-    const docs = await detached.detachedOpenDocuments()
-    expect(docs.map((d) => d.id)).toEqual(['detached:22'])
-  })
-
-  it('skips windows destroyed during the async dirty check', async () => {
-    detached.createDetachedEditorWindow({
-      view: fakeView(31) as never,
-      kind: 'docs',
-      title: 'c',
-      filePath: 'C:/docs/c.txt',
-      applyMenuFor: () => {},
-    })
-    const win = instances[0]!
-    const { docsQueryDirty } = await import('../../docs/src/main/docs-main')
-    vi.mocked(docsQueryDirty).mockImplementationOnce(async () => {
-      win.destroyed = true
-      return false
-    })
-    await expect(detached.detachedOpenDocuments()).resolves.toEqual([])
-  })
-
-  it('reports dirtiness for every kind through its own family', async () => {
-    const { pdfIsDirty } = await import('../../pdf/src/main/pdf-main')
-    const { slidesIsDirty } = await import('../../slides/src/main/slides-main')
-    vi.mocked(pdfIsDirty).mockReturnValue(true)
-    vi.mocked(slidesIsDirty).mockReturnValue(false)
-    detached.createDetachedEditorWindow({
-      view: fakeView(1) as never,
-      kind: 'pdf',
-      title: 'scan.pdf',
-      applyMenuFor: () => {},
-    })
-    detached.createDetachedEditorWindow({
-      view: fakeView(2) as never,
-      kind: 'slides',
-      title: 'deck.pptx',
-      applyMenuFor: () => {},
-    })
-    const docs = await detached.detachedOpenDocuments()
-    expect(docs.map((d) => [d.kind, d.dirty])).toEqual([
-      ['pdf', true],
-      ['slides', false],
-    ])
-  })
-})
-
 describe('close guard', () => {
   it('closes a clean window of any kind without a prompt and releases the renderer', async () => {
     const view = fakeView(5)
@@ -260,10 +205,11 @@ describe('close guard', () => {
       title: 'a.docx',
       applyMenuFor: () => {},
     })
-    expect(detached.closeDetachedWithoutPrompt('detached:7')).toBe(true)
+    instances[0]!.emit('close', { preventDefault: vi.fn() })
+    await flush()
     expect(teardownDocsRenderer).toHaveBeenCalledWith(view.webContents)
     expect(view.webContents.close).not.toHaveBeenCalled()
-    expect(detached.isDetachedTabId('detached:7')).toBe(false)
+    expect(detached.detachedWindowForWebContents(7)).toBeUndefined()
   })
 })
 
@@ -363,7 +309,7 @@ describe('tear-off', () => {
     expect(win.contentView.removeChildView).toHaveBeenCalledWith(view)
     expect(win.destroyed).toBe(true)
     expect(view.webContents.close).not.toHaveBeenCalled()
-    expect(detached.isDetachedTabId('detached:12')).toBe(false)
+    expect(detached.detachedWindowForWebContents(12)).toBeUndefined()
     expect(detached.takeTornTab()).toBeNull()
   })
 

@@ -49,7 +49,7 @@ test.describe('sheets: paste repeats into an anchor-shaped target', () => {
         electronApp.setPath('documents', dir)
       }, scratch)
 
-      await expect(page.locator('.quick-card').nth(1)).toContainText('AI Sheets')
+      await expect(page.locator('.quick-card').nth(1)).toContainText('Sheets')
       await page.locator('.quick-card').nth(1).click()
 
       const sheets = await waitForPageWithUrl(app, '://sheets/')

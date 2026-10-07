@@ -36,7 +36,7 @@ test.describe('sheets: tiled paste of formulas survives save', () => {
         join(saveDir, 'pasted.xlsx'),
       )
 
-      await expect(page.locator('.quick-card').nth(1)).toContainText('AI Sheets')
+      await expect(page.locator('.quick-card').nth(1)).toContainText('Sheets')
       await page.locator('.quick-card').nth(1).click()
 
       const sheets = await waitForPageWithUrl(app, '://sheets/')

@@ -97,7 +97,7 @@ test.describe('sheets: modifier-drag on the fill handle flips copy and series', 
         electronApp.setPath('documents', dir)
       }, scratch)
 
-      await expect(page.locator('.quick-card').nth(1)).toContainText('AI Sheets')
+      await expect(page.locator('.quick-card').nth(1)).toContainText('Sheets')
       await page.locator('.quick-card').nth(1).click()
 
       const sheets = await waitForPageWithUrl(app, '://sheets/')

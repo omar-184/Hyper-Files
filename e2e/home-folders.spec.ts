@@ -192,7 +192,7 @@ test.describe('home folders panel', () => {
         'Personal',
       )
       // the blank PDF is written synchronously by the shell, so it exercises the pending-folder path
-      await page.locator('.quick-card', { hasText: 'AI PDF' }).click()
+      await page.locator('.quick-card', { hasText: 'PDF' }).click()
       const hasPdf = (dir: string) =>
         existsSync(dir) && readdirSync(dir).some((f) => f.endsWith('.pdf'))
       await expect.poll(() => hasPdf(join(root, 'Personal')), { timeout: 15_000 }).toBe(true)
@@ -203,7 +203,7 @@ test.describe('home folders panel', () => {
       // disk until the user saves — the folder only pre-selects the Save As
       // location, so the tree view must stay clean
       await page.locator('.tab-bar .tab-item.tab-home').click()
-      await page.locator('.quick-card', { hasText: 'AI Sheets' }).click()
+      await page.locator('.quick-card', { hasText: 'Sheets' }).click()
       await expect(page.locator('.tab-bar .tab-item', { hasText: '.xlsx' })).toBeVisible()
       const hasXlsx = (dir: string) =>
         existsSync(dir) && readdirSync(dir).some((f) => f.endsWith('.xlsx'))

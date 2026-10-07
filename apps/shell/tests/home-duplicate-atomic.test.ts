@@ -11,22 +11,12 @@ function section(text: string, start: string, end: string): string {
 const newSheetTab = section(source, 'async function newSheetTab', 'function surfaceNewTabError')
 const newPdfTab = section(source, 'async function newPdfTab', 'function startQueuedWorkbookNudge')
 const duplicateFile = section(source, 'HOME_CHANNELS.duplicateFile', 'HOME_CHANNELS.deleteFiles')
-const mcpBlankSheet = section(
-  source,
-  'async function openBlankSheetsTabForMcp',
-  'const tabId = tabManager',
-)
 
 describe('Home file creation is atomic', () => {
   it('publishes a blank spreadsheet through a temporary file', () => {
     expect(newSheetTab).toContain('await atomicWriteFile(backingPath, await blankXlsxBuffer())')
     expect(newSheetTab).toContain('await atomicWriteFile(suggestedPath, await blankXlsxBuffer())')
     expect(newSheetTab).not.toMatch(/writeFileSync\(/)
-  })
-
-  it('publishes the MCP blank spreadsheet through a temporary file', () => {
-    expect(mcpBlankSheet).toContain('await atomicWriteFile(filePath, await blankXlsxBuffer())')
-    expect(mcpBlankSheet).not.toMatch(/writeFileSync\(/)
   })
 
   it('publishes a blank PDF through a temporary file', () => {

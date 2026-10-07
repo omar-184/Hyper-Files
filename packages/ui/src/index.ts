@@ -1,27 +1,3 @@
-export { AiPanelSideButton } from './AiPanelSideButton'
-export { AiComposer } from './AiComposer'
-export { AiScopeQuote, type AiScopeQuoteData } from './AiScopeQuote'
-export {
-  AI_CUSTOM_FONT_MAX_PX,
-  AI_CUSTOM_FONT_MIN_PX,
-  AI_FONT_BASE_PX,
-  AI_FONT_SIZES,
-  DEFAULT_AI_PANEL_PREFS,
-  aiPanelFontPx,
-  clampAiCustomFontSize,
-  isAiFontSize,
-  normalizeAiPanelPrefs,
-  type AiFontSize,
-  type AiPanelPrefs,
-  type AiPanelSide,
-} from './ai-panel-prefs'
-export {
-  applyAiPanelPrefs,
-  aiPanelInitiallyOpen,
-  rememberAiPanelOpen,
-  useAiPanelPrefs,
-  aiPanelWidthAtPointer,
-} from './ai-panel-prefs-store'
 export {
   ColorPicker,
   THEME_COLORS,
@@ -59,7 +35,6 @@ export {
   type RibbonCollapseLabels,
   type RibbonDensity,
 } from './ribbon-collapse'
-export { AiTypingIndicator } from './AiTypingIndicator'
 export { IconSend, IconStop, type IconProps } from './icons'
 export { Markdown, type MarkdownNav } from './Markdown'
 export { isSymbolFontFamily } from './symbol-fonts'

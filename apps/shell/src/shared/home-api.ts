@@ -1,17 +1,3 @@
-import type {
-  AiChatResponse,
-  AiMediaProviderConfig,
-  AiMediaProviderId,
-  AiMediaProviderMeta,
-  AiProviderMeta,
-  AiSearchProviderId,
-  AiSearchProviderMeta,
-  AiSettings,
-  CodexModelCatalog,
-} from '@genoffice/ai-provider'
-import type { UpdateChannel } from './update-api'
-import type { AiPanelPrefs } from '@genoffice/ui/ai-panel-prefs'
-
 /** UI language; kept self-contained here (mirrors Lang in @genoffice/i18n) */
 export type UiLanguage =
   | 'zh'
@@ -50,23 +36,6 @@ export type DocTheme = 'follow' | 'light' | 'dark'
 export interface AutoSaveDefault {
   on: boolean
   updatedAt: number
-}
-
-/** local MCP server state (persisted in userData/app-settings.json) */
-export interface McpStatus {
-  running: boolean
-  enabled: boolean
-  port: number
-  /** headless generation (create_docx without opening the UI) is allowed */
-  background: boolean
-  /** server/tool activity is recorded to the local log file */
-  logging: boolean
-  /** base URL when running, else null */
-  url: string | null
-  /** capability families the running build exposes, e.g. ['docs', 'slides'] */
-  capabilities: string[]
-  /** present when the last start attempt failed (e.g. port in use) */
-  error?: string
 }
 
 /** a recent file entry shown on the home screen; type derives from the extension */
@@ -125,39 +94,6 @@ export interface FileSearchHit extends RecentEntry {
   needles: string[]
 }
 
-/**
- * Endpoints the search reranker can judge against. The hosted Jev routes are
- * OpenRouter and TypeSafe's own API; Perplexity and Cloudflare host their own
- * decision models; Kev and Rizzo Flow are local /v1/systemone servers;
- * `custom` points at any other /v1/systemone-compatible server.
- */
-export type DecisionEndpoint =
-  'openrouter' | 'direct' | 'perplexity' | 'cloudflare' | 'kev' | 'rizzo' | 'custom'
-
-/** home search options persisted in app-settings.json under `fileSearch` */
-export interface FileSearchSettings {
-  /** send the top local hits to a decision model for reranking; default off */
-  rerank: boolean
-  endpoint: DecisionEndpoint
-  /** one API key per endpoint; local endpoints (kev/rizzo/custom) may stay empty */
-  keys: Record<DecisionEndpoint, string>
-  /** `custom` endpoint only: base URL of a /v1/systemone-compatible server */
-  customBaseUrl: string
-  /** `custom` endpoint only: model id the server expects */
-  customModel: string
-  /** `cloudflare` endpoint only: Workers AI account id */
-  cloudflareAccountId: string
-  /** `cloudflare` endpoint only: Workers AI model path, e.g. @cf/cloudflare/clef */
-  cloudflareModel: string
-}
-
-export interface FileSearchRerank {
-  /** paths in the decision model's order, most relevant first; paths not judged keep their local order after these */
-  order: string[]
-  /** calibrated 0–2 relevance per judged path */
-  scores: Record<string, number>
-}
-
 export interface FileSearchPage {
   hits: FileSearchHit[]
   total: number
@@ -179,19 +115,11 @@ export interface DefaultAppStatus {
   manualOnly: boolean
 }
 
-import type { UpdateUiState } from './update-api'
-
 export interface HomeApi {
   /** unified recents across document types, newest first (paged) */
   recents(query?: RecentQuery): Promise<RecentPage>
   /** search indexed files by name, folder and content */
   searchFiles(query: FileSearchQuery): Promise<FileSearchPage>
-  /** decision-model order for the hits currently shown (≤ 20 paths); null when reranking is off or unavailable */
-  rerankSearch(query: { q: string; paths: string[] }): Promise<FileSearchRerank | null>
-  getFileSearchSettings(): Promise<FileSearchSettings>
-  setFileSearchSettings(patch: Partial<FileSearchSettings>): Promise<FileSearchSettings>
-  /** one two-document judgement against the (possibly unsaved) settings */
-  testFileSearchRerank(settings: FileSearchSettings): Promise<{ ok: boolean; error?: string }>
   /** starred files (independent of the recent list), newest first (paged) */
   starred(query?: RecentQuery): Promise<RecentPage>
   /** stat a specific set of paths (project view); unstat-able files come back flagged `missing` */
@@ -240,7 +168,7 @@ export interface HomeApi {
   listFolder(dir: string): Promise<FolderListing>
   /** create `parent/name`; resolves to the new path */
   createFolder(parent: string, name: string): Promise<RenameResult>
-  /** rename a folder in place (files inside keep their recents/stars/chat history) */
+  /** rename a folder in place (files inside keep their recents and stars) */
   renameFolder(dir: string, newName: string): Promise<RenameResult>
   /** move files and/or folders into `targetDir` */
   movePaths(paths: string[], targetDir: string, onConflict: MoveConflictPolicy): Promise<MoveResult>
@@ -252,31 +180,8 @@ export interface HomeApi {
   getLanguage(): Promise<UiLanguage>
   /** switch + persist the UI language; main rebuilds its menus to match */
   setLanguage(lang: UiLanguage): Promise<void>
-  /** current update channel (persisted in userData/app-settings.json; default 'stable') */
-  getUpdateChannel(): Promise<UpdateChannel>
-  /** switch + persist the update channel; triggers an immediate update check */
-  setUpdateChannel(channel: UpdateChannel): Promise<void>
-  /** Genspark account status (gsk login state; to be upgraded to a signup/account system later) */
-  accountStatus(): Promise<AccountStatus>
-  /** start Genspark login (opens the browser; accountStatus flips to logged-in on completion); returns whether the launch succeeded */
-  accountLogin(): Promise<boolean>
-  /** progress events for the login started via accountLogin; returns an unsubscribe */
-  onAccountLogin(handler: (ev: AccountLoginEvent) => void): () => void
-  /** re-open the pending login auth URL in the default browser (rescue when auto-open failed) */
-  openLoginUrl(): Promise<void>
-  /** log out (clears the saved API key; the login state is shared globally with the gsk CLI) */
-  accountLogout(): Promise<void>
   /** app version (from package.json / electron app.getVersion) */
   getAppVersion(): Promise<string>
-  /** live updater state (null until an update was first seen); Settings → About */
-  getUpdateState(): Promise<UpdateUiState | null>
-  /** re-open the (minimized) update dialog; a not-yet-started download also starts */
-  openUpdateDialog(): Promise<boolean>
-  onUpdateStateChanged(handler: (state: UpdateUiState) => void): () => void
-  /** whether the first-run onboarding has been completed or skipped (persisted in userData/app-settings.json) */
-  onboardingSeen(): Promise<boolean>
-  /** mark onboarding done; analytics remains enabled unless separately opted out */
-  setOnboardingSeen(): Promise<boolean>
   /** current UI theme preference (persisted in userData/app-settings.json) */
   getTheme(): Promise<UiTheme>
   /** switch + persist the UI theme; broadcasts 'app:theme-changed' to all web contents */
@@ -289,29 +194,6 @@ export interface HomeApi {
   getAutoSaveDefault(): Promise<AutoSaveDefault>
   /** persist the AutoSave default; broadcasts 'app:auto-save-default-changed' to all web contents */
   setAutoSaveDefault(on: boolean): Promise<void>
-  /** current local MCP server state (running/enabled/port/url) */
-  getMcpStatus(): Promise<McpStatus>
-  /** enable/disable the MCP server and/or change its port/background/logging; applies and persists, returns the new state */
-  setMcpSettings(patch: {
-    enabled?: boolean
-    port?: number
-    background?: boolean
-    logging?: boolean
-  }): Promise<McpStatus>
-  /** last MCP log lines (empty when logging has never been on) */
-  getMcpLogs(): Promise<string[]>
-  /** truncate the MCP log file */
-  clearMcpLogs(): Promise<void>
-  /** reveal the MCP log file in the file manager (created empty when missing) */
-  openMcpLogFile(): Promise<void>
-  /** whether anonymous usage statistics are enabled (default true in official builds) */
-  getAnalyticsEnabled(): Promise<boolean>
-  /** persist an explicit analytics opt-in or opt-out */
-  setAnalyticsEnabled(enabled: boolean): Promise<boolean>
-  /** AI panel text size + chat-input spellcheck (persisted in userData/app-settings.json) */
-  getAiPanelPrefs(): Promise<AiPanelPrefs>
-  /** merge + persist; broadcasts 'app:ai-panel-prefs-changed' to all web contents */
-  setAiPanelPrefs(patch: Partial<AiPanelPrefs>): Promise<AiPanelPrefs>
   /** effective default save folder for new/untitled files (configured in userData/app-settings.json, falls back to <Documents>/GenOffice) */
   getDefaultSaveDir(): Promise<string>
   /** directory picker to change the default save folder; resolves to the new folder, or null when canceled or the pick was unusable */
@@ -324,108 +206,8 @@ export interface HomeApi {
   onThemeChanged(handler: (theme: UiTheme) => void): () => void
   /** document page theme switched anywhere (broadcast from the main process) */
   onDocumentThemeChanged(handler: (theme: DocTheme) => void): () => void
-  /** open the GenTeam community page in the default browser */
-  openGenTeam(): Promise<void>
-  /** open the Genspark credit-usage page in the default browser */
-  openCreditUsage(): Promise<void>
   /** open the public GitHub repository in the default browser */
   openGitHubRepo(): Promise<void>
-  /** current stargazer count of the public repo (null while offline / rate-limited) */
-  githubStars(): Promise<number | null>
-  /** whether the one-time "star us" prompt should show now (show:true also counts as shown);
-   * docOpens personalizes the card copy ("you've opened N documents") */
-  starPromptShouldShow(): Promise<StarPromptShow>
-  /** user reacted to the star prompt; 'starred' resolves it permanently */
-  starPromptAction(action: StarPromptAction): Promise<void>
-  /** locally stored full cloud project list (instant; null when no store or logged out) */
-  cloudProjectsCached(): Promise<CloudProjectsSnapshot | null>
-  /** sync the full list from Genspark and return it (1 request when nothing changed); null when the sync failed */
-  cloudProjectsSync(): Promise<CloudProjectsSnapshot | null>
-  /** open a cloud project (relative '/agents?id=...' URL) in the default browser */
-  openCloudProject(projectUrl: string): Promise<void>
-  /** AI settings (userData/ai-settings.json, shared by every editor); the genspark key never appears here */
-  getAiSettings(): Promise<AiSettings>
-  /** persist AI settings; open editors pick the change up on their next settings read */
-  setAiSettings(settings: AiSettings): Promise<void>
-  /** provider catalog with each fixed endpoint's default base URL (empty for genspark/custom) */
-  getAiProviders(): AiCatalogEntry[]
-  /** live Codex model catalog discovered through the current or overridden app-server */
-  getCodexModels(cliPath?: string): Promise<CodexModelCatalog>
-  /** live model list advertised by a user-hosted OpenAI-compatible endpoint; empty when it cannot answer */
-  getCustomModels(baseUrl: string, apiKey?: string): Promise<CodexModelCatalog>
-  /** one-shot round trip against the given (possibly unsaved) settings — the settings-UI connection test */
-  testAiSettings(settings: AiSettings): Promise<AiChatResponse>
-  /** image generation / media analysis provider catalog */
-  getAiMediaProviders(): AiMediaProviderMeta[]
-  /** credential check for a (possibly unsaved) media provider; genspark reports the gsk login state */
-  testAiMediaSettings(input: {
-    provider: AiMediaProviderId
-    config: AiMediaProviderConfig
-  }): Promise<{ ok: boolean; error?: string }>
-  /** web search provider catalog */
-  getAiSearchProviders(): AiSearchProviderMeta[]
-  /** one minimal query against the given key (genspark reports the gsk login state) */
-  testAiSearchSettings(input: {
-    provider: AiSearchProviderId
-    apiKey: string
-  }): Promise<{ ok: boolean; error?: string }>
-}
-
-export interface AiCatalogEntry extends AiProviderMeta {
-  /** default endpoint for fixed-endpoint providers ('' = model-dependent or user-supplied) */
-  defaultBaseUrl: string
-}
-
-/** 'starred' = went to GitHub or said "already starred" (never prompt again);
- * 'later' = dismissed this time (already counted as shown by the query) */
-export type StarPromptAction = 'starred' | 'later'
-
-/** answer to starPromptShouldShow */
-export interface StarPromptShow {
-  show: boolean
-  /** lifetime documents opened — drives the personalized card title */
-  docOpens: number
-}
-
-export type CloudProjectKind = 'docs' | 'sheets' | 'slides'
-
-/** a Genspark web project shown in the home cloud section */
-export interface CloudProjectEntry {
-  projectId: string
-  title: string
-  /** module kind derived from the API project type ('docs_agent' → 'docs') */
-  kind: CloudProjectKind | 'other'
-  /** creation time, ms since epoch (0 when unparsable) */
-  ctimeMs: number
-  /** relative genspark.ai URL ('/agents?id=...') */
-  projectUrl: string
-}
-
-/** full local copy of the cloud project list; filtering/paging are client-side */
-export interface CloudProjectsSnapshot {
-  /** false when gsk is unavailable (CLI missing or not logged in) */
-  available: boolean
-  /** all projects, newest first */
-  projects: CloudProjectEntry[]
-  /** ms epoch of the last successful sync (0 when never synced) */
-  syncedAt: number
-}
-
-export interface AccountStatus {
-  /** gsk is installed and logged in */
-  loggedIn: boolean
-  email?: string
-  /** remaining Genspark credits (absent when the balance query failed) */
-  creditBalance?: number
-}
-
-/** login flow progress pushed from main (gsk login CLI output) */
-export interface AccountLoginEvent {
-  phase: 'launched' | 'url' | 'success' | 'error'
-  url?: string
-  expiresInSec?: number
-  /** 'network' | 'expired' | raw CLI error text */
-  error?: string
 }
 
 export interface RenameResult {
@@ -499,10 +281,6 @@ export interface MoveResult {
 export const HOME_CHANNELS = {
   recents: 'home:recents',
   searchFiles: 'home:search-files',
-  rerankSearch: 'home:rerank-search',
-  getFileSearchSettings: 'home:get-file-search-settings',
-  setFileSearchSettings: 'home:set-file-search-settings',
-  testFileSearchRerank: 'home:test-file-search-rerank',
   starred: 'home:starred',
   statPaths: 'home:stat-paths',
   toggleStar: 'home:toggle-star',
@@ -532,42 +310,16 @@ export const HOME_CHANNELS = {
   folderChanged: 'home:folder-changed',
   getLanguage: 'home:get-language',
   setLanguage: 'home:set-language',
-  getUpdateChannel: 'home:get-update-channel',
-  setUpdateChannel: 'home:set-update-channel',
-  accountStatus: 'home:account-status',
-  accountLogin: 'home:account-login',
-  accountLoginEvent: 'home:account-login-event',
-  accountLoginOpenUrl: 'home:account-login-open-url',
-  accountLogout: 'home:account-logout',
   getAppVersion: 'home:get-app-version',
-  onboardingSeen: 'home:onboarding-seen',
-  setOnboardingSeen: 'home:set-onboarding-seen',
   getTheme: 'home:get-theme',
   setTheme: 'home:set-theme',
   getDocumentTheme: 'home:get-document-theme',
   setDocumentTheme: 'home:set-document-theme',
   getAutoSaveDefault: 'home:get-auto-save-default',
   setAutoSaveDefault: 'home:set-auto-save-default',
-  getMcpStatus: 'home:get-mcp-status',
-  setMcpSettings: 'home:set-mcp-settings',
-  getMcpLogs: 'home:get-mcp-logs',
-  clearMcpLogs: 'home:clear-mcp-logs',
-  openMcpLogFile: 'home:open-mcp-log-file',
-  getAnalyticsEnabled: 'home:get-analytics-enabled',
-  setAnalyticsEnabled: 'home:set-analytics-enabled',
-  getAiPanelPrefs: 'home:get-ai-panel-prefs',
-  setAiPanelPrefs: 'home:set-ai-panel-prefs',
   getDefaultSaveDir: 'home:get-default-save-dir',
   getDefaultAppStatus: 'home:get-default-app-status',
   setDefaultApp: 'home:set-default-app',
   pickDefaultSaveDir: 'home:pick-default-save-dir',
-  openGenTeam: 'home:open-genteam',
-  openCreditUsage: 'home:open-credit-usage',
   openGitHubRepo: 'home:open-github-repo',
-  githubStars: 'home:github-stars',
-  starPromptShouldShow: 'home:star-prompt-should-show',
-  starPromptAction: 'home:star-prompt-action',
-  cloudProjects: 'home:cloud-projects',
-  cloudProjectsCached: 'home:cloud-projects-cached',
-  openCloudProject: 'home:open-cloud-project',
 } as const

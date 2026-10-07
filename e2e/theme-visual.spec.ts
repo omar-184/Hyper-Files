@@ -125,7 +125,7 @@ test.describe('theme visual adoption', () => {
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'theme-visual-docs' })
     try {
       const shellPage = await findShellPage(launched.app)
-      await shellPage.locator('.quick-card', { hasText: 'AI Docs' }).click()
+      await shellPage.locator('.quick-card', { hasText: 'Docs' }).click()
       const editorPage = await waitForPageWithUrl(launched.app, '://docs/')
       const page = editorPage.locator('.doc-page').first()
       await expect(page).toBeVisible()
@@ -176,7 +176,7 @@ test.describe('theme visual adoption', () => {
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'theme-visual-sheets' })
     try {
       const shellPage = await findShellPage(launched.app)
-      await shellPage.locator('.quick-card', { hasText: 'AI Sheets' }).click()
+      await shellPage.locator('.quick-card', { hasText: 'Sheets' }).click()
       const editorPage = await waitForPageWithUrl(launched.app, '://sheets/')
       await editorPage.waitForSelector('canvas', { timeout: 20_000 })
 

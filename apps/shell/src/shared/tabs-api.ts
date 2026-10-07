@@ -14,21 +14,6 @@ export interface TabSummary {
   filePath?: string
 }
 
-/**
- * One document open in an editor tab, as reported to the MCP `open_documents`
- * tool. Unlike `TabSummary` this excludes Home and chrome-free Present tabs (no
- * file, nothing an agent could read or close) and carries the unsaved-changes
- * state, which the shell resolves per family.
- */
-export interface OpenDocumentTab {
-  id: string
-  kind: DocumentTabKind
-  title: string
-  filePath?: string
-  active: boolean
-  dirty: boolean
-}
-
 export interface TabsApi {
   list(): Promise<TabSummary[]>
   activate(id: string): Promise<void>

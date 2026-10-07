@@ -6,7 +6,7 @@ test.describe('new file from home', () => {
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'new-doc-tab' })
     const { app, page } = launched
     try {
-      await expect(page.locator('.quick-card').first()).toContainText('AI Docs')
+      await expect(page.locator('.quick-card').first()).toContainText('Docs')
 
       await page.locator('.quick-card').first().click()
 
