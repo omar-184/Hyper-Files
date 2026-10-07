@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+out/
+build/
+release/
+*.tsbuildinfo
+
+# Rust / Tauri
+target/
+src-tauri/gen/
+
+# Installers and packaged apps
+*.exe
+*.msi
+*.msix
+*.blockmap
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+
+# Logs and env
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

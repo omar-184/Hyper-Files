@@ -1,0 +1,29 @@
+Hyper-Files
+Copyright (C) 2026 The Hyper-Files contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, version 3. See the LICENSE file.
+
+Third-party components
+----------------------
+
+The following components are planned for inclusion. Each keeps its own license,
+and its license text will be shipped with the application when it is added.
+
+- GenOffice (https://github.com/genspark-ai/genoffice)
+  Copyright Mainfunc, Inc. Licensed under the Apache License, Version 2.0.
+  The GenOffice `ee/` directory is NOT included. "GenOffice" and "Genspark"
+  are trademarks of Mainfunc, Inc.; Hyper-Files does not use them as branding.
+  Files derived from GenOffice keep their original notices; changes are
+  recorded in this repository's git history.
+
+- MuPDF (https://mupdf.com/), Artifex Software, Inc. AGPL-3.0.
+- qpdf (https://github.com/qpdf/qpdf). Apache License 2.0.
+- Fonts bundled by GenOffice (Liberation, Carlito, Caladea, Noto subsets).
+  SIL Open Font License 1.1 / Apache License 2.0.
+
+Optional converter pack (installed separately):
+
+- LibreOffice (https://www.libreoffice.org/). Mozilla Public License 2.0.
+- Ghostscript (https://www.ghostscript.com/), Artifex Software, Inc. AGPL-3.0.
