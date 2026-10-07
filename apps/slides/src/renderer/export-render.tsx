@@ -19,7 +19,7 @@ const EXPORT_PIXEL_RATIO = 2
  * Render each page to PNG base64 (without the data: prefix).
  * Reuse a single offscreen root page by page, grabbing each page as it's drawn, so the whole
  * deck never sits in memory at once.
- * pixelRatio 1 is enough for AI-vision screenshots (half the tokens of the 2x export default).
+ * pixelRatio 1 is enough for small previews (a quarter of the pixels of the 2x export default).
  */
 export async function renderSlidesToPngBase64(
   slides: RenderSlide[],

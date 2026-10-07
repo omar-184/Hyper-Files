@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const pt = {
-  ribbonAiCreditNote: 'Usa IA e consome créditos',
-  ribbonAiRewriteConfirm:
-    'Esta ação chama a IA: consome créditos e pode reescrever todo o conteúdo. Continuar? (Não será perguntado novamente.)',
   ribbonTabFile: 'Arquivo',
   ribbonTabHome: 'Página Inicial',
   ribbonTabInsert: 'Inserir',
@@ -182,8 +179,6 @@ export const pt = {
   ribbonFlipH: 'Inverter horizontalmente',
   ribbonFlipV: 'Inverter verticalmente',
   ribbonDistributeHint: '{title} (selecione 3 ou mais elementos)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Mostrar ou ocultar o painel do Assistente de IA',
   ribbonGroupTable: 'Tabela',
   ribbonInsertTableTip: 'Inserir uma tabela (estilo padrão; escolha linhas e colunas)',
   ribbonTablePickerHint: 'Escolha linhas e colunas',
@@ -387,38 +382,6 @@ export const pt = {
   ribbonRehearseTip:
     'Testar intervalos: executa a apresentação desde o início e registra o tempo por slide; salve como intervalos de avanço automático (salvo no pptx)',
   ribbonRecord: 'Gravar',
-  ribbonGroupProofing: 'Revisão de Texto',
-  ribbonSpellCheck: 'Ortografia',
-  ribbonSpellCheckTip:
-    'A IA verifica cada slide em busca de erros de digitação, gramática e pontuação e os corrige diretamente',
-  ribbonSpellCheckPrompt:
-    'Verifique esta apresentação slide por slide em busca de erros de digitação, gramática e pontuação: corrija os problemas diretamente com as ferramentas mantendo o layout e o sentido; depois relate brevemente as alterações por slide, pulando os slides sem problemas.',
-  ribbonTranslate: 'Traduzir',
-  ribbonTranslateTip:
-    'A IA traduz o texto do slide atual para o idioma escolhido (substitui o original)',
-  ribbonTranslatePrompt:
-    'Traduza todo o texto do slide atual para {lang}: substitua o original com as ferramentas, mantendo o layout, os tamanhos de fonte e as cores.',
-  ribbonLangEnglish: 'Inglês',
-  ribbonLangSimplifiedChinese: 'Chinês Simplificado',
-  ribbonLangTraditionalChinese: 'Chinês Tradicional',
-  ribbonLangJapanese: 'Japonês',
-  ribbonLangKorean: 'Coreano',
-  ribbonLangFrench: 'Francês',
-  ribbonLangGerman: 'Alemão',
-  ribbonLangSpanish: 'Espanhol',
-  ribbonLangThai: 'tailandês',
-  ribbonLangIndonesian: 'indonésio',
-  ribbonLangRussian: 'russo',
-  ribbonLangArabic: 'árabe',
-  ribbonLangPortuguese: 'português',
-  ribbonLangItalian: 'italiano',
-  ribbonLangPolish: 'polaco',
-  ribbonLangCzech: 'tcheco',
-  ribbonLangDutch: 'neerlandês',
-  ribbonLangMalay: 'malaio',
-  ribbonLangHebrew: 'hebraico',
-  ribbonLangHindi: 'híndi',
-  ribbonLangVietnamese: 'vietnamita',
   ribbonNewComment: 'Novo Comentário',
   ribbonCommentsPane: 'Painel de Comentários',
   ribbonCommentsPaneTip: 'Mostrar ou ocultar o painel de comentários',

@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const ms = {
-  ribbonAiCreditNote: 'Menggunakan AI dan menggunakan kredit',
-  ribbonAiRewriteConfirm:
-    'Tindakan ini memanggil AI: menggunakan kredit dan mungkin menulis semula keseluruhan kandungan. Teruskan? (Tidak akan ditanya lagi.)',
   ribbonTabFile: 'Fail',
   ribbonTabHome: 'Laman Utama',
   ribbonTabInsert: 'Sisip',
@@ -180,8 +177,6 @@ export const ms = {
   ribbonFlipH: 'Balik mengufuk',
   ribbonFlipV: 'Balik menegak',
   ribbonDistributeHint: '{title} (pilih 3 elemen atau lebih)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Tunjukkan atau sembunyikan panel Pembantu AI',
   ribbonGroupTable: 'Jadual',
   ribbonInsertTableTip: 'Sisipkan jadual (gaya lalai; pilih baris dan lajur)',
   ribbonTablePickerHint: 'Pilih baris dan lajur',
@@ -389,38 +384,6 @@ export const ms = {
   ribbonRehearseTip:
     'Raptai pemasaan: jalankan tayangan dari awal dan rekodkan masa setiap slaid; simpan sebagai pemasaan mara automatik (disimpan dalam pptx)',
   ribbonRecord: 'Rakam',
-  ribbonGroupProofing: 'Pembacaan Pruf',
-  ribbonSpellCheck: 'Ejaan',
-  ribbonSpellCheckTip:
-    'AI menyemak setiap slaid untuk kesilapan taip, tatabahasa dan tanda baca serta membetulkannya secara langsung',
-  ribbonSpellCheckPrompt:
-    'Semak persembahan ini slaid demi slaid untuk kesilapan taip, tatabahasa dan tanda baca: betulkan masalah secara langsung dengan alat sambil mengekalkan tataletak dan maksud; kemudian laporkan perubahan secara ringkas mengikut slaid, dan langkau slaid yang tiada masalah.',
-  ribbonTranslate: 'Terjemah',
-  ribbonTranslateTip:
-    'AI menterjemah teks slaid semasa ke bahasa yang dipilih (menggantikan teks asal)',
-  ribbonTranslatePrompt:
-    'Terjemahkan semua teks pada slaid semasa ke {lang}: gantikan teks asal dengan alat, sambil mengekalkan tataletak, saiz fon dan warna.',
-  ribbonLangEnglish: 'Bahasa Inggeris',
-  ribbonLangSimplifiedChinese: 'Bahasa Cina Ringkas',
-  ribbonLangTraditionalChinese: 'Bahasa Cina Tradisional',
-  ribbonLangJapanese: 'Bahasa Jepun',
-  ribbonLangKorean: 'Bahasa Korea',
-  ribbonLangFrench: 'Bahasa Perancis',
-  ribbonLangGerman: 'Bahasa Jerman',
-  ribbonLangSpanish: 'Bahasa Sepanyol',
-  ribbonLangThai: 'Thai',
-  ribbonLangIndonesian: 'Bahasa Indonesia',
-  ribbonLangRussian: 'Rusia',
-  ribbonLangArabic: 'Arab',
-  ribbonLangPortuguese: 'Portugis',
-  ribbonLangItalian: 'Itali',
-  ribbonLangPolish: 'Poland',
-  ribbonLangCzech: 'Czech',
-  ribbonLangDutch: 'Belanda',
-  ribbonLangMalay: 'Melayu',
-  ribbonLangHebrew: 'Ibrani',
-  ribbonLangHindi: 'Hindi',
-  ribbonLangVietnamese: 'Vietnam',
   ribbonNewComment: 'Komen Baharu',
   ribbonCommentsPane: 'Anak Tetingkap Komen',
   ribbonCommentsPaneTip: 'Tunjukkan atau sembunyikan anak tetingkap Komen',

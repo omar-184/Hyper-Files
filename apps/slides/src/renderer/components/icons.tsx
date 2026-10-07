@@ -777,7 +777,7 @@ export function IconSparkle(props: IconProps) {
 }
 
 /** Remove Background: dashed marching-ants selection around a landscape photo
- * (sun + mountains), an AI sparkle in the top-right notch. */
+ * (sun + mountains), a sparkle in the top-right notch. */
 export function IconRemoveBg(props: IconProps) {
   return (
     <Svg {...props}>
@@ -1088,10 +1088,9 @@ export function IconGear(props: IconProps) {
   )
 }
 
-/** collapse the right sidebar: panel outline + arrow pushing into it */
-/** Collapse glyph for RIGHT-docked panes (Format/Animation/Comments) — exact mirror of
- *  IconSidebarCollapseLeft so both sides share the Sheets-parity look (16-canvas,
- *  1.2/1.3 stroke), self-contained for the same pinned-stroke reason. */
+/** Collapse glyph for RIGHT-docked panes (Format/Animation/Comments): panel outline +
+ *  arrow pushing into it, Sheets-parity look (16-canvas, 1.2/1.3 stroke), self-contained
+ *  so the shared Svg wrapper's 24-canvas pinned stroke doesn't alter its weight. */
 export function IconSidebarCollapse({ size = 24 }: IconProps) {
   return (
     <svg
@@ -1107,28 +1106,6 @@ export function IconSidebarCollapse({ size = 24 }: IconProps) {
       <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
       <path d="M10.5 2.5v11" />
       <path d="M3.5 8h4.4M6.2 5.9 8.3 8l-2.1 2.1" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-/** Mirror of IconSidebarCollapse for LEFT-docked panes.
- *  Sheets-parity glyph (16-canvas, 1.2/1.3 stroke), self-contained so the shared
- *  Svg wrapper's 24-canvas pinned stroke doesn't alter its weight. */
-export function IconSidebarCollapseLeft({ size = 24 }: IconProps) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
-      <path d="M5.5 2.5v11" />
-      <path d="M12.5 8H8.1M9.8 5.9 7.7 8l2.1 2.1" strokeWidth="1.3" strokeLinejoin="round" />
     </svg>
   )
 }

@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const en = {
-  ribbonAiCreditNote: 'Uses AI and consumes credits',
-  ribbonAiRewriteConfirm:
-    'This action calls the AI assistant: it consumes credits and may rewrite the entire content. Continue? (You will not be asked again.)',
   ribbonTabFile: 'File',
   ribbonTabHome: 'Home',
   ribbonTabInsert: 'Insert',
@@ -178,8 +175,6 @@ export const en = {
   ribbonFlipH: 'Flip Horizontal',
   ribbonFlipV: 'Flip Vertical',
   ribbonDistributeHint: '{title} (select 3 or more elements)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Show or hide the AI Assistant panel',
   ribbonGroupTable: 'Table',
   ribbonInsertTableTip: 'Insert a table (default style; choose rows and columns)',
   ribbonTablePickerHint: 'Choose rows and columns',
@@ -378,38 +373,6 @@ export const en = {
   ribbonRehearseTip:
     'Rehearse timings: run the show from the start and record time per slide; save as auto-advance timings (saved to pptx)',
   ribbonRecord: 'Record',
-  ribbonGroupProofing: 'Proofing',
-  ribbonSpellCheck: 'Spelling',
-  ribbonSpellCheckTip:
-    'AI checks each slide for typos, grammar, and punctuation and fixes them directly',
-  ribbonSpellCheckPrompt:
-    'Check this presentation slide by slide for typos, grammar, and punctuation: fix issues directly with tools while keeping the layout and meaning unchanged; then briefly report the changes per slide, skipping slides with no issues.',
-  ribbonTranslate: 'Translate',
-  ribbonTranslateTip:
-    "AI translates the current slide's text into the chosen language (replaces the original)",
-  ribbonTranslatePrompt:
-    'Translate all text on the current slide into {lang}: replace the original with tools, keeping the layout, font sizes, and colors unchanged.',
-  ribbonLangEnglish: 'English',
-  ribbonLangSimplifiedChinese: 'Simplified Chinese',
-  ribbonLangTraditionalChinese: 'Traditional Chinese',
-  ribbonLangJapanese: 'Japanese',
-  ribbonLangKorean: 'Korean',
-  ribbonLangFrench: 'French',
-  ribbonLangGerman: 'German',
-  ribbonLangSpanish: 'Spanish',
-  ribbonLangThai: 'Thai',
-  ribbonLangIndonesian: 'Indonesian',
-  ribbonLangRussian: 'Russian',
-  ribbonLangArabic: 'Arabic',
-  ribbonLangPortuguese: 'Portuguese',
-  ribbonLangItalian: 'Italian',
-  ribbonLangPolish: 'Polish',
-  ribbonLangCzech: 'Czech',
-  ribbonLangDutch: 'Dutch',
-  ribbonLangMalay: 'Malay',
-  ribbonLangHebrew: 'Hebrew',
-  ribbonLangHindi: 'Hindi',
-  ribbonLangVietnamese: 'Vietnamese',
   ribbonNewComment: 'New Comment',
   ribbonCommentsPane: 'Comments Pane',
   ribbonCommentsPaneTip: 'Show or hide the Comments pane',

@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const es = {
-  ribbonAiCreditNote: 'Usa IA y consume créditos',
-  ribbonAiRewriteConfirm:
-    'Esta acción llama a la IA: consume créditos y puede reescribir todo el contenido. ¿Continuar? (No se volverá a preguntar.)',
   // tabs
   ribbonTabFile: 'Archivo',
   ribbonTabHome: 'Inicio',
@@ -185,8 +182,6 @@ export const es = {
   ribbonFlipH: 'Voltear horizontalmente',
   ribbonFlipV: 'Voltear verticalmente',
   ribbonDistributeHint: '{title} (seleccione 3 o más elementos)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Mostrar u ocultar el panel del asistente de IA',
   ribbonGroupTable: 'Tabla',
   ribbonInsertTableTip: 'Insertar una tabla (estilo predeterminado; elija filas y columnas)',
   ribbonTablePickerHint: 'Elegir filas y columnas',
@@ -396,38 +391,6 @@ export const es = {
   ribbonRehearseTip:
     'Ensayar intervalos: reproducir la presentación desde el principio y registrar el tiempo por diapositiva; guardar como intervalos de avance automático (guardado en pptx)',
   ribbonRecord: 'Grabar',
-  ribbonGroupProofing: 'Revisión',
-  ribbonSpellCheck: 'Ortografía',
-  ribbonSpellCheckTip:
-    'La IA revisa cada diapositiva en busca de erratas, gramática y puntuación y las corrige directamente',
-  ribbonSpellCheckPrompt:
-    'Revisa esta presentación diapositiva por diapositiva en busca de erratas, gramática y puntuación: corrige los problemas directamente con las herramientas manteniendo el diseño y el significado; después informa brevemente de los cambios por diapositiva y omite las que no tengan problemas.',
-  ribbonTranslate: 'Traducir',
-  ribbonTranslateTip:
-    'La IA traduce el texto de la diapositiva actual al idioma elegido (reemplaza el original)',
-  ribbonTranslatePrompt:
-    'Traduce todo el texto de la diapositiva actual a {lang}: reemplaza el original con las herramientas, manteniendo el diseño, los tamaños de fuente y los colores.',
-  ribbonLangEnglish: 'Inglés',
-  ribbonLangSimplifiedChinese: 'Chino simplificado',
-  ribbonLangTraditionalChinese: 'Chino tradicional',
-  ribbonLangJapanese: 'Japonés',
-  ribbonLangKorean: 'Coreano',
-  ribbonLangFrench: 'Francés',
-  ribbonLangGerman: 'Alemán',
-  ribbonLangSpanish: 'Español',
-  ribbonLangThai: 'tailandés',
-  ribbonLangIndonesian: 'indonesio',
-  ribbonLangRussian: 'ruso',
-  ribbonLangArabic: 'árabe',
-  ribbonLangPortuguese: 'portugués',
-  ribbonLangItalian: 'italiano',
-  ribbonLangPolish: 'polaco',
-  ribbonLangCzech: 'checo',
-  ribbonLangDutch: 'neerlandés',
-  ribbonLangMalay: 'malayo',
-  ribbonLangHebrew: 'hebreo',
-  ribbonLangHindi: 'hindi',
-  ribbonLangVietnamese: 'vietnamita',
   ribbonNewComment: 'Nuevo comentario',
   ribbonCommentsPane: 'Panel de comentarios',
   ribbonCommentsPaneTip: 'Mostrar u ocultar el panel de comentarios',

@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const hi = {
-  ribbonAiCreditNote: 'AI का उपयोग करता है और क्रेडिट खर्च होते हैं',
-  ribbonAiRewriteConfirm:
-    'यह क्रिया AI को कॉल करती है: इसमें क्रेडिट खर्च होते हैं और पूरी सामग्री फिर से लिखी जा सकती है। जारी रखें? (दोबारा नहीं पूछा जाएगा।)',
   ribbonTabFile: 'फ़ाइल',
   ribbonTabHome: 'होम',
   ribbonTabInsert: 'सम्मिलित करें',
@@ -178,8 +175,6 @@ export const hi = {
   ribbonFlipH: 'क्षैतिज पलटें',
   ribbonFlipV: 'लंबवत पलटें',
   ribbonDistributeHint: '{title} (3 या अधिक तत्व चुनें)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'AI सहायक पैनल दिखाएँ या छिपाएँ',
   ribbonGroupTable: 'तालिका',
   ribbonInsertTableTip: 'तालिका सम्मिलित करें (डिफ़ॉल्ट शैली; पंक्तियाँ और स्तंभ चुनें)',
   ribbonTablePickerHint: 'पंक्तियाँ और स्तंभ चुनें',
@@ -385,38 +380,6 @@ export const hi = {
   ribbonRehearseTip:
     'समय का पूर्वाभ्यास: शो को शुरुआत से चलाएँ और प्रत्येक स्लाइड का समय रिकॉर्ड करें; स्वचालित अग्रगमन समय के रूप में सहेजें (pptx में सहेजा गया)',
   ribbonRecord: 'रिकॉर्ड करें',
-  ribbonGroupProofing: 'प्रूफ़िंग',
-  ribbonSpellCheck: 'वर्तनी',
-  ribbonSpellCheckTip:
-    'AI प्रत्येक स्लाइड में वर्तनी, व्याकरण और विराम चिह्न की जाँच करता है और उन्हें सीधे ठीक करता है',
-  ribbonSpellCheckPrompt:
-    'इस प्रस्तुति की स्लाइड-दर-स्लाइड वर्तनी, व्याकरण और विराम चिह्न की जाँच करें: समस्याओं को उपकरणों से सीधे ठीक करें, लेआउट और अर्थ अपरिवर्तित रखें; अंत में प्रत्येक स्लाइड के परिवर्तनों की संक्षिप्त रिपोर्ट दें, और बिना समस्या वाली स्लाइड छोड़ दें।',
-  ribbonTranslate: 'अनुवाद',
-  ribbonTranslateTip:
-    'AI वर्तमान स्लाइड के पाठ का चुनी हुई भाषा में अनुवाद करता है (मूल को बदल देता है)',
-  ribbonTranslatePrompt:
-    'वर्तमान स्लाइड के सभी पाठ का {lang} में अनुवाद करें: उपकरणों से मूल पाठ बदलें, लेआउट, फ़ॉन्ट आकार और रंग अपरिवर्तित रखें।',
-  ribbonLangEnglish: 'अंग्रेज़ी',
-  ribbonLangSimplifiedChinese: 'सरलीकृत चीनी',
-  ribbonLangTraditionalChinese: 'पारंपरिक चीनी',
-  ribbonLangJapanese: 'जापानी',
-  ribbonLangKorean: 'कोरियाई',
-  ribbonLangFrench: 'फ़्रेंच',
-  ribbonLangGerman: 'जर्मन',
-  ribbonLangSpanish: 'स्पेनिश',
-  ribbonLangThai: 'थाई',
-  ribbonLangIndonesian: 'इंडोनेशियाई',
-  ribbonLangRussian: 'रूसी',
-  ribbonLangArabic: 'अरबी',
-  ribbonLangPortuguese: 'पुर्तगाली',
-  ribbonLangItalian: 'इतालवी',
-  ribbonLangPolish: 'पोलिश',
-  ribbonLangCzech: 'चेक',
-  ribbonLangDutch: 'डच',
-  ribbonLangMalay: 'मलय',
-  ribbonLangHebrew: 'हिब्रू',
-  ribbonLangHindi: 'हिंदी',
-  ribbonLangVietnamese: 'वियतनामी',
   ribbonNewComment: 'नई टिप्पणी',
   ribbonCommentsPane: 'टिप्पणी फलक',
   ribbonCommentsPaneTip: 'टिप्पणी फलक दिखाएँ या छिपाएँ',

@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const it = {
-  ribbonAiCreditNote: "Usa l'IA e consuma crediti",
-  ribbonAiRewriteConfirm:
-    "Questa azione richiama l'IA: consuma crediti e può riscrivere l'intero contenuto. Continuare? (Non verrà più chiesto.)",
   ribbonTabFile: 'File',
   ribbonTabHome: 'Home',
   ribbonTabInsert: 'Inserisci',
@@ -184,8 +181,6 @@ export const it = {
   ribbonFlipH: 'Capovolgi orizzontalmente',
   ribbonFlipV: 'Capovolgi verticalmente',
   ribbonDistributeHint: '{title} (seleziona almeno 3 elementi)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: "Mostra o nascondi il pannello dell'Assistente IA",
   ribbonGroupTable: 'Tabella',
   ribbonInsertTableTip: 'Inserisci una tabella (stile predefinito; scegli righe e colonne)',
   ribbonTablePickerHint: 'Scegli righe e colonne',
@@ -398,38 +393,6 @@ export const it = {
   ribbonRehearseTip:
     "Prova intervalli: avvia la presentazione dall'inizio e registra il tempo per diapositiva; salva come intervalli di avanzamento automatico (salvato nel pptx)",
   ribbonRecord: 'Registra',
-  ribbonGroupProofing: 'Strumenti di Correzione',
-  ribbonSpellCheck: 'Controllo Ortografia',
-  ribbonSpellCheckTip:
-    "L'IA controlla ogni diapositiva alla ricerca di refusi, errori grammaticali e di punteggiatura e li corregge direttamente",
-  ribbonSpellCheckPrompt:
-    'Controlla questa presentazione diapositiva per diapositiva alla ricerca di refusi, errori grammaticali e di punteggiatura: correggi i problemi direttamente con gli strumenti mantenendo invariati il layout e il significato; infine riporta brevemente le modifiche per diapositiva, saltando le diapositive senza problemi.',
-  ribbonTranslate: 'Traduci',
-  ribbonTranslateTip:
-    "L'IA traduce il testo della diapositiva corrente nella lingua scelta (sostituisce l'originale)",
-  ribbonTranslatePrompt:
-    "Traduci tutto il testo della diapositiva corrente in {lang}: sostituisci l'originale con gli strumenti, mantenendo invariati layout, dimensioni dei caratteri e colori.",
-  ribbonLangEnglish: 'Inglese',
-  ribbonLangSimplifiedChinese: 'Cinese Semplificato',
-  ribbonLangTraditionalChinese: 'Cinese Tradizionale',
-  ribbonLangJapanese: 'Giapponese',
-  ribbonLangKorean: 'Coreano',
-  ribbonLangFrench: 'Francese',
-  ribbonLangGerman: 'Tedesco',
-  ribbonLangSpanish: 'Spagnolo',
-  ribbonLangThai: 'thai',
-  ribbonLangIndonesian: 'indonesiano',
-  ribbonLangRussian: 'russo',
-  ribbonLangArabic: 'arabo',
-  ribbonLangPortuguese: 'portoghese',
-  ribbonLangItalian: 'italiano',
-  ribbonLangPolish: 'polacco',
-  ribbonLangCzech: 'ceco',
-  ribbonLangDutch: 'olandese',
-  ribbonLangMalay: 'malese',
-  ribbonLangHebrew: 'ebraico',
-  ribbonLangHindi: 'hindi',
-  ribbonLangVietnamese: 'vietnamita',
   ribbonNewComment: 'Nuovo Commento',
   ribbonCommentsPane: 'Riquadro Commenti',
   ribbonCommentsPaneTip: 'Mostra o nascondi il riquadro Commenti',

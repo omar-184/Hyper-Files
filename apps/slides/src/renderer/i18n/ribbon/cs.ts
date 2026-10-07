@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const cs = {
-  ribbonAiCreditNote: 'Používá AI a spotřebovává kredity',
-  ribbonAiRewriteConfirm:
-    'Tato akce volá asistenta AI: spotřebovává kredity a může přepsat celý obsah. Pokračovat? (Příště se již nebudeme ptát.)',
   ribbonTabFile: 'Soubor',
   ribbonTabHome: 'Domů',
   ribbonTabInsert: 'Vložení',
@@ -178,8 +175,6 @@ export const cs = {
   ribbonFlipH: 'Překlopit vodorovně',
   ribbonFlipV: 'Překlopit svisle',
   ribbonDistributeHint: '{title} (vyberte 3 nebo více prvků)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Zobrazit nebo skrýt panel asistenta AI',
   ribbonGroupTable: 'Tabulka',
   ribbonInsertTableTip: 'Vložit tabulku (výchozí styl; zvolte počet řádků a sloupců)',
   ribbonTablePickerHint: 'Zvolte počet řádků a sloupců',
@@ -381,38 +376,6 @@ export const cs = {
   ribbonRehearseTip:
     'Vyzkoušet časování: spustí prezentaci od začátku a zaznamená čas na každý snímek; uloží se jako časování automatického přechodu (uloží se do pptx)',
   ribbonRecord: 'Záznam',
-  ribbonGroupProofing: 'Kontrola pravopisu',
-  ribbonSpellCheck: 'Pravopis',
-  ribbonSpellCheckTip:
-    'AI zkontroluje na každém snímku překlepy, gramatiku a interpunkci a přímo je opraví',
-  ribbonSpellCheckPrompt:
-    'Zkontroluj tuto prezentaci snímek po snímku na překlepy, gramatiku a interpunkci: chyby oprav přímo pomocí nástrojů a zachovej rozložení i význam; poté stručně shrň změny u každého snímku a snímky bez chyb vynech.',
-  ribbonTranslate: 'Přeložit',
-  ribbonTranslateTip:
-    'AI přeloží text aktuálního snímku do zvoleného jazyka (nahradí původní text)',
-  ribbonTranslatePrompt:
-    'Přelož veškerý text na aktuálním snímku do jazyka {lang}: původní text nahraď pomocí nástrojů a zachovej rozložení, velikosti písma i barvy.',
-  ribbonLangEnglish: 'Angličtina',
-  ribbonLangSimplifiedChinese: 'Zjednodušená čínština',
-  ribbonLangTraditionalChinese: 'Tradiční čínština',
-  ribbonLangJapanese: 'Japonština',
-  ribbonLangKorean: 'Korejština',
-  ribbonLangFrench: 'Francouzština',
-  ribbonLangGerman: 'Němčina',
-  ribbonLangSpanish: 'Španělština',
-  ribbonLangThai: 'thajština',
-  ribbonLangIndonesian: 'indonéština',
-  ribbonLangRussian: 'ruština',
-  ribbonLangArabic: 'arabština',
-  ribbonLangPortuguese: 'portugalština',
-  ribbonLangItalian: 'italština',
-  ribbonLangPolish: 'polština',
-  ribbonLangCzech: 'čeština',
-  ribbonLangDutch: 'nizozemština',
-  ribbonLangMalay: 'malajština',
-  ribbonLangHebrew: 'hebrejština',
-  ribbonLangHindi: 'hindi',
-  ribbonLangVietnamese: 'vietnamština',
   ribbonNewComment: 'Nový komentář',
   ribbonCommentsPane: 'Podokno komentářů',
   ribbonCommentsPaneTip: 'Zobrazit nebo skrýt podokno komentářů',

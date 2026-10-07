@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const nl = {
-  ribbonAiCreditNote: 'Gebruikt AI en verbruikt tegoed',
-  ribbonAiRewriteConfirm:
-    'Deze actie roept AI aan: het verbruikt tegoed en kan de volledige inhoud herschrijven. Doorgaan? (U wordt niet opnieuw gevraagd.)',
   ribbonTabFile: 'Bestand',
   ribbonTabHome: 'Start',
   ribbonTabInsert: 'Invoegen',
@@ -181,8 +178,6 @@ export const nl = {
   ribbonFlipH: 'Horizontaal spiegelen',
   ribbonFlipV: 'Verticaal spiegelen',
   ribbonDistributeHint: '{title} (selecteer 3 of meer elementen)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Het AI-assistentpaneel weergeven of verbergen',
   ribbonGroupTable: 'Tabel',
   ribbonInsertTableTip: 'Een tabel invoegen (standaardstijl; kies rijen en kolommen)',
   ribbonTablePickerHint: 'Kies rijen en kolommen',
@@ -391,38 +386,6 @@ export const nl = {
   ribbonRehearseTip:
     'Tijdsinstellingen repeteren: start de voorstelling vanaf het begin en registreert de tijd per dia; sla op als tijden voor automatisch doorgaan (opgeslagen in pptx)',
   ribbonRecord: 'Opnemen',
-  ribbonGroupProofing: 'Controle',
-  ribbonSpellCheck: 'Spelling',
-  ribbonSpellCheckTip:
-    'AI controleert elke dia op typefouten, grammatica en interpunctie en corrigeert ze direct',
-  ribbonSpellCheckPrompt:
-    "Controleer deze presentatie dia voor dia op typefouten, grammatica en interpunctie: corrigeer problemen direct met de hulpmiddelen en houd de indeling en betekenis ongewijzigd; rapporteer daarna kort de wijzigingen per dia en sla dia's zonder problemen over.",
-  ribbonTranslate: 'Vertalen',
-  ribbonTranslateTip:
-    'AI vertaalt de tekst van de huidige dia naar de gekozen taal (vervangt het origineel)',
-  ribbonTranslatePrompt:
-    'Vertaal alle tekst op de huidige dia naar {lang}: vervang het origineel met de hulpmiddelen en houd de indeling, tekengroottes en kleuren ongewijzigd.',
-  ribbonLangEnglish: 'Engels',
-  ribbonLangSimplifiedChinese: 'Vereenvoudigd Chinees',
-  ribbonLangTraditionalChinese: 'Traditioneel Chinees',
-  ribbonLangJapanese: 'Japans',
-  ribbonLangKorean: 'Koreaans',
-  ribbonLangFrench: 'Frans',
-  ribbonLangGerman: 'Duits',
-  ribbonLangSpanish: 'Spaans',
-  ribbonLangThai: 'Thai',
-  ribbonLangIndonesian: 'Indonesisch',
-  ribbonLangRussian: 'Russisch',
-  ribbonLangArabic: 'Arabisch',
-  ribbonLangPortuguese: 'Portugees',
-  ribbonLangItalian: 'Italiaans',
-  ribbonLangPolish: 'Pools',
-  ribbonLangCzech: 'Tsjechisch',
-  ribbonLangDutch: 'Nederlands',
-  ribbonLangMalay: 'Maleis',
-  ribbonLangHebrew: 'Hebreeuws',
-  ribbonLangHindi: 'Hindi',
-  ribbonLangVietnamese: 'Vietnamees',
   ribbonNewComment: 'Nieuwe opmerking',
   ribbonCommentsPane: 'Opmerkingenvenster',
   ribbonCommentsPaneTip: 'Het opmerkingenvenster weergeven of verbergen',

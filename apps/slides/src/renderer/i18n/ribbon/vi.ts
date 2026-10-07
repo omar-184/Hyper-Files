@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const vi = {
-  ribbonAiCreditNote: 'Sử dụng AI và tiêu tốn tín dụng',
-  ribbonAiRewriteConfirm:
-    'Thao tác này sẽ gọi trợ lý AI: tiêu tốn tín dụng và có thể viết lại toàn bộ nội dung. Bạn có muốn tiếp tục? (Sau khi xác nhận sẽ không hỏi lại nữa.)',
   ribbonTabFile: 'Tệp',
   ribbonTabHome: 'Trang chủ',
   ribbonTabInsert: 'Chèn',
@@ -179,8 +176,6 @@ export const vi = {
   ribbonFlipH: 'Lật ngang',
   ribbonFlipV: 'Lật dọc',
   ribbonDistributeHint: '{title} (chọn từ 3 phần tử trở lên)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Hiện hoặc ẩn ngăn Trợ lý AI',
   ribbonGroupTable: 'Bảng',
   ribbonInsertTableTip: 'Chèn bảng (kiểu mặc định; chọn số hàng và cột)',
   ribbonTablePickerHint: 'Chọn số hàng và cột',
@@ -384,38 +379,6 @@ export const vi = {
   ribbonRehearseTip:
     'Tập dượt thời gian: chạy trình chiếu từ đầu và ghi lại thời gian trên mỗi trang; lưu thành thời gian tự động chuyển trang (lưu vào pptx)',
   ribbonRecord: 'Ghi hình',
-  ribbonGroupProofing: 'Soát lỗi',
-  ribbonSpellCheck: 'Chính tả',
-  ribbonSpellCheckTip:
-    'AI kiểm tra từng trang chiếu để tìm lỗi chính tả, ngữ pháp và dấu câu rồi sửa trực tiếp',
-  ribbonSpellCheckPrompt:
-    'Kiểm tra bài thuyết trình này theo từng trang chiếu để tìm lỗi chính tả, ngữ pháp và dấu câu: sửa trực tiếp các lỗi bằng các công cụ trong khi vẫn giữ nguyên bố cục và ý nghĩa; sau đó báo cáo ngắn gọn các thay đổi theo từng trang, bỏ qua các trang không có lỗi.',
-  ribbonTranslate: 'Dịch',
-  ribbonTranslateTip:
-    'AI dịch văn bản trên trang chiếu hiện tại sang ngôn ngữ đã chọn (thay thế bản gốc)',
-  ribbonTranslatePrompt:
-    'Dịch toàn bộ văn bản trên trang chiếu hiện tại sang {lang}: thay thế bản gốc bằng các công cụ, giữ nguyên bố cục, cỡ chữ và màu sắc.',
-  ribbonLangEnglish: 'Tiếng Anh',
-  ribbonLangSimplifiedChinese: 'Tiếng Trung giản thể',
-  ribbonLangTraditionalChinese: 'Tiếng Trung phồn thể',
-  ribbonLangJapanese: 'Tiếng Nhật',
-  ribbonLangKorean: 'Tiếng Hàn',
-  ribbonLangFrench: 'Tiếng Pháp',
-  ribbonLangGerman: 'Tiếng Đức',
-  ribbonLangSpanish: 'Tiếng Tây Ban Nha',
-  ribbonLangThai: 'Tiếng Thái',
-  ribbonLangIndonesian: 'Tiếng Indonesia',
-  ribbonLangRussian: 'Tiếng Nga',
-  ribbonLangArabic: 'Tiếng Ả Rập',
-  ribbonLangPortuguese: 'Tiếng Bồ Đào Nha',
-  ribbonLangItalian: 'Tiếng Ý',
-  ribbonLangPolish: 'Tiếng Ba Lan',
-  ribbonLangCzech: 'Tiếng Séc',
-  ribbonLangDutch: 'Tiếng Hà Lan',
-  ribbonLangMalay: 'Tiếng Mã Lai',
-  ribbonLangHebrew: 'Tiếng Do Thái',
-  ribbonLangHindi: 'Tiếng Hindi',
-  ribbonLangVietnamese: 'Tiếng Việt',
   ribbonNewComment: 'Nhận xét mới',
   ribbonCommentsPane: 'Ngăn nhận xét',
   ribbonCommentsPaneTip: 'Hiện hoặc ẩn ngăn Nhận xét',

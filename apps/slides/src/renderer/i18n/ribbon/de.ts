@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const de = {
-  ribbonAiCreditNote: 'Ruft KI auf und verbraucht Guthaben',
-  ribbonAiRewriteConfirm:
-    'Diese Aktion ruft die KI auf: Sie verbraucht Guthaben und kann den gesamten Inhalt umschreiben. Fortfahren? (Sie werden nicht erneut gefragt.)',
   // tabs
   ribbonTabFile: 'Datei',
   ribbonTabHome: 'Start',
@@ -183,8 +180,6 @@ export const de = {
   ribbonFlipH: 'Horizontal spiegeln',
   ribbonFlipV: 'Vertikal spiegeln',
   ribbonDistributeHint: '{title} (mindestens 3 Elemente auswählen)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'KI-Assistent-Bereich ein-/ausblenden',
   ribbonGroupTable: 'Tabelle',
   ribbonInsertTableTip: 'Tabelle einfügen (Standardstil; Zeilen und Spalten wählbar)',
   ribbonTablePickerHint: 'Zeilen und Spalten wählen',
@@ -394,38 +389,6 @@ export const de = {
   ribbonRehearseTip:
     'Neue Einblendezeiten testen: Präsentation von Beginn an abspielen und die Zeit pro Folie aufzeichnen; anschließend als automatische Einblendezeiten speichern (in pptx gespeichert)',
   ribbonRecord: 'Aufzeichnen',
-  ribbonGroupProofing: 'Dokumentprüfung',
-  ribbonSpellCheck: 'Rechtschreibung',
-  ribbonSpellCheckTip:
-    'KI prüft jede Folie auf Tippfehler, Grammatik und Zeichensetzung und korrigiert sie direkt',
-  ribbonSpellCheckPrompt:
-    'Prüfe diese Präsentation Folie für Folie auf Tippfehler, Grammatik und Zeichensetzung: Behebe Probleme direkt mit den Tools und lasse Layout und Bedeutung unverändert; berichte anschließend kurz die Änderungen pro Folie und überspringe Folien ohne Probleme.',
-  ribbonTranslate: 'Übersetzen',
-  ribbonTranslateTip:
-    'KI übersetzt den Text der aktuellen Folie in die gewählte Sprache (ersetzt das Original)',
-  ribbonTranslatePrompt:
-    'Übersetze den gesamten Text der aktuellen Folie in {lang}: Ersetze das Original mit den Tools und lasse Layout, Schriftgrößen und Farben unverändert.',
-  ribbonLangEnglish: 'Englisch',
-  ribbonLangSimplifiedChinese: 'Chinesisch (vereinfacht)',
-  ribbonLangTraditionalChinese: 'Chinesisch (traditionell)',
-  ribbonLangJapanese: 'Japanisch',
-  ribbonLangKorean: 'Koreanisch',
-  ribbonLangFrench: 'Französisch',
-  ribbonLangGerman: 'Deutsch',
-  ribbonLangSpanish: 'Spanisch',
-  ribbonLangThai: 'Thai',
-  ribbonLangIndonesian: 'Indonesisch',
-  ribbonLangRussian: 'Russisch',
-  ribbonLangArabic: 'Arabisch',
-  ribbonLangPortuguese: 'Portugiesisch',
-  ribbonLangItalian: 'Italienisch',
-  ribbonLangPolish: 'Polnisch',
-  ribbonLangCzech: 'Tschechisch',
-  ribbonLangDutch: 'Niederländisch',
-  ribbonLangMalay: 'Malaiisch',
-  ribbonLangHebrew: 'Hebräisch',
-  ribbonLangHindi: 'Hindi',
-  ribbonLangVietnamese: 'Vietnamesisch',
   ribbonNewComment: 'Neuer Kommentar',
   ribbonCommentsPane: 'Kommentarbereich',
   ribbonCommentsPaneTip: 'Kommentarbereich ein-/ausblenden',

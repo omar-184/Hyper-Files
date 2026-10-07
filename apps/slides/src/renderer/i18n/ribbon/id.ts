@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const id = {
-  ribbonAiCreditNote: 'Menggunakan AI dan menghabiskan kredit',
-  ribbonAiRewriteConfirm:
-    'Tindakan ini memanggil AI: menghabiskan kredit dan dapat menulis ulang seluruh konten. Lanjutkan? (Tidak akan ditanya lagi.)',
   // tabs
   ribbonTabFile: 'File',
   ribbonTabHome: 'Beranda',
@@ -183,8 +180,6 @@ export const id = {
   ribbonFlipH: 'Balik horizontal',
   ribbonFlipV: 'Balik vertikal',
   ribbonDistributeHint: '{title} (pilih minimal 3 elemen)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Tampilkan/sembunyikan panel Asisten AI',
   ribbonGroupTable: 'Tabel',
   ribbonInsertTableTip: 'Sisipkan tabel (gaya default; baris dan kolom dapat dipilih)',
   ribbonTablePickerHint: 'Pilih baris dan kolom',
@@ -387,38 +382,6 @@ export const id = {
   ribbonRehearseTip:
     'Latih pengaturan waktu: putar peragaan dari awal dan catat waktu tiap slide; dapat disimpan sebagai waktu peralihan otomatis (disimpan ke pptx)',
   ribbonRecord: 'Rekam',
-  ribbonGroupProofing: 'Pemeriksaan',
-  ribbonSpellCheck: 'Ejaan',
-  ribbonSpellCheckTip:
-    'AI memeriksa salah ketik, tata bahasa, dan tanda baca di setiap slide dan langsung memperbaikinya',
-  ribbonSpellCheckPrompt:
-    'Periksa presentasi ini slide demi slide untuk salah ketik, tata bahasa, dan tanda baca: perbaiki masalah langsung dengan alat sambil mempertahankan tata letak dan makna; lalu laporkan perubahan tiap slide secara singkat, lewati slide tanpa masalah.',
-  ribbonTranslate: 'Terjemahkan',
-  ribbonTranslateTip:
-    'AI menerjemahkan teks slide saat ini ke bahasa yang dipilih (langsung mengganti teks asli)',
-  ribbonTranslatePrompt:
-    'Terjemahkan semua teks di slide saat ini ke {lang}: ganti teks asli dengan alat, pertahankan tata letak, ukuran font, dan warna.',
-  ribbonLangEnglish: 'Inggris',
-  ribbonLangSimplifiedChinese: 'Tionghoa Sederhana',
-  ribbonLangTraditionalChinese: 'Tionghoa Tradisional',
-  ribbonLangJapanese: 'Jepang',
-  ribbonLangKorean: 'Korea',
-  ribbonLangFrench: 'Prancis',
-  ribbonLangGerman: 'Jerman',
-  ribbonLangSpanish: 'Spanyol',
-  ribbonLangThai: 'Thai',
-  ribbonLangIndonesian: 'Bahasa Indonesia',
-  ribbonLangRussian: 'Rusia',
-  ribbonLangArabic: 'Arab',
-  ribbonLangPortuguese: 'Portugis',
-  ribbonLangItalian: 'Italia',
-  ribbonLangPolish: 'Polandia',
-  ribbonLangCzech: 'Ceko',
-  ribbonLangDutch: 'Belanda',
-  ribbonLangMalay: 'Melayu',
-  ribbonLangHebrew: 'Ibrani',
-  ribbonLangHindi: 'Hindi',
-  ribbonLangVietnamese: 'Vietnam',
   ribbonNewComment: 'Komentar Baru',
   ribbonCommentsPane: 'Panel Komentar',
   ribbonCommentsPaneTip: 'Tampilkan/sembunyikan panel Komentar',

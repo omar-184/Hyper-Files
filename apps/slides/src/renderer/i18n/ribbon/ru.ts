@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const ru = {
-  ribbonAiCreditNote: 'Использует ИИ и расходует кредиты',
-  ribbonAiRewriteConfirm:
-    'Это действие вызывает ИИ: расходуются кредиты, и всё содержимое может быть переписано. Продолжить? (Вопрос больше не появится.)',
   // tabs
   ribbonTabFile: 'Файл',
   ribbonTabHome: 'Главная',
@@ -182,8 +179,6 @@ export const ru = {
   ribbonFlipH: 'Отразить по горизонтали',
   ribbonFlipV: 'Отразить по вертикали',
   ribbonDistributeHint: '{title} (выделите не менее 3 элементов)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Показать или скрыть панель ИИ-помощника',
   ribbonGroupTable: 'Таблица',
   ribbonInsertTableTip: 'Вставить таблицу (стиль по умолчанию; число строк и столбцов на выбор)',
   ribbonTablePickerHint: 'Выберите строки и столбцы',
@@ -387,37 +382,6 @@ export const ru = {
   ribbonRehearseTip:
     'Настройка времени: показ с начала с записью времени на каждый слайд; после завершения можно сохранить как время автоматической смены (сохраняется в pptx)',
   ribbonRecord: 'Запись',
-  ribbonGroupProofing: 'Правописание',
-  ribbonSpellCheck: 'Орфография',
-  ribbonSpellCheckTip:
-    'ИИ проверяет каждый слайд на опечатки, грамматику и пунктуацию и сразу исправляет',
-  ribbonSpellCheckPrompt:
-    'Проверь эту презентацию слайд за слайдом на опечатки, грамматику и пунктуацию: проблемы исправляй сразу инструментами, сохраняя макет и смысл; в конце кратко сообщи об изменениях по слайдам, пропуская слайды без проблем.',
-  ribbonTranslate: 'Перевод',
-  ribbonTranslateTip: 'ИИ переводит текст текущего слайда на выбранный язык (заменяет оригинал)',
-  ribbonTranslatePrompt:
-    'Переведи весь текст текущего слайда на {lang}: замени оригинал инструментами, сохранив макет, размеры шрифта и цвета.',
-  ribbonLangEnglish: 'Английский',
-  ribbonLangSimplifiedChinese: 'Китайский (упрощённое письмо)',
-  ribbonLangTraditionalChinese: 'Китайский (традиционное письмо)',
-  ribbonLangJapanese: 'Японский',
-  ribbonLangKorean: 'Корейский',
-  ribbonLangFrench: 'Французский',
-  ribbonLangGerman: 'Немецкий',
-  ribbonLangSpanish: 'Испанский',
-  ribbonLangThai: 'тайский',
-  ribbonLangIndonesian: 'индонезийский',
-  ribbonLangRussian: 'русский',
-  ribbonLangArabic: 'арабский',
-  ribbonLangPortuguese: 'португальский',
-  ribbonLangItalian: 'итальянский',
-  ribbonLangPolish: 'польский',
-  ribbonLangCzech: 'чешский',
-  ribbonLangDutch: 'нидерландский',
-  ribbonLangMalay: 'малайский',
-  ribbonLangHebrew: 'иврит',
-  ribbonLangHindi: 'хинди',
-  ribbonLangVietnamese: 'вьетнамский',
   ribbonNewComment: 'Создать примечание',
   ribbonCommentsPane: 'Область примечаний',
   ribbonCommentsPaneTip: 'Показать или скрыть область примечаний',

@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const fr = {
-  ribbonAiCreditNote: "Fait appel à l'IA et consomme des crédits",
-  ribbonAiRewriteConfirm:
-    "Cette action fait appel à l'IA : elle consomme des crédits et peut réécrire tout le contenu. Continuer ? (Vous ne serez plus averti.)",
   // tabs
   ribbonTabFile: 'Fichier',
   ribbonTabHome: 'Accueil',
@@ -185,8 +182,6 @@ export const fr = {
   ribbonFlipH: 'Miroir horizontal',
   ribbonFlipV: 'Miroir vertical',
   ribbonDistributeHint: '{title} (sélectionnez au moins 3 éléments)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: "Afficher ou masquer le panneau de l'assistant IA",
   ribbonGroupTable: 'Tableau',
   ribbonInsertTableTip: 'Insérer un tableau (style par défaut ; lignes et colonnes au choix)',
   ribbonTablePickerHint: 'Choisir les lignes et colonnes',
@@ -397,38 +392,6 @@ export const fr = {
   ribbonRehearseTip:
     'Vérification du minutage : lancer le diaporama depuis le début et enregistrer le temps par diapositive ; enregistrer ensuite comme minutage de défilement automatique (enregistré dans le pptx)',
   ribbonRecord: 'Enregistrer',
-  ribbonGroupProofing: 'Vérification',
-  ribbonSpellCheck: 'Orthographe',
-  ribbonSpellCheckTip:
-    "L'IA vérifie chaque diapositive (fautes de frappe, grammaire, ponctuation) et corrige directement",
-  ribbonSpellCheckPrompt:
-    'Vérifie cette présentation diapositive par diapositive (fautes de frappe, grammaire, ponctuation) : corrige les problèmes directement avec les outils en conservant la mise en page et le sens ; puis signale brièvement les modifications par diapositive, en ignorant celles sans problème.',
-  ribbonTranslate: 'Traduire',
-  ribbonTranslateTip:
-    "L'IA traduit le texte de la diapositive actuelle dans la langue choisie (remplace l'original)",
-  ribbonTranslatePrompt:
-    "Traduis tout le texte de la diapositive actuelle en {lang} : remplace l'original avec les outils, en conservant la mise en page, les tailles de police et les couleurs.",
-  ribbonLangEnglish: 'Anglais',
-  ribbonLangSimplifiedChinese: 'Chinois simplifié',
-  ribbonLangTraditionalChinese: 'Chinois traditionnel',
-  ribbonLangJapanese: 'Japonais',
-  ribbonLangKorean: 'Coréen',
-  ribbonLangFrench: 'Français',
-  ribbonLangGerman: 'Allemand',
-  ribbonLangSpanish: 'Espagnol',
-  ribbonLangThai: 'thaï',
-  ribbonLangIndonesian: 'indonésien',
-  ribbonLangRussian: 'russe',
-  ribbonLangArabic: 'arabe',
-  ribbonLangPortuguese: 'portuguais',
-  ribbonLangItalian: 'italien',
-  ribbonLangPolish: 'polonais',
-  ribbonLangCzech: 'tchèque',
-  ribbonLangDutch: 'nederlands',
-  ribbonLangMalay: 'malais',
-  ribbonLangHebrew: 'hébreu',
-  ribbonLangHindi: 'hindi',
-  ribbonLangVietnamese: 'vietnamien',
   ribbonNewComment: 'Nouveau commentaire',
   ribbonCommentsPane: 'Volet Commentaires',
   ribbonCommentsPaneTip: 'Afficher ou masquer le volet Commentaires',

@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const th = {
-  ribbonAiCreditNote: 'เรียกใช้ AI และใช้เครดิต',
-  ribbonAiRewriteConfirm:
-    'การดำเนินการนี้จะเรียกใช้ AI: ใช้เครดิตและอาจเขียนเนื้อหาทั้งหมดใหม่ ดำเนินการต่อหรือไม่ (จะไม่ถามอีก)',
   // tabs
   ribbonTabFile: 'ไฟล์',
   ribbonTabHome: 'หน้าแรก',
@@ -179,8 +176,6 @@ export const th = {
   ribbonFlipH: 'พลิกแนวนอน',
   ribbonFlipV: 'พลิกแนวตั้ง',
   ribbonDistributeHint: '{title} (ต้องเลือกองค์ประกอบอย่างน้อย 3 รายการ)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'แสดง/ซ่อนแผงผู้ช่วย AI',
   ribbonGroupTable: 'ตาราง',
   ribbonInsertTableTip: 'แทรกตาราง (สไตล์เริ่มต้น เลือกจำนวนแถวและคอลัมน์ได้)',
   ribbonTablePickerHint: 'เลือกแถวและคอลัมน์',
@@ -376,36 +371,6 @@ export const th = {
   ribbonRehearseTip:
     'ซ้อมการตั้งเวลา: นำเสนอตั้งแต่ต้นและบันทึกเวลาของแต่ละสไลด์ เมื่อจบสามารถบันทึกเป็นเวลาเปลี่ยนสไลด์อัตโนมัติ (บันทึกลง pptx)',
   ribbonRecord: 'บันทึก',
-  ribbonGroupProofing: 'การพิสูจน์อักษร',
-  ribbonSpellCheck: 'ตรวจการสะกด',
-  ribbonSpellCheckTip: 'AI ตรวจคำผิด ไวยากรณ์ และเครื่องหมายวรรคตอนทีละสไลด์และแก้ไขให้โดยตรง',
-  ribbonSpellCheckPrompt:
-    'ตรวจงานนำเสนอนี้ทีละสไลด์เรื่องคำผิด ไวยากรณ์ และเครื่องหมายวรรคตอน: หากพบปัญหาให้ใช้เครื่องมือแก้ไขโดยตรง โดยคงเค้าโครงและความหมายเดิม จากนั้นรายงานสรุปการแก้ไขตามสไลด์ ข้ามสไลด์ที่ไม่มีปัญหา',
-  ribbonTranslate: 'แปล',
-  ribbonTranslateTip: 'AI แปลข้อความของสไลด์ปัจจุบันเป็นภาษาที่เลือก (แทนที่ข้อความเดิมโดยตรง)',
-  ribbonTranslatePrompt:
-    'แปลข้อความทั้งหมดของสไลด์ปัจจุบันเป็นภาษา{lang}: ใช้เครื่องมือแทนที่ข้อความเดิมโดยตรง โดยคงเค้าโครง ขนาดฟอนต์ และชุดสีไว้',
-  ribbonLangEnglish: 'อังกฤษ',
-  ribbonLangSimplifiedChinese: 'จีนตัวย่อ',
-  ribbonLangTraditionalChinese: 'จีนตัวเต็ม',
-  ribbonLangJapanese: 'ญี่ปุ่น',
-  ribbonLangKorean: 'เกาหลี',
-  ribbonLangFrench: 'ฝรั่งเศส',
-  ribbonLangGerman: 'เยอรมัน',
-  ribbonLangSpanish: 'สเปน',
-  ribbonLangThai: 'ภาษาไทย',
-  ribbonLangIndonesian: 'ภาษาอินโดนีเซีย',
-  ribbonLangRussian: 'ภาษารัสเซีย',
-  ribbonLangArabic: 'ภาษาอาหรับ',
-  ribbonLangPortuguese: 'ภาษาโปรตุเกส',
-  ribbonLangItalian: 'ภาษาอิตาลี',
-  ribbonLangPolish: 'ภาษาโปแลนด์',
-  ribbonLangCzech: 'ภาษาเช็ก',
-  ribbonLangDutch: 'ภาษาดัตช์',
-  ribbonLangMalay: 'ภาษามลายู',
-  ribbonLangHebrew: 'ภาษาฮีบรู',
-  ribbonLangHindi: 'ภาษาฮินดี',
-  ribbonLangVietnamese: 'ภาษาเวียดนาม',
   ribbonNewComment: 'ข้อคิดเห็นใหม่',
   ribbonCommentsPane: 'บานหน้าต่างข้อคิดเห็น',
   ribbonCommentsPaneTip: 'แสดง/ซ่อนบานหน้าต่างข้อคิดเห็น',

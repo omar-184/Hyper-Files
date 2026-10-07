@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const ko = {
-  ribbonAiCreditNote: 'AI를 호출하며 크레딧이 소모됩니다',
-  ribbonAiRewriteConfirm:
-    '이 작업은 AI를 호출합니다. 크레딧이 소모되며 전체 내용이 다시 작성될 수 있습니다. 계속하시겠습니까? (확인 후 다시 묻지 않습니다)',
   // tabs
   ribbonTabFile: '파일',
   ribbonTabHome: '홈',
@@ -166,7 +163,7 @@ export const ko = {
   ribbonLineSpacing: '줄 간격',
   ribbonSpaceBefore: '단락 앞 (pt)',
   ribbonSpaceAfter: '단락 뒤 (pt)',
-  // Home: panes / arrange / AI
+  // Home: panes / arrange
   ribbonGroupPanes: '창',
   ribbonFormatPane: '서식 창',
   ribbonFormatPaneTip: '서식 창 표시/숨기기(선택한 요소의 위치, 크기, 채우기)',
@@ -183,8 +180,6 @@ export const ko = {
   ribbonFlipH: '좌우 대칭',
   ribbonFlipV: '상하 대칭',
   ribbonDistributeHint: '{title}(요소를 3개 이상 선택해야 함)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'AI 도우미 패널 표시/숨기기',
   // Insert
   ribbonGroupTable: '표',
   ribbonInsertTableTip: '표 삽입(기본 스타일, 행과 열 선택 가능)',
@@ -387,36 +382,6 @@ export const ko = {
     '예행 연습: 처음부터 진행하며 슬라이드별 시간을 기록하고, 종료 후 자동 전환 시간으로 저장 가능(pptx에 저장)',
   ribbonRecord: '녹화',
   // Review
-  ribbonGroupProofing: '언어 교정',
-  ribbonSpellCheck: '맞춤법 검사',
-  ribbonSpellCheckTip: 'AI가 슬라이드별로 오타, 문법, 문장 부호를 검사하여 바로 수정',
-  ribbonSpellCheckPrompt:
-    '이 프레젠테이션을 슬라이드별로 오타, 문법, 문장 부호를 검사해 주세요. 문제가 있으면 도구로 직접 수정하되 레이아웃과 원래 의미는 유지하고, 마지막에 슬라이드별 수정 사항을 간단히 보고하며 문제가 없는 슬라이드는 건너뛰세요.',
-  ribbonTranslate: '번역',
-  ribbonTranslateTip: 'AI가 현재 슬라이드의 텍스트를 선택한 언어로 번역(원문을 직접 대체)',
-  ribbonTranslatePrompt:
-    '현재 슬라이드의 모든 텍스트를 {lang}(으)로 번역해 주세요. 도구로 원문을 직접 대체하고 레이아웃, 글꼴 크기, 색상은 유지하세요.',
-  ribbonLangEnglish: '영어',
-  ribbonLangSimplifiedChinese: '중국어 간체',
-  ribbonLangTraditionalChinese: '중국어 번체',
-  ribbonLangJapanese: '일본어',
-  ribbonLangKorean: '한국어',
-  ribbonLangFrench: '프랑스어',
-  ribbonLangGerman: '독일어',
-  ribbonLangSpanish: '스페인어',
-  ribbonLangThai: '태국어',
-  ribbonLangIndonesian: '인도네시아어',
-  ribbonLangRussian: '러시아어',
-  ribbonLangArabic: '아랍어',
-  ribbonLangPortuguese: '포르투갈어',
-  ribbonLangItalian: '이탈리아어',
-  ribbonLangPolish: '폴란드어',
-  ribbonLangCzech: '체코어',
-  ribbonLangDutch: '네덜란드어',
-  ribbonLangMalay: '말레이어',
-  ribbonLangHebrew: '히브리어',
-  ribbonLangHindi: '힌디어',
-  ribbonLangVietnamese: '베트남어',
   ribbonNewComment: '새 메모',
   ribbonCommentsPane: '메모 창',
   ribbonCommentsPaneTip: '메모 창 표시/숨기기',

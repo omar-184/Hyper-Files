@@ -1,9 +1,6 @@
 import type { zh } from './zh'
 
 export const pl = {
-  ribbonAiCreditNote: 'Używa AI i zużywa kredyty',
-  ribbonAiRewriteConfirm:
-    'Ta akcja wywołuje AI: zużywa kredyty i może przepisać całą treść. Kontynuować? (Nie zapytamy ponownie.)',
   ribbonTabFile: 'Plik',
   ribbonTabHome: 'Narzędzia główne',
   ribbonTabInsert: 'Wstawianie',
@@ -182,8 +179,6 @@ export const pl = {
   ribbonFlipH: 'Odbij w poziomie',
   ribbonFlipV: 'Odbij w pionie',
   ribbonDistributeHint: '{title} (zaznacz co najmniej 3 elementy)',
-  ribbonAiAssistant: 'Genspark',
-  ribbonAiAssistantTip: 'Pokaż lub ukryj panel Asystenta AI',
   ribbonGroupTable: 'Tabela',
   ribbonInsertTableTip: 'Wstaw tabelę (styl domyślny; wybierz wiersze i kolumny)',
   ribbonTablePickerHint: 'Wybierz wiersze i kolumny',
@@ -388,37 +383,6 @@ export const pl = {
   ribbonRehearseTip:
     'Próba tempa: uruchamia pokaz od początku i rejestruje czas każdego slajdu; zapisz jako czasy automatycznej zmiany slajdów (zapisywane w pptx)',
   ribbonRecord: 'Nagrywaj',
-  ribbonGroupProofing: 'Sprawdzanie',
-  ribbonSpellCheck: 'Pisownia',
-  ribbonSpellCheckTip:
-    'AI sprawdza każdy slajd pod kątem literówek, gramatyki i interpunkcji i poprawia je bezpośrednio',
-  ribbonSpellCheckPrompt:
-    'Sprawdź tę prezentację slajd po slajdzie pod kątem literówek, gramatyki i interpunkcji: popraw problemy bezpośrednio za pomocą narzędzi, zachowując układ i znaczenie; na końcu krótko zgłoś zmiany dla każdego slajdu, pomijając slajdy bez problemów.',
-  ribbonTranslate: 'Przetłumacz',
-  ribbonTranslateTip: 'AI tłumaczy tekst bieżącego slajdu na wybrany język (zastępuje oryginał)',
-  ribbonTranslatePrompt:
-    'Przetłumacz cały tekst bieżącego slajdu na {lang}: zastąp oryginał za pomocą narzędzi, zachowując układ, rozmiary czcionek i kolory.',
-  ribbonLangEnglish: 'Angielski',
-  ribbonLangSimplifiedChinese: 'Chiński uproszczony',
-  ribbonLangTraditionalChinese: 'Chiński tradycyjny',
-  ribbonLangJapanese: 'Japoński',
-  ribbonLangKorean: 'Koreański',
-  ribbonLangFrench: 'Francuski',
-  ribbonLangGerman: 'Niemiecki',
-  ribbonLangSpanish: 'Hiszpański',
-  ribbonLangThai: 'tajski',
-  ribbonLangIndonesian: 'indonejski',
-  ribbonLangRussian: 'rosyjski',
-  ribbonLangArabic: 'arabski',
-  ribbonLangPortuguese: 'portugalski',
-  ribbonLangItalian: 'włoski',
-  ribbonLangPolish: 'polski',
-  ribbonLangCzech: 'czeski',
-  ribbonLangDutch: 'niderlandzki',
-  ribbonLangMalay: 'malajski',
-  ribbonLangHebrew: 'hebrajski',
-  ribbonLangHindi: 'hindi',
-  ribbonLangVietnamese: 'wietnamski',
   ribbonNewComment: 'Nowy komentarz',
   ribbonCommentsPane: 'Okienko komentarzy',
   ribbonCommentsPaneTip: 'Pokaż lub ukryj okienko komentarzy',
