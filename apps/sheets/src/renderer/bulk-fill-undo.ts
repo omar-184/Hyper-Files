@@ -21,7 +21,7 @@ const registeredRuntimes = new WeakSet<object>()
 /**
  * Adds a range-level constant fill to Univer's undo stack without storing a
  * closure in the mutation params. The params remain plain data, so undo-carry
- * can move the whole AI batch to the workbook session created after Save.
+ * can move the whole batch to the workbook session created after Save.
  */
 export function pushBulkFillUndo(
   runtime: UniverRuntime,

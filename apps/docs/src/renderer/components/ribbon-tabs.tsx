@@ -755,6 +755,8 @@ export type { RevisionDisplayMode }
 
 interface ReviewTabProps extends TabProps {
   commentCount: number
+  /** unresolved root comments; 0 disables previous / next comment */
+  openCommentCount: number
   resolvedCommentCount: number
   onShowComments: () => void
   /** create a comment on the current selection (disabled when selection is empty) */
@@ -789,11 +791,11 @@ interface ReviewTabProps extends TabProps {
 }
 
 export function ReviewTab({
-  editor,
   hasDoc,
   dropdown,
   setDropdown,
   commentCount,
+  openCommentCount,
   resolvedCommentCount,
   onShowComments,
   canComment,
@@ -898,6 +900,39 @@ export function ReviewTab({
               </div>
             )}
           </div>
+          <button
+            className="rb-big"
+            disabled={!hasDoc || openCommentCount === 0}
+            data-tip={t('ribbonPrevCommentTip')}
+            onClick={() => onGotoComment(-1)}
+          >
+            <span className="rb-big-icon">
+              <IconCommentPrev size={BIG} />
+            </span>
+            <span>{t('ribbonPrevComment')}</span>
+          </button>
+          <button
+            className="rb-big"
+            disabled={!hasDoc || openCommentCount === 0}
+            data-tip={t('ribbonNextCommentTip')}
+            onClick={() => onGotoComment(1)}
+          >
+            <span className="rb-big-icon">
+              <IconCommentNext size={BIG} />
+            </span>
+            <span>{t('ribbonNextComment')}</span>
+          </button>
+          <button
+            className="rb-big"
+            disabled={!hasDoc}
+            data-tip={t('ribbonShowCommentsTip', { count: commentCount })}
+            onClick={onShowComments}
+          >
+            <span className="rb-big-icon">
+              <IconComments size={BIG} />
+            </span>
+            <span>{t('ribbonShowComments')}</span>
+          </button>
         </div>
         <div className="ribbon-group-label">{t('ribbonGroupComments')}</div>
       </div>

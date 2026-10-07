@@ -2885,7 +2885,7 @@ export function groupRowRuns(rows: readonly number[], maxGap: number): Array<[nu
   return runs
 }
 
-/// How many consecutive no-progress polls (250ms apart) a blocking AI load
+/// How many consecutive no-progress polls (250ms apart) a blocking range load
 /// tolerates before giving up. Progress resets the counter: a load keeps
 /// waiting as long as background indexing is still advancing toward the
 /// requested rows, however long that takes — only a stalled stream fails.
@@ -3052,7 +3052,7 @@ async function loadRange(
       applyMerges(worksheet, state, sheetId, mapped.screen.merges)
     })
     // After merges (merged-only rows never auto-fit) and stored heights.
-    // Bulk AI reads skip it: the measure is a real canvas text layout over
+    // Bulk reads skip it: the measure is a real canvas text layout over
     // every wrap row × the full sheet width, and only non-final chunks load
     // as bulk — their windows are evicted by the next chunk anyway.
     // The stale-height reset must not hide behind the patch gate: the
@@ -3219,8 +3219,8 @@ async function loadRange(
   }
 }
 
-/// Loads an AI-requested range before its cells are read from Univer. Normal
-/// viewport loading is intentionally fire-and-retry; AI reads instead wait
+/// Loads a requested range before its cells are read from Univer. Normal
+/// viewport loading is intentionally fire-and-retry; these reads instead wait
 /// until the requested rows are indexed so unloaded cells cannot masquerade
 /// as empty data.
 export async function ensureLazyRangeLoaded(
@@ -5947,7 +5947,7 @@ export function collectNoteStates(
     // end in a colon ("Status:\nOn track") was read as author="Status" and lost
     // that line. Decide by provenance instead. A note still byte-identical to
     // the file's encoding is that file comment, so its author and text are
-    // recovered exactly; anything else was written this session (the AI
+    // recovered exactly; anything else was written this session (the DSL
     // set_note op and the note editor never write a marker) and is taken whole.
     const fileSheet = state.file.sheets.find((sheet) => sheet.id === sheetId)
     const fromFile = new Map(
@@ -5974,9 +5974,9 @@ export function collectNoteStates(
   return noteStates
 }
 
-/// Shared landing path for column filter criteria: the AI op
+/// Shared landing path for column filter criteria: the DSL op
 /// `set_filter_criteria` and the Advanced Filter dialog both come through
-/// here, so manual and AI edits hit the same facade command (and journal
+/// here, so dialog and DSL edits hit the same facade command (and journal
 /// through the same filter mutations). null clears the column's criteria.
 export function applyFilterCriteria(
   worksheet: UniverWorksheet,
@@ -7475,8 +7475,8 @@ export function clearLazyState(state: LazyWorkbookState | null): void {
  * A cell's stored value, as opposed to the text its number format renders.
  *
  * `lazyCellReader` reports both: `value` is the view model's display text and
- * `rawValue` the model value behind it. Display text is right for the AI's
- * reading tools (a date shows as a date) but wrong for anything that reports or
+ * `rawValue` the model value behind it. Display text is right for on-screen
+ * readouts (a date shows as a date) but wrong for anything that reports or
  * re-saves the data: General re-renders a number to fit the column width
  * (numfmt-fix.ts formatGeneral), so `=1/3` in a narrow column reads back as
  * "0.333333", and a consumer that treats that text as the value turns a
@@ -7508,7 +7508,7 @@ export function modelCellValue(cell: {
   return raw
 }
 
-/// Reads a cell's current content for AI previews and drift checks.
+/// Reads a cell's current content (display value, formula, raw value).
 export function lazyCellReader(worksheet: UniverWorksheet): (address: string) => CellState {
   return (address) => {
     const range = worksheet.getRange(address)
@@ -7600,7 +7600,7 @@ export function lazyRangeEditable(
   )
 }
 
-/// Mirrors the BeforeSheetEditStart streaming guard for AI-planned cells.
+/// Mirrors the BeforeSheetEditStart streaming guard for DSL-planned cells.
 export function lazyCellEditable(
   state: LazyWorkbookState,
   sheetId: string,

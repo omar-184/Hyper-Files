@@ -7,10 +7,10 @@
  * exist (issue #113). This module wraps the built-in sheets find provider:
  * the inner model keeps handling everything inside the loaded window, while
  * the wrapper extends the session with out-of-window matches paged from the
- * underlying file via readSheetRangeMapped (journal edits included) — the
- * same approach the AI-side find takes. Focusing an out-of-window match
- * activates its sheet, starts loading its range, scrolls to it, and selects
- * it, so the grid shows real data instead of an empty jump.
+ * underlying file via readSheetRangeMapped (journal edits included).
+ * Focusing an out-of-window match activates its sheet, starts loading its
+ * range, scrolls to it, and selects it, so the grid shows real data instead
+ * of an empty jump.
  */
 import type { IRange, Workbook } from '@univerjs/core'
 import {
@@ -803,8 +803,7 @@ export class LazyExtendedFindModel extends FindModel {
     const sheetOrder = new Map(sheets.map((sheet, index) => [sheet.getSheetId(), index] as const))
     const comparator = extraComparator(sheetOrder, this.query.findDirection === 'column')
     const collected: (ScanCell & { sheetId: string })[] = []
-    // Budget counts scanned extent, not hits — the AI-side findInLazyWorkbook
-    // semantics. Counting hits would scan sparse multi-million-cell sheets
+    // Budget counts scanned extent, not hits. Counting hits would scan sparse multi-million-cell sheets
     // end to end.
     let scannedCells = 0
 

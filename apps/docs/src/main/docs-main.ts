@@ -3,8 +3,6 @@ import { handOffBytes } from './byte-handoff'
 import {
   appendFileSync,
   existsSync,
-  mkdirSync,
-  readdirSync,
   readFileSync,
   statSync,
   unlinkSync,
@@ -22,7 +20,7 @@ import {
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { basename, dirname, extname, isAbsolute, join } from 'node:path'
+import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import {
   BrowserWindow,
@@ -33,7 +31,6 @@ import {
   dialog,
   ipcMain,
   nativeImage,
-  net,
   session,
   shell,
   webContents,

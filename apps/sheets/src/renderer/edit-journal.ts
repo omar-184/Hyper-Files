@@ -130,7 +130,7 @@ export interface SheetJournal {
 
 export interface EditJournal {
   readonly cells: Map<string, Map<string, JournalEntry>>
-  /// Constant range fills stay declarative so whole-column AI operations do
+  /// Constant range fills stay declarative so whole-column operations do
   /// not allocate one JournalEntry (and one save object) per cell.
   readonly bulkConstantFills: Map<string, JournalBulkConstantFill[]>
   /// Ordered per sheet; cell entries are kept in post-operation coordinates.

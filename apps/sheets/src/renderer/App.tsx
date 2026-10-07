@@ -1821,8 +1821,7 @@ export function App({
         if (event.id === SET_RANGE_VALUES_COMMAND || event.id === SET_RANGE_VALUES_MUTATION) {
           // Quadratic array-criteria formulas (distinct-count COUNTIF idioms
           // over 80k+ rows) freeze the main-thread formula engine for
-          // minutes; block them at the edit gate. The AI path is rejected
-          // earlier with a model-facing message — this covers typing, and the
+          // minutes; block them at the edit gate. This covers typing, and the
           // mutation id covers paste/autofill, which apply mutations directly.
           // Engine-derived mutations (result apply, reference rewrites) carry
           // fromFormula and only restate formulas that already passed.
@@ -1892,7 +1891,7 @@ export function App({
             return
           }
           // The save aborts when a formula references only the deleted span;
-          // reject the removal up front like the AI path does (#1134). The
+          // reject the removal up front like the DSL executor does (#1134). The
           // remove commands act on the selection unless a range is given.
           if (sheet && /^sheet\.command\.remove-(row|col)/.test(event.id)) {
             const uiWorkbook = runtime.univerAPI.getActiveWorkbook()
@@ -2895,7 +2894,7 @@ export function App({
 
   // A workbook loaded into an already-mounted view (the prewarmed spare) can
   // leave document focus on a node Univer no longer reads keys from; hand it
-  // back to the cell editor unless chrome (AI composer, dialogs) holds it.
+  // back to the cell editor unless chrome (dialogs) holds it.
   function focusSheetGrid(): void {
     const runtime = univerRef.current
     if (!runtime || !document.hasFocus()) return

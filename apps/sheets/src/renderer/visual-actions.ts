@@ -1,5 +1,5 @@
 /**
- * Chart/shape/image insertion (ribbon and AI ops). Extracted from App.tsx;
+ * Chart/shape/image insertion (ribbon and workbook DSL ops). Extracted from App.tsx;
  * the App component passes a VisualActionContext built fresh per call so
  * refs and state never go stale.
  */
@@ -106,7 +106,7 @@ function pushVisualAddUndo(
 }
 
 /// Ribbon Insert Chart in demo mode: routes the selection through the same
-/// adapter add_chart op as the AI path, so the chart lives in the snapshot
+/// adapter add_chart op as the DSL executor, so the chart lives in the snapshot
 /// (undo/rebuild replay it). Values come from the snapshot — formula cells
 /// carry no cached value there and read as empty.
 function insertDemoChartFromSelection(
@@ -472,7 +472,7 @@ export function handleInsertShape(
   ctx.setMessage(isTextBox ? t('appTextBoxInserted') : t('appShapeInserted'))
 }
 
-/// AI edit_chart → renderer edit data. Series ranges are read from the
+/// DSL edit_chart → renderer edit data. Series ranges are read from the
 /// sheet here so the file cache and the on-screen render update together.
 export async function buildAiChartEdit(
   ctx: VisualActionContext,
@@ -529,7 +529,7 @@ export async function buildAiChartEdit(
   return { ...edit, series }
 }
 
-/// AI add_image: same visual pipeline as the picker-based insert, sized
+/// DSL add_image: same visual pipeline as the picker-based insert, sized
 /// from the measured natural dimensions.
 export function insertAiImageVisual(
   ctx: VisualActionContext,
@@ -568,7 +568,7 @@ export function insertAiImageVisual(
   queueCtxVisualInstall(ctx, runtime)
 }
 
-/// AI edit_shape: in-place journal update of a session-added shape,
+/// DSL edit_shape: in-place journal update of a session-added shape,
 /// preserving the frame size on a move.
 export function applyAiShapeEdit(
   ctx: VisualActionContext,
@@ -599,7 +599,7 @@ export function applyAiShapeEdit(
   queueCtxVisualInstall(ctx, runtime)
 }
 
-/// AI add_chart: same visual-add pipeline as the ribbon's Insert Chart,
+/// DSL add_chart: same visual-add pipeline as the ribbon's Insert Chart,
 /// fed an explicit data range instead of the selection. Values come from
 /// the sidecar-mapped read, so ranges outside the streamed viewport work.
 export async function insertAiChartVisual(

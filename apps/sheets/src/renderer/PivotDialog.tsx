@@ -6,7 +6,7 @@ import { useI18n, type StringKey } from './i18n/locale'
 import { useModalDialog } from './modal-dialog'
 
 /// Native OOXML pivot table dialog: creates a real PivotTable part (not
-/// formula-based) via the same add_pivot pathway the AI assistant uses.
+/// formula-based) via the add_pivot DSL op.
 /// The caller supplies the current source-range headers so the user can
 /// pick which field is the row dimension, which is the column dimension,
 /// and which value(s) to aggregate.

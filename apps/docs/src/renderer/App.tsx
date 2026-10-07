@@ -51,8 +51,6 @@ import {
 } from './editor/paste-options'
 import { PasteOptionsChip } from './components/PasteOptionsChip'
 import {
-  BLANK_BULLET_NUM_ID,
-  BLANK_ORDERED_NUM_ID,
   DEFAULT_SECTION,
   applyPageNumType,
   customLevelFromNumberingLevel,
@@ -66,7 +64,6 @@ import {
   type NumberingDef,
   type DocProtection,
   type WriteProtection,
-  nextNoteId,
   PAGE_MARK,
   type HeaderFooter,
   type HfImage,
@@ -75,7 +72,6 @@ import {
   type SectionInfo,
   type SectionSettings,
   type SourceInfo,
-  pendingHeadingLevel,
   previewFontSettings,
   type StyleInfo,
   type StyleUpsert,
@@ -86,7 +82,6 @@ import {
 import type { MenuCommand, OpenDocxResult } from '../shared/ipc'
 import { ZoteroDocumentController } from './zotero/controller'
 import { patchPendingSectPr, sectionIndexAtBlock } from './editor/pending-sections'
-import { applyHfText, hfEditText } from './editor/hf-text'
 import {
   insertHfField,
   insertHfInstrField,
@@ -416,7 +411,6 @@ import {
 } from './numbering-actions'
 import {
   addInk as addInkImpl,
-  addCommentAt as addCommentAtImpl,
   cancelNewComment as cancelNewCommentImpl,
   clearInks as clearInksImpl,
   commentThreadAtCaret as commentThreadAtCaretImpl,
@@ -856,15 +850,6 @@ export function App() {
   const headerAreaView = areaView('header')
   const footerAreaView = areaView('footer')
 
-  /** the AI header/footer tool edits the strip the matching edge area shows */
-  const commitHf = (kind: 'header' | 'footer', next: HeaderFooter, viewOverride?: HfView) => {
-    commitHfAt(
-      kind === 'header' ? 0 : lastSectionIdx,
-      kind,
-      viewOverride ?? (kind === 'header' ? headerAreaView : footerAreaView),
-      next,
-    )
-  }
   /** "Different first page" toggle (ribbon checkbox); page 1's header/footer become the first-page variant, as in Word */
   const toggleTitlePg = (on: boolean) => {
     hfEditorRef.current?.exit()
@@ -6338,6 +6323,7 @@ export function App() {
         showStylesPane={showStylesPane}
         onShowStylesPane={setShowStylesPane}
         commentCount={comments.length}
+        openCommentCount={comments.filter((c) => !c.parentId && c.done !== true).length}
         resolvedCommentCount={comments.filter((c) => !c.parentId && c.done === true).length}
         commentAtCaret={commentThreadAtCaretImpl(reviewCtxRef.current) !== null}
         canComment={!editor.state.selection.empty || wordRangeAtCaret(editor) !== null}

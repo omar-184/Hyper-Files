@@ -61,6 +61,7 @@ export function ribbonProps(editor: Editor, formatState: RibbonFormatState) {
     showNav: false,
     onShowNav: noop,
     commentCount: 0,
+    openCommentCount: 0,
     resolvedCommentCount: 0,
     onShowComments: noop,
     canComment: false,

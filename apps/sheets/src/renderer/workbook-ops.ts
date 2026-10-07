@@ -1,7 +1,7 @@
 /**
  * Workbook operation appliers for the sheets renderer.
  *
- * AI DSL operations (pivot / table / table-column adds) and pivot dialog
+ * Workbook DSL operations (pivot / table / table-column adds) and pivot dialog
  * helpers applied against the live Univer runtime. Extracted from App.tsx;
  * every function receives its runtime and state explicitly.
  */

@@ -306,7 +306,7 @@ export function queueChartRefResync(
 
 /// Demo charts bake edits straight into the snapshot visual. Deliberately
 /// no adapter history entry: the Univer undo stack owns interactive ops,
-/// while adapter history keeps owning AI plan applies.
+/// while adapter history keeps owning DSL plan applies.
 function applyDemoVisualChange(
   ctx: VisualSyncContext,
   visualId: string,

@@ -15,9 +15,8 @@ import {
 } from '@genoffice/xlsx-gateway/domain/workbook-dsl'
 import type { CellState, ChangePlan } from '@genoffice/xlsx-gateway/domain/workbook.types'
 
-/// Builds an AI change preview against a live (imported) workbook: "before"
-/// states come from the current on-screen cells, and the same reader is used
-/// at apply time to detect drift since the preview. Operations carry their
+/// Builds a change plan against a live (imported) workbook: "before" states
+/// come from the current on-screen cells. Operations carry their
 /// own sheetId (which may differ from the active sheet), so the reader and
 /// the sheet-name lookup are both sheet-addressed.
 

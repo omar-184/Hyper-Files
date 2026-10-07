@@ -3492,7 +3492,7 @@ export function legendUsesLineSwatches(types: readonly string[]): boolean {
 }
 
 /// Bar+line combo: series whose plot group is lineChart draw as lines.
-/// Untagged series (AI-built charts, older snapshots) keep the legacy rule of
+/// Untagged series (DSL-built charts, older snapshots) keep the legacy rule of
 /// the last series being the line.
 export function comboLineIndices(
   seriesList: readonly { readonly plot?: string | undefined }[],

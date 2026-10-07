@@ -12,8 +12,6 @@ import {
   applySectionSettings,
   applyTitlePg,
   applySectionStartType,
-  BLANK_BULLET_NUM_ID,
-  BLANK_ORDERED_NUM_ID,
   buildBlankDocx,
   paperSizeForLocale,
   findChartWorkbookPath,

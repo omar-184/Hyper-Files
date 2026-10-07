@@ -258,22 +258,3 @@ export const CELL_STYLE_PRESETS: Record<string, CellFormatPatch[]> = {
   'accent1-40': [{ fillColor: '#BDD7EE' }],
   accent1: [{ fillColor: '#4472C4', fontColor: '#FFFFFF' }],
 }
-
-/** Legacy localStorage history key: history now lives in project-store (per
- * workbook); this key is only kept for the one-time migration */
-export const CHAT_STORAGE_KEY = 'ai-excel-chat-history'
-
-/** Cap on persisted tool args/output in transcripts (the store layer has another
- * 16k truncation as backstop) */
-export const PERSIST_TOOL_FIELD_MAX = 16_000
-
-/** Tool args → JSON string (truncated; returns undefined on serialization
- * failure without blocking persistence) */
-export function safeJsonInput(input: unknown): string | undefined {
-  try {
-    const s = JSON.stringify(input)
-    return s && s !== '{}' ? s.slice(0, PERSIST_TOOL_FIELD_MAX) : undefined
-  } catch {
-    return undefined
-  }
-}

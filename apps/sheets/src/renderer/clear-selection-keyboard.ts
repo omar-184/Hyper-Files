@@ -82,7 +82,7 @@ export function isGridKeyTarget(target: ClearSelectionKeyEvent['target']): boole
   if (target.closest(SKIP_HOST_SELECTOR)) return false
   // Find/replace, data-validation, CF, and app chrome all use native fields.
   if (target.closest(NATIVE_FIELD_SELECTOR)) return false
-  // App chrome (AI composer) is contenteditable outside the sheet container.
+  // App chrome can be contenteditable outside the sheet container.
   if (target.closest(CONTENT_EDITABLE_SELECTOR) && !target.closest(SHEET_CONTAINER_SELECTOR)) {
     return false
   }

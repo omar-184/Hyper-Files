@@ -19,7 +19,7 @@ const focusVersions = new WeakMap<object, number>()
 /// steal the active one. The activation runs after the command's promise
 /// chain, so a synchronous restore alone loses the race — re-check across
 /// the microtask and task queues too. Only a flip TO the patched sheet is
-/// undone. Explicit MCP navigation invalidates older restores, including
+/// undone. Explicit navigation invalidates older restores, including
 /// ones aimed at the newly selected sheet.
 export function keepActiveSheet<T>(worksheet: Sheet, run: () => T): T {
   const facade = worksheet as SheetTarget

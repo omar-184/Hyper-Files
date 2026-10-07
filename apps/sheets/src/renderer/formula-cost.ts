@@ -1,4 +1,4 @@
-/// Static cost analysis for user/AI formulas before they reach Univer's
+/// Static cost analysis for user formulas before they reach Univer's
 /// formula engine, which runs on the renderer main thread. Criteria-family
 /// functions (COUNTIF/SUMIF/…) and lookups evaluate once per element when
 /// their criteria/lookup-value argument is itself a range — the classic

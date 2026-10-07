@@ -341,6 +341,8 @@ interface RibbonProps {
   showStylesPane?: boolean
   onShowStylesPane?: (v: boolean) => void
   commentCount: number
+  /** unresolved root comments; 0 disables previous / next comment */
+  openCommentCount: number
   resolvedCommentCount: number
   onShowComments: () => void
   /** Review → comments / revisions / compare / protection */
@@ -769,6 +771,7 @@ function RibbonInner({
   showStylesPane,
   onShowStylesPane,
   commentCount,
+  openCommentCount,
   resolvedCommentCount,
   onShowComments,
   canComment,
@@ -4006,6 +4009,7 @@ function RibbonInner({
             dropdown={dropdown}
             setDropdown={setDropdown}
             commentCount={commentCount}
+            openCommentCount={openCommentCount}
             resolvedCommentCount={resolvedCommentCount}
             onShowComments={onShowComments}
             canComment={canComment}

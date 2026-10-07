@@ -112,7 +112,7 @@ export interface RibbonCommandContext {
   univerRef: { readonly current: UniverRuntime | null }
   lazyWorkbookRef: { current: LazyWorkbookState | null }
   /// Imported workbooks: run workbook DSL ops through the shared executor
-  /// (op-executor.ts), the same path AI proposals take.
+  /// (op-executor.ts).
   runOps: (
     ops: readonly WorkbookOperation[],
     successMessage?: string | null,
