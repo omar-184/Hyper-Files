@@ -12,6 +12,7 @@ pub(crate) fn index_worksheet(
     cache_directory: &Path,
     shared_strings: &[SharedString],
     styled_xfs: &[bool],
+    unlocked_xfs: &[bool],
     colors: &ColorContext,
     rich_image_cells: &HashSet<(usize, usize)>,
     state: &Arc<(Mutex<SheetIndex>, Condvar)>,
@@ -70,6 +71,7 @@ pub(crate) fn index_worksheet(
     let mut in_row_breaks = false;
     let mut in_col_breaks = false;
     let mut protected_ranges: Vec<ProtectedRangeInfo> = Vec::new();
+    let mut cell_locks = CellLockCollector::default();
     let mut dv_rule: Option<DataValidationRule> = None;
     let mut in_dv_formula = false;
     let mut data_validations: Vec<DataValidationRule> = Vec::new();
@@ -97,7 +99,9 @@ pub(crate) fn index_worksheet(
                     .unwrap_or(if first_row { 0 } else { current_row + 1 });
                 first_row = false;
                 next_column = 0;
+                cell_locks.start_row(current_row);
                 if let Some(property) = row_property(&reader, &element, current_row)? {
+                    cell_locks.note_row_style(current_row, property.style_index, unlocked_xfs);
                     let row_chunk = property.row / CHUNK_ROW_COUNT;
                     if row_chunk != chunk_index {
                         flush_chunk(
@@ -144,6 +148,7 @@ pub(crate) fn index_worksheet(
                     if let Some(cell) =
                         builder.finish(shared_strings, styled_xfs, rich_image_cells)?
                     {
+                        cell_locks.note_cell(&cell, unlocked_xfs);
                         chunk.cells.push(cell);
                     }
                 }
@@ -320,6 +325,7 @@ pub(crate) fn index_worksheet(
                     if let Some(cell) =
                         builder.finish(shared_strings, styled_xfs, rich_image_cells)?
                     {
+                        cell_locks.note_cell(&cell, unlocked_xfs);
                         if cell.formula.is_some() {
                             pending_formulas.push(cell.clone());
                         }
@@ -450,6 +456,22 @@ pub(crate) fn index_worksheet(
                                 .filter(|operator| operator != "equal"),
                         });
                     }
+                }
+            }
+            Event::Start(element) | Event::Empty(element)
+                if element.local_name().as_ref() == b"col" =>
+            {
+                let bound = |name: &[u8]| -> Result<Option<usize>, SidecarError> {
+                    Ok(attribute_value(&reader, &element, name)?
+                        .and_then(|value| value.parse::<usize>().ok())
+                        .filter(|value| *value > 0)
+                        .map(|value| value - 1))
+                };
+                let style = attribute_value(&reader, &element, b"style")?
+                    .and_then(|value| value.parse::<usize>().ok());
+                if let (Some(min), Some(max), Some(style)) = (bound(b"min")?, bound(b"max")?, style)
+                {
+                    cell_locks.note_column_style(min, max, style, unlocked_xfs);
                 }
             }
             Event::Start(element) | Event::Empty(element)
@@ -964,6 +986,7 @@ pub(crate) fn index_worksheet(
     index.row_breaks = row_breaks;
     index.col_breaks = col_breaks;
     index.protected_ranges = protected_ranges;
+    index.cell_locks = cell_locks.finish();
     for text in [
         &mut page_print.odd_header,
         &mut page_print.odd_footer,
@@ -1476,4 +1499,165 @@ pub(crate) fn shared_formula_si<R: std::io::BufRead>(
         return Ok(None);
     }
     Ok(attribute_value(reader, element, b"si")?.and_then(|value| value.parse::<u32>().ok()))
+}
+
+const LAST_ROW: usize = 1_048_575;
+const LAST_COLUMN: usize = 16_383;
+/// Wire cap per area list; a sheet past it reports `truncated` and the
+/// renderer stops enforcing cell locks there rather than block real input.
+const MAX_LOCK_AREAS: usize = 4_096;
+
+/// Merges row-major cell hits into rectangles: horizontal runs first, then
+/// identical runs on consecutive rows.
+#[derive(Default)]
+struct AreaMerger {
+    run: Option<(usize, usize, usize)>,
+    open: HashMap<(usize, usize), MergedRange>,
+    done: Vec<MergedRange>,
+}
+
+impl AreaMerger {
+    fn add(&mut self, row: usize, start_column: usize, end_column: usize) {
+        if let Some((run_row, run_start, run_end)) = self.run.as_mut()
+            && *run_row == row
+            && start_column <= *run_end + 1
+            && start_column >= *run_start
+        {
+            *run_end = (*run_end).max(end_column);
+            return;
+        }
+        self.flush_run();
+        self.run = Some((row, start_column, end_column));
+    }
+
+    fn flush_run(&mut self) {
+        let Some((row, start_column, end_column)) = self.run.take() else {
+            return;
+        };
+        if let Some(area) = self.open.get_mut(&(start_column, end_column)) {
+            if area.end_row + 1 == row {
+                area.end_row = row;
+                return;
+            }
+            let stale = *area;
+            self.done.push(stale);
+        }
+        self.open.insert(
+            (start_column, end_column),
+            MergedRange {
+                start_row: row,
+                start_column,
+                end_row: row,
+                end_column,
+            },
+        );
+    }
+
+    fn len(&self) -> usize {
+        self.done.len() + self.open.len()
+    }
+
+    fn finish(mut self) -> Vec<MergedRange> {
+        self.flush_run();
+        let mut areas = self.done;
+        areas.extend(self.open.into_values());
+        areas.sort_by_key(|area| (area.start_row, area.start_column));
+        areas
+    }
+}
+
+/// Protect Sheet input: which cells stay editable. Excel locks every cell
+/// unless its xf says protection/@locked="0"; a cell without its own xf
+/// follows its row's customFormat style, else its column's style.
+#[derive(Default)]
+pub(crate) struct CellLockCollector {
+    unlocked: AreaMerger,
+    /// Cells with a locked xf inside an unlocked row or column.
+    locked: AreaMerger,
+    unlocked_columns: Vec<(usize, usize)>,
+    row_unlocked: bool,
+    truncated: bool,
+}
+
+impl CellLockCollector {
+    pub(crate) fn start_row(&mut self, _row: usize) {
+        self.row_unlocked = false;
+    }
+
+    pub(crate) fn note_row_style(
+        &mut self,
+        row: usize,
+        style_index: Option<usize>,
+        unlocked_xfs: &[bool],
+    ) {
+        self.row_unlocked = style_index.is_some_and(|index| unlocked_xfs.get(index) == Some(&true));
+        if self.row_unlocked {
+            self.unlocked.add(row, 0, LAST_COLUMN);
+        }
+    }
+
+    pub(crate) fn note_column_style(
+        &mut self,
+        min: usize,
+        max: usize,
+        style_index: usize,
+        unlocked_xfs: &[bool],
+    ) {
+        if unlocked_xfs.get(style_index) != Some(&true) || min > max {
+            return;
+        }
+        let max = max.min(LAST_COLUMN);
+        self.unlocked_columns.push((min, max));
+        self.unlocked.done.push(MergedRange {
+            start_row: 0,
+            start_column: min,
+            end_row: LAST_ROW,
+            end_column: max,
+        });
+    }
+
+    pub(crate) fn note_cell(&mut self, cell: &CellRecord, unlocked_xfs: &[bool]) {
+        if self.truncated {
+            return;
+        }
+        let unlocked = cell
+            .style_index
+            .is_some_and(|index| unlocked_xfs.get(index) == Some(&true));
+        if unlocked {
+            self.unlocked.add(cell.row, cell.column, cell.column);
+        } else if self.row_unlocked
+            || self
+                .unlocked_columns
+                .iter()
+                .any(|(min, max)| (*min..=*max).contains(&cell.column))
+        {
+            self.locked.add(cell.row, cell.column, cell.column);
+        }
+        if self.unlocked.len() > MAX_LOCK_AREAS || self.locked.len() > MAX_LOCK_AREAS {
+            self.truncated = true;
+        }
+    }
+
+    pub(crate) fn finish(self) -> CellLocks {
+        if self.truncated {
+            return CellLocks {
+                truncated: true,
+                ..CellLocks::default()
+            };
+        }
+        let unlocked = self.unlocked.finish();
+        let locked = self.locked.finish();
+        let truncated = unlocked.len() > MAX_LOCK_AREAS || locked.len() > MAX_LOCK_AREAS;
+        if truncated {
+            return CellLocks {
+                truncated,
+                ..CellLocks::default()
+            };
+        }
+        CellLocks {
+            unlocked,
+            locked,
+            truncated,
+        }
+    }
 }

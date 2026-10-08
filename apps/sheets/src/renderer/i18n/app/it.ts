@@ -46,6 +46,9 @@ export const it = {
     'La struttura della cartella di lavoro è protetta da password: non può essere modificata qui.',
   appWorkbookStructureLocked:
     'La struttura della cartella di lavoro è protetta: impossibile aggiungere, rimuovere, rinominare o spostare i fogli.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Intervalli che restano modificabili mentre il foglio è protetto',
   appRangesPasswordBlocked:
     'Questo foglio contiene intervalli di modifica protetti da password: la loro modifica non è supportata.',

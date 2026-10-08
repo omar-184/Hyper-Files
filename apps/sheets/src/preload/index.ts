@@ -30,6 +30,7 @@ import type {
 import {
   HEADER_FOOTER_PICTURE_POSITION,
   IPC_CHANNELS,
+  MAX_CELL_LOCK_AREAS,
   MAX_CSV_EXPORT_CHARS,
   MAX_PDF_TEMPLATE_CHARS,
   MAX_SAVE_EDITS,
@@ -1079,6 +1080,22 @@ function parseRangeResult(input: unknown): WorkbookRangeResult {
     }
     return { name: range.name, sqref: range.sqref, hasPassword: range.hasPassword }
   })
+  const locks = input.cellLocks
+  if (
+    !isRecord(locks) ||
+    !Array.isArray(locks.unlocked) ||
+    !Array.isArray(locks.locked) ||
+    locks.unlocked.length > MAX_CELL_LOCK_AREAS ||
+    locks.locked.length > MAX_CELL_LOCK_AREAS ||
+    typeof locks.truncated !== 'boolean'
+  ) {
+    throw new Error('Invalid workbook cell locks response.')
+  }
+  const cellLocks = {
+    unlocked: locks.unlocked.map(parseCellArea),
+    locked: locks.locked.map(parseCellArea),
+    truncated: locks.truncated,
+  }
   return {
     cells,
     rows,
@@ -1092,6 +1109,7 @@ function parseRangeResult(input: unknown): WorkbookRangeResult {
     rowBreaks: parseBreaks(input.rowBreaks, 'row breaks'),
     colBreaks: parseBreaks(input.colBreaks, 'column breaks'),
     protectedRanges,
+    cellLocks,
     pageSetup: parsePagePrintSettings(input.pageSetup),
     indexedThroughRow: input.indexedThroughRow,
     indexingComplete: input.indexingComplete,
@@ -2519,6 +2537,7 @@ function parseCellStyle(input: unknown): WorkbookCellStyle {
     typeof input.strikethrough !== 'boolean' ||
     typeof input.wrapText !== 'boolean' ||
     (input.shrinkToFit !== undefined && typeof input.shrinkToFit !== 'boolean') ||
+    (input.unlocked !== undefined && typeof input.unlocked !== 'boolean') ||
     !isOptionalString(input.fontFamily) ||
     (input.fontSize !== undefined &&
       (typeof input.fontSize !== 'number' ||
@@ -2559,6 +2578,7 @@ function parseCellStyle(input: unknown): WorkbookCellStyle {
     diagonalUp: input.diagonalUp,
     diagonalDown: input.diagonalDown,
     ...(input.shrinkToFit === undefined ? {} : { shrinkToFit: input.shrinkToFit }),
+    ...(input.unlocked === undefined ? {} : { unlocked: input.unlocked }),
     ...(input.fontFamily === undefined ? {} : { fontFamily: input.fontFamily }),
     ...(input.fontSize === undefined ? {} : { fontSize: input.fontSize }),
     ...(input.fontColor === undefined ? {} : { fontColor: input.fontColor }),

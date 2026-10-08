@@ -11,6 +11,7 @@ import type {
   WorkbookFile,
   WorkbookPagePrintSettings,
   WorkbookPivotDefinition,
+  WorkbookRangeResult,
 } from '../shared/desktop-api'
 import type { createUniver } from './create-univer'
 import type { EditJournal } from './edit-journal'
@@ -101,6 +102,9 @@ export interface LazyWorkbookState {
     string,
     { name: string; sqref: string; hasPassword: boolean }[]
   >
+  /// File-side cell lock areas (file coordinates) for Protect Sheet
+  /// enforcement, known once a sheet finishes indexing.
+  readonly sheetCellLocks: Map<string, WorkbookRangeResult['cellLocks']>
   /// Defined names the Univer engine rejected at install — preserved verbatim
   /// by the declarative defined-names save.
   readonly uninstalledDefinedNames: Set<string>

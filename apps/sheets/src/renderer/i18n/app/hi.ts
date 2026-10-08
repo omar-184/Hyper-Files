@@ -42,6 +42,9 @@ export const hi = {
     'वर्कबुक संरचना पासवर्ड से सुरक्षित है — इसे यहाँ बदला नहीं जा सकता।',
   appWorkbookStructureLocked:
     'वर्कबुक संरचना सुरक्षित है — शीट जोड़ी, हटाई, नाम बदली या स्थानांतरित नहीं की जा सकतीं।',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'वे रेंज जो शीट सुरक्षित होने पर भी संपादन योग्य रहती हैं',
   appRangesPasswordBlocked:
     'इस शीट में पासवर्ड-सुरक्षित संपादन रेंज हैं — उन्हें संपादित करना समर्थित नहीं है।',

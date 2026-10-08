@@ -40,6 +40,9 @@ export const he = {
   appWorkbookProtectedWithPassword: 'מבנה חוברת העבודה מוגן בסיסמה — לא ניתן לשנותו כאן.',
   appWorkbookStructureLocked:
     'מבנה חוברת העבודה מוגן — לא ניתן להוסיף, להסיר, לשנות שם או להזיז גיליונות.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'טווחים שנשארים ניתנים לעריכה כשהגיליון מוגן',
   appRangesPasswordBlocked: 'בגיליון זה יש טווחי עריכה מוגנים בסיסמה — עריכתם אינה נתמכת.',
   appRangesRecorded: '{count} טווחי עריכה מותרים ייכתבו בעת השמירה.',

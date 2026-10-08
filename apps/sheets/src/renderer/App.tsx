@@ -176,6 +176,12 @@ import {
   STRUCTURAL_EDIT_COMMAND_PATTERN,
   STRUCTURE_LOCK_COMMANDS,
 } from './app-constants'
+import {
+  cellIsLocked,
+  matrixHasLockedCell,
+  PROTECTED_STRUCTURE_COMMANDS,
+  sheetIsProtected,
+} from './sheet-protection'
 import type { WorkbookReadContext } from './workbook-readers'
 import {
   getSourceRange as getSourceRangeImpl,
@@ -1276,6 +1282,14 @@ export function App({
         const state = lazyWorkbookRef.current
         if (!state) return
         const sheetId = event.worksheet.getSheetId()
+        if (
+          sheetIsProtected(state, sheetId) &&
+          cellIsLocked(state, sheetId, event.row, event.column)
+        ) {
+          event.cancel = true
+          setMessage(t('appCellProtected'))
+          return
+        }
         const sheet = state.file.sheets.find((candidate) => candidate.id === sheetId)
         if (!sheet) return
         // Pivot output is baked into the worksheet; editing it would corrupt
@@ -1833,11 +1847,33 @@ export function App({
         }
       },
     )
+    /// Protect Sheet: grid reshapes are blocked outright and cell writes are
+    /// blocked on locked cells. Engine-derived writes (formula results,
+    /// reference rewrites) carry fromFormula and stay allowed.
+    const sheetProtectionBlocks = (
+      state: LazyWorkbookState,
+      event: { id: string; params?: unknown; options?: unknown; cancel?: boolean },
+    ): boolean => {
+      const isWrite = event.id === SET_RANGE_VALUES_MUTATION
+      if (!isWrite && !PROTECTED_STRUCTURE_COMMANDS.has(event.id)) return false
+      if (isWrite && (event.options as { fromFormula?: boolean } | undefined)?.fromFormula) {
+        return false
+      }
+      const params = event.params as { subUnitId?: string; cellValue?: unknown } | undefined
+      const workbook = runtime.univerAPI.getActiveWorkbook()
+      const sheetId = params?.subUnitId ?? workbook?.getActiveSheet()?.getSheetId()
+      if (sheetId === undefined || !sheetIsProtected(state, sheetId)) return false
+      if (isWrite && !matrixHasLockedCell(state, sheetId, params?.cellValue)) return false
+      event.cancel = true
+      setMessage(t(isWrite ? 'appCellProtected' : 'appSheetProtectedStructure'))
+      return true
+    }
     const structuralDisposable = runtime.univerAPI.addEvent(
       runtime.univerAPI.Event.BeforeCommandExecute,
       (event) => {
         const state = lazyWorkbookRef.current
         if (journalSuppression.active || !state) return
+        if (sheetProtectionBlocks(state, event)) return
         if (event.id === SET_RANGE_VALUES_COMMAND || event.id === SET_RANGE_VALUES_MUTATION) {
           // Quadratic array-criteria formulas (distinct-count COUNTIF idioms
           // over 80k+ rows) freeze the main-thread formula engine for
@@ -2668,6 +2704,7 @@ export function App({
       sheetPageBreaks: new Map(),
       sheetFilePageSetups: new Map(),
       sheetProtectedRanges: new Map(),
+      sheetCellLocks: new Map(),
       uninstalledDefinedNames: new Set(),
       appliedCfSheets: new Set(),
       appliedFilterSheets: new Set(),

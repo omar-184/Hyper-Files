@@ -47,6 +47,9 @@ export const es = {
     'La estructura del libro está protegida con contraseña; no se puede cambiar aquí.',
   appWorkbookStructureLocked:
     'La estructura del libro está protegida; no se pueden agregar, quitar, cambiar de nombre ni mover hojas.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Rangos que se pueden seguir editando mientras la hoja está protegida',
   appRangesPasswordBlocked:
     'Esta hoja tiene rangos de edición protegidos con contraseña; su modificación no es compatible.',

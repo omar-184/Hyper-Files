@@ -47,6 +47,9 @@ export const de = {
     'Die Arbeitsmappenstruktur ist kennwortgeschützt — sie kann hier nicht geändert werden.',
   appWorkbookStructureLocked:
     'Die Arbeitsmappenstruktur ist geschützt — Blätter können nicht hinzugefügt, entfernt, umbenannt oder verschoben werden.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Bereiche, die bei geschütztem Blatt bearbeitbar bleiben',
   appRangesPasswordBlocked:
     'Dieses Blatt enthält kennwortgeschützte Bearbeitungsbereiche — deren Bearbeitung wird nicht unterstützt.',

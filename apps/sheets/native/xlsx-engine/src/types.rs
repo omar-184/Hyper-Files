@@ -225,6 +225,17 @@ pub struct RowProperty {
     pub style_index: Option<usize>,
 }
 
+/// Cell lock areas for Protect Sheet: cells in `unlocked` stay editable
+/// unless `locked` names them (a locked xf inside an unlocked row/column).
+/// `truncated` means the sheet had too many areas to report.
+#[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CellLocks {
+    pub unlocked: Vec<MergedRange>,
+    pub locked: Vec<MergedRange>,
+    pub truncated: bool,
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MergedRange {
@@ -455,6 +466,9 @@ pub struct RangeResult {
     pub col_breaks: Vec<usize>,
     /// protectedRanges entries; sheet-wide, complete-only.
     pub protected_ranges: Vec<ProtectedRangeInfo>,
+    /// Which cells stay editable under Protect Sheet; sheet-wide,
+    /// complete-only.
+    pub cell_locks: CellLocks,
     /// Saved print settings; sheet-wide, complete-only, None when the sheet
     /// declares none.
     pub page_setup: Option<PagePrintInfo>,

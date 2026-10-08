@@ -5602,7 +5602,7 @@ function recordHyperlinks(
 }
 
 /// Records the sheet-wide, complete-only file state (protection, manual page
-/// breaks, allow-edit ranges) the first time a sheet finishes indexing.
+/// breaks, allow-edit ranges, cell locks) the first time a sheet finishes indexing.
 function captureSheetFileState(
   state: LazyWorkbookState,
   sheetId: string,
@@ -5613,6 +5613,9 @@ function captureSheetFileState(
       sheetId,
       result.sheetProtection ?? { protected: false, hasPassword: false },
     )
+  }
+  if (!state.sheetCellLocks.has(sheetId)) {
+    state.sheetCellLocks.set(sheetId, result.cellLocks)
   }
   if (!state.sheetPageBreaks.has(sheetId)) {
     state.sheetPageBreaks.set(sheetId, {

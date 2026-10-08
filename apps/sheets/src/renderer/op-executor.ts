@@ -55,6 +55,7 @@ import {
   structuralDeleteFormulaError,
   type StreamedRefSheet,
 } from './plan-operations'
+import { protectedPlanFailure } from './sheet-protection'
 import { bulkUndoGate, journalSuppression } from './univer-state'
 import type {
   ActiveWorkbook,
@@ -406,6 +407,8 @@ async function applyChangePlanNow(
     if (workbookStructureLocked(state) && plannedOps.some((op) => SHEET_LIFECYCLE_OPS.has(op.op))) {
       throw new Error(t('appWorkbookStructureLocked'))
     }
+    const protectedFailure = protectedPlanFailure(state, plannedOps, plan.cellChanges)
+    if (protectedFailure) throw new Error(t(protectedFailure))
     for (const op of plannedOps) await executeOp(op, run)
     setPendingEdits(journalSize(state.editJournal))
     // Streaming mode: formulas in this batch may reference file cells the

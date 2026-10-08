@@ -45,6 +45,9 @@ export const nl = {
     'De werkmapstructuur is met een wachtwoord beveiligd — deze kan hier niet worden gewijzigd.',
   appWorkbookStructureLocked:
     'De werkmapstructuur is beveiligd — bladen kunnen niet worden toegevoegd, verwijderd, hernoemd of verplaatst.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Bereiken die bewerkbaar blijven terwijl het blad is beveiligd',
   appRangesPasswordBlocked:
     'Dit blad bevat met een wachtwoord beveiligde bewerkingsbereiken — het bewerken ervan wordt niet ondersteund.',

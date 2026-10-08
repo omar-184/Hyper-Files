@@ -40,6 +40,9 @@ export const ar = {
   appWorkbookProtectedWithPassword: 'بنية المصنف محمية بكلمة مرور — لا يمكن تغييرها هنا.',
   appWorkbookStructureLocked:
     'بنية المصنف محمية — لا يمكن إضافة الأوراق أو إزالتها أو إعادة تسميتها أو نقلها.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'النطاقات التي تظل قابلة للتحرير أثناء حماية الورقة',
   appRangesPasswordBlocked:
     'تحتوي هذه الورقة على نطاقات تحرير محمية بكلمة مرور — تحريرها غير مدعوم.',

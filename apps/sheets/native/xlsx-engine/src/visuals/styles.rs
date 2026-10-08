@@ -96,6 +96,11 @@ pub fn read_styles(
                             })
                     });
                     let alignment = xf.children().find(|child| child.has_tag_name("alignment"));
+                    let unlocked = xf
+                        .children()
+                        .find(|child| child.has_tag_name("protection"))
+                        .and_then(|node| node.attribute("locked"))
+                        .is_some_and(|value| value == "0" || value == "false");
                     // Excel resolves scheme fonts against the theme; the
                     // literal <name val> is only a cached copy.
                     let font_family = match (font.scheme.as_deref(), theme_fonts) {
@@ -116,6 +121,7 @@ pub fn read_styles(
                         shrink_to_fit: alignment
                             .and_then(|node| node.attribute("shrinkToFit"))
                             .is_some_and(|value| value == "1" || value == "true"),
+                        unlocked,
                         font_color: font.color,
                         fill_color: fill.color,
                         font_color_theme: font.color_theme,
@@ -217,6 +223,7 @@ pub(crate) fn parse_dxf(dxf: Node<'_, '_>, colors: &ColorContext) -> CellStyle {
         strikethrough: font.strikethrough,
         wrap_text: false,
         shrink_to_fit: false,
+        unlocked: false,
         font_color: font.color,
         fill_color,
         font_color_theme: None,

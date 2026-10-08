@@ -43,6 +43,9 @@ export const pl = {
     'Struktura skoroszytu jest chroniona hasłem — nie można jej tutaj zmienić.',
   appWorkbookStructureLocked:
     'Struktura skoroszytu jest chroniona — nie można dodawać, usuwać, zmieniać nazw ani przenosić arkuszy.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Zakresy, które pozostają edytowalne, gdy arkusz jest chroniony',
   appRangesPasswordBlocked:
     'Ten arkusz zawiera zakresy edycji chronione hasłem — ich edytowanie nie jest obsługiwane.',

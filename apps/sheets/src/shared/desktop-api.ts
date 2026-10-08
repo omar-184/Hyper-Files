@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import {
   HEADER_FOOTER_PICTURE_POSITION,
+  MAX_CELL_LOCK_AREAS,
   MAX_CSV_EXPORT_CHARS,
   MAX_PDF_TEMPLATE_CHARS,
   MAX_SAVE_EDITS,
@@ -342,6 +343,8 @@ const cellStyleSchema = z
     wrapText: z.boolean(),
     /// alignment/@shrinkToFit; omitted by the sidecar when false.
     shrinkToFit: z.boolean().optional(),
+    /// xf protection/@locked="0"; omitted by the sidecar when locked.
+    unlocked: z.boolean().optional(),
     fontColor: z.string().optional(),
     fillColor: z.string().optional(),
     /// Theme provenance (palette slot + tint) for theme-resolved colors, so
@@ -993,6 +996,16 @@ export const workbookRangeResultSchema = z
           .strict(),
       )
       .max(1_024),
+    /// Which cells stay editable under Protect Sheet (file coordinates):
+    /// `unlocked` areas minus `locked` ones; sheet-wide, complete-only.
+    /// `truncated` means the sheet had too many areas to report.
+    cellLocks: z
+      .object({
+        unlocked: z.array(cellAreaSchema).max(MAX_CELL_LOCK_AREAS),
+        locked: z.array(cellAreaSchema).max(MAX_CELL_LOCK_AREAS),
+        truncated: z.boolean(),
+      })
+      .strict(),
     indexedThroughRow: z.number().int().nonnegative().nullable(),
     indexingComplete: z.boolean(),
   })
