@@ -1,0 +1,568 @@
+import { useEffect, useRef, useState, type DragEvent } from 'react'
+import {
+  IMAGE_EXTENSIONS,
+  type ToolError,
+  type ToolFile,
+  type ToolId,
+  type ToolOptions,
+  type ToolProgress,
+  type ToolRequest,
+  type ToolResult,
+} from '../../../shared/pdf-tools-api'
+import type { ToolStringKey } from '../i18n/strings-tools'
+import { defaultOptions, toolDef } from './catalog'
+import { ToolIcon } from './ToolIcon'
+import { ToolOptionsForm } from './ToolOptionsForm'
+import { baseName, formatBytes, useToolsI18n, type ToolsT } from './use-tools-i18n'
+
+interface Entry {
+  path: string
+  status: 'checking' | 'ready' | 'locked' | 'error'
+  pages?: number
+  size?: number
+  /** the password that unlocked it */
+  password?: string
+  /** what the user is typing into the unlock box */
+  draft: string
+  wrongPassword?: boolean
+  error?: ToolError
+  /** merge: pages of this file to take */
+  pageExpr: string
+  metadata?: ToolOptions['properties']
+}
+
+const IMAGE_RE = new RegExp(`\\.(${IMAGE_EXTENSIONS.join('|')})$`, 'i')
+const PDF_RE = /\.pdf$/i
+
+const ERROR_KEYS: Record<ToolError['code'], ToolStringKey> = {
+  'password-required': 'errPasswordRequired',
+  'wrong-password': 'errWrongPassword',
+  'not-pdf': 'errNotPdf',
+  damaged: 'errDamaged',
+  'bad-input': 'errBadInput',
+  'bad-pages': 'errBadPages',
+  unsupported: 'errUnsupported',
+  io: 'errIo',
+  failed: 'errFailed',
+}
+
+export function errorText(t: ToolsT, err: ToolError): string {
+  return t(ERROR_KEYS[err.code] ?? 'errFailed', { detail: err.message })
+}
+
+/** Validation that stops Start, as a message; null when the request can run. */
+function blocker(
+  tool: ToolId,
+  entries: readonly Entry[],
+  options: ToolOptions[ToolId],
+  repeat: string,
+): ToolStringKey | null {
+  const def = toolDef(tool)
+  if (entries.length === 0) return 'needFiles'
+  if (entries.length < def.minFiles) return 'needTwo'
+  if (entries.some((e) => e.status === 'locked' || e.status === 'checking')) return 'needUnlock'
+  if (tool === 'protect') {
+    const o = options as ToolOptions['protect']
+    if (!o.userPassword && !o.ownerPassword) return 'protectEmpty'
+    if (o.userPassword !== repeat) return 'protectMismatch'
+    if (o.userPassword.includes(',') || o.ownerPassword.includes(',')) return 'protectComma'
+  }
+  return null
+}
+
+export function ToolPanel({
+  tool,
+  initialPaths,
+  onBack,
+}: {
+  tool: ToolId
+  initialPaths: string[]
+  onBack: () => void
+}) {
+  const { t } = useToolsI18n()
+  const def = toolDef(tool)
+  const api = window.hyperPdfTools
+  const [entries, setEntries] = useState<Entry[]>([])
+  const [options, setOptions] = useState<ToolOptions[ToolId]>(() => {
+    const all = defaultOptions()
+    // the default watermark is a word in the UI language, so it is filled in here
+    return tool === 'watermark' ? { ...all.watermark, text: t('watermarkDefault') } : all[tool]
+  })
+  const [repeat, setRepeat] = useState('')
+  const [outputDir, setOutputDir] = useState<string | null>(null)
+  const [phase, setPhase] = useState<'edit' | 'running' | 'done'>('edit')
+  const [progress, setProgress] = useState<ToolProgress | null>(null)
+  const [result, setResult] = useState<ToolResult | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const entriesRef = useRef(entries)
+  entriesRef.current = entries
+
+  const update = (path: string, patch: Partial<Entry>) =>
+    setEntries((list) => list.map((e) => (e.path === path ? { ...e, ...patch } : e)))
+
+  async function inspect(path: string, password?: string) {
+    // update() is a functional state update queued behind the add, so a reply
+    // that beats the first render still lands; a removed file is skipped
+    const info = await api.info(path, password)
+    if (info.ok) {
+      update(path, {
+        status: 'ready',
+        size: info.size,
+        pages: info.kind === 'pdf' ? info.pages : undefined,
+        metadata: info.kind === 'pdf' ? info.metadata : undefined,
+        password,
+        wrongPassword: false,
+      })
+    } else if (info.error.code === 'password-required') {
+      update(path, { status: 'locked' })
+    } else if (info.error.code === 'wrong-password') {
+      update(path, { status: 'locked', wrongPassword: true })
+    } else {
+      update(path, { status: 'error', error: info.error })
+    }
+  }
+
+  function addPaths(paths: readonly string[]) {
+    const wanted = def.input === 'image' ? IMAGE_RE : PDF_RE
+    const known = new Set(entriesRef.current.map((e) => e.path))
+    const fresh = [...new Set(paths)].filter((p) => wanted.test(p) && !known.has(p))
+    if (fresh.length === 0) return
+    setEntries((list) => [
+      ...list,
+      ...fresh
+        .filter((path) => !list.some((e) => e.path === path))
+        .map((path) => ({ path, status: 'checking' as const, draft: '', pageExpr: '' })),
+    ])
+    // one at a time keeps a big drop from loading every file at once
+    void (async () => {
+      for (const p of fresh) await inspect(p)
+    })()
+  }
+
+  // files handed over from the tool grid's drop zone; runs once on open
+  const seeded = useRef(false)
+  useEffect(() => {
+    if (seeded.current) return
+    seeded.current = true
+    if (initialPaths.length > 0) addPaths(initialPaths)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => api.onProgress(setProgress), [api])
+
+  // properties: one file pre-fills the form with what it already says
+  const firstMeta = entries.length === 1 ? entries[0].metadata : undefined
+  useEffect(() => {
+    if (tool === 'properties' && firstMeta) setOptions({ ...firstMeta })
+  }, [tool, firstMeta])
+
+  async function pick() {
+    const paths = await api.pickFiles(def.input, true)
+    addPaths(paths)
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragging(false)
+    const paths = Array.from(e.dataTransfer.files)
+      .map((f) => {
+        try {
+          return api.pathForFile(f)
+        } catch {
+          return ''
+        }
+      })
+      .filter(Boolean)
+    addPaths(paths)
+  }
+
+  // keep file drags here: Home's drop-to-open overlay and bridge must not see them
+  const dragProps = {
+    onDragEnter: (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setDragging(true)
+    },
+    onDragOver: (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+    },
+    onDragLeave: (e: DragEvent) => {
+      e.stopPropagation()
+      if (e.currentTarget === e.target) setDragging(false)
+    },
+    onDrop,
+  }
+
+  function move(index: number, by: number) {
+    setEntries((list) => {
+      const next = [...list]
+      const [item] = next.splice(index, 1)
+      next.splice(Math.max(0, Math.min(next.length, index + by)), 0, item)
+      return next
+    })
+  }
+
+  async function start() {
+    const files: ToolFile[] = entries.map((e) => ({
+      path: e.path,
+      ...(e.password ? { password: e.password } : {}),
+      ...(tool === 'merge' && e.pageExpr.trim() ? { pages: e.pageExpr } : {}),
+    }))
+    const request = {
+      tool,
+      files,
+      options,
+      ...(outputDir ? { outputDir } : {}),
+    } as ToolRequest
+    setPhase('running')
+    setProgress(null)
+    try {
+      setResult(await api.run(request))
+    } catch (err) {
+      setResult({ ok: false, error: { code: 'failed', message: String(err) } })
+    }
+    setPhase('done')
+  }
+
+  const block = blocker(tool, entries, options, repeat)
+  const busy = phase === 'running'
+  const multiple = def.input === 'image' || tool === 'merge'
+
+  return (
+    <div className="pt-panel">
+      <button className="pt-back" onClick={onBack} disabled={busy}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M10 3.5L5.5 8l4.5 4.5" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
+        {t('back')}
+      </button>
+      <header className="pt-panel-head">
+        <span className="pt-panel-icon">
+          <ToolIcon id={tool} size={32} />
+        </span>
+        <div>
+          <h1 className="pt-panel-title">{t(def.name)}</h1>
+          <p className="pt-panel-desc">{t(def.desc)}</p>
+        </div>
+      </header>
+
+      {phase === 'done' && result ? (
+        <Results
+          result={result}
+          t={t}
+          onAgain={() => {
+            setPhase('edit')
+            setResult(null)
+          }}
+          onReset={() => {
+            setEntries([])
+            setPhase('edit')
+            setResult(null)
+          }}
+        />
+      ) : (
+        <>
+          <section
+            className={`pt-drop${dragging ? ' dragging' : ''}${entries.length ? ' has-files' : ''}`}
+            {...dragProps}
+          >
+            {entries.length === 0 ? (
+              <div className="pt-drop-empty">
+                <span>{t(def.input === 'image' ? 'dropImages' : 'dropPdfs')}</span>
+                <span className="pt-drop-or">{t('dropOr')}</span>
+                <button className="btn btn-primary" onClick={() => void pick()}>
+                  {t(def.input === 'image' ? 'addImages' : 'addPdfs')}
+                </button>
+              </div>
+            ) : (
+              <>
+                <ul className="pt-files">
+                  {entries.map((e, i) => (
+                    <FileRow
+                      key={e.path}
+                      entry={e}
+                      index={i}
+                      count={entries.length}
+                      tool={tool}
+                      reorderable={multiple}
+                      disabled={busy}
+                      t={t}
+                      onMove={move}
+                      onRemove={() => setEntries((list) => list.filter((x) => x.path !== e.path))}
+                      onDraft={(draft) => update(e.path, { draft, wrongPassword: false })}
+                      onUnlock={() => {
+                        update(e.path, { status: 'checking' })
+                        void inspect(e.path, e.draft)
+                      }}
+                      onPages={(pageExpr) => update(e.path, { pageExpr })}
+                    />
+                  ))}
+                </ul>
+                <div className="pt-files-actions">
+                  <button className="pt-link" onClick={() => void pick()} disabled={busy}>
+                    + {t('addMore')}
+                  </button>
+                  <button className="pt-link" onClick={() => setEntries([])} disabled={busy}>
+                    {t('clearAll')}
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+
+          <section className="pt-options">
+            <ToolOptionsForm
+              tool={tool}
+              options={options}
+              onChange={setOptions}
+              repeat={repeat}
+              onRepeat={setRepeat}
+              disabled={busy}
+              t={t}
+            />
+            <div className="pt-field">
+              <span className="pt-field-label">{t('saveTo')}</span>
+              <div className="pt-save-to">
+                <span className="pt-save-path" title={outputDir ?? undefined}>
+                  {outputDir ?? t('saveBeside')}
+                </span>
+                <button
+                  className="pt-link"
+                  disabled={busy}
+                  onClick={() => void api.pickFolder().then((d) => d && setOutputDir(d))}
+                >
+                  {t('saveChoose')}
+                </button>
+                {outputDir && (
+                  <button className="pt-link" disabled={busy} onClick={() => setOutputDir(null)}>
+                    {t('saveReset')}
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <div className="pt-run">
+            <button
+              className="btn btn-primary pt-start"
+              disabled={busy || block !== null}
+              onClick={() => void start()}
+            >
+              {busy
+                ? progress && progress.total > 1
+                  ? t('workingProgress', { done: progress.done, total: progress.total })
+                  : t('working')
+                : t('start')}
+            </button>
+            {!busy && block && entries.length > 0 && <span className="pt-block">{t(block)}</span>}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function FileRow({
+  entry: e,
+  index,
+  count,
+  tool,
+  reorderable,
+  disabled,
+  t,
+  onMove,
+  onRemove,
+  onDraft,
+  onUnlock,
+  onPages,
+}: {
+  entry: Entry
+  index: number
+  count: number
+  tool: ToolId
+  reorderable: boolean
+  disabled: boolean
+  t: ToolsT
+  onMove: (index: number, by: number) => void
+  onRemove: () => void
+  onDraft: (v: string) => void
+  onUnlock: () => void
+  onPages: (v: string) => void
+}) {
+  return (
+    <li className={`pt-file ${e.status}`}>
+      <div className="pt-file-main">
+        {reorderable && <span className="pt-file-index">{index + 1}</span>}
+        <span className="pt-file-name" title={e.path}>
+          {baseName(e.path)}
+        </span>
+        <span className="pt-file-meta">
+          {e.status === 'checking' && t('checking')}
+          {e.status === 'locked' && t('locked')}
+          {e.status === 'ready' &&
+            [
+              e.pages !== undefined
+                ? e.pages === 1
+                  ? t('pagesOne')
+                  : t('pagesMany', { n: e.pages })
+                : null,
+              e.size !== undefined ? formatBytes(e.size) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+        </span>
+        {tool === 'merge' && e.status === 'ready' && (
+          <input
+            className="pt-input pt-file-pages"
+            value={e.pageExpr}
+            disabled={disabled}
+            spellCheck={false}
+            placeholder={t('pagesFromFileHint')}
+            aria-label={t('pagesFromFile')}
+            title={t('pagesHint')}
+            onChange={(ev) => onPages(ev.target.value)}
+          />
+        )}
+        {reorderable && (
+          <>
+            <button
+              className="pt-icon-btn"
+              title={t('moveUp')}
+              aria-label={t('moveUp')}
+              disabled={disabled || index === 0}
+              onClick={() => onMove(index, -1)}
+            >
+              ↑
+            </button>
+            <button
+              className="pt-icon-btn"
+              title={t('moveDown')}
+              aria-label={t('moveDown')}
+              disabled={disabled || index === count - 1}
+              onClick={() => onMove(index, 1)}
+            >
+              ↓
+            </button>
+          </>
+        )}
+        <button
+          className="pt-icon-btn"
+          title={t('remove')}
+          aria-label={t('remove')}
+          disabled={disabled}
+          onClick={onRemove}
+        >
+          ×
+        </button>
+      </div>
+      {e.status === 'locked' && (
+        <form
+          className="pt-file-unlock"
+          onSubmit={(ev) => {
+            ev.preventDefault()
+            if (e.draft) onUnlock()
+          }}
+        >
+          <span>{e.wrongPassword ? t('passwordWrong') : t('passwordNeeded')}</span>
+          <input
+            className="pt-input"
+            type="password"
+            value={e.draft}
+            placeholder={t('passwordPlaceholder')}
+            autoComplete="off"
+            onChange={(ev) => onDraft(ev.target.value)}
+          />
+          <button className="btn btn-secondary" type="submit" disabled={!e.draft}>
+            {t('passwordApply')}
+          </button>
+        </form>
+      )}
+      {e.status === 'error' && e.error && (
+        <div className="pt-file-error">{errorText(t, e.error)}</div>
+      )}
+    </li>
+  )
+}
+
+function Results({
+  result,
+  t,
+  onAgain,
+  onReset,
+}: {
+  result: ToolResult
+  t: ToolsT
+  onAgain: () => void
+  onReset: () => void
+}) {
+  const home = window.aiOffice
+  const items = result.ok ? result.items : []
+  const failed = !result.ok || items.every((i) => i.error)
+  const partial = !failed && items.some((i) => i.error)
+  return (
+    <section className="pt-results">
+      <h2 className={`pt-results-title${failed ? ' failed' : ''}`}>
+        {failed ? t('doneFailed') : partial ? t('doneSome') : t('doneTitle')}
+      </h2>
+      {!result.ok && <p className="pt-file-error">{errorText(t, result.error)}</p>}
+      <ul className="pt-files">
+        {items.map((item) => (
+          <li key={item.source} className={`pt-file${item.error ? ' error' : ''}`}>
+            <div className="pt-file-main">
+              <span className="pt-file-name" title={item.source}>
+                {item.outputs.length === 1
+                  ? baseName(item.outputs[0].path)
+                  : item.outputs.length > 1
+                    ? `${baseName(item.source)} → ${t('outputsMany', { n: item.outputs.length })}`
+                    : baseName(item.source)}
+              </span>
+              <span className="pt-file-meta">
+                {item.originalSize !== undefined && item.outputs[0]
+                  ? compressLine(t, item.originalSize, item.outputs[0].size)
+                  : item.outputs.length === 1
+                    ? formatBytes(item.outputs[0].size)
+                    : ''}
+              </span>
+              {item.outputs.length === 1 && PDF_RE.test(item.outputs[0].path) && (
+                <button
+                  className="btn btn-secondary pt-small-btn"
+                  onClick={() => void home.openPath(item.outputs[0].path)}
+                >
+                  {t('open')}
+                </button>
+              )}
+              {item.outputs.length > 0 && (
+                <button
+                  className="btn btn-secondary pt-small-btn"
+                  onClick={() => void home.revealPath(item.outputs[0].path)}
+                >
+                  {t('showInFolder')}
+                </button>
+              )}
+            </div>
+            {item.error && <div className="pt-file-error">{errorText(t, item.error)}</div>}
+          </li>
+        ))}
+      </ul>
+      <div className="pt-run">
+        <button className="btn btn-secondary" onClick={onAgain}>
+          {t('runAgain')}
+        </button>
+        <button className="btn btn-secondary" onClick={onReset}>
+          {t('startOver')}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function compressLine(t: ToolsT, from: number, to: number): string {
+  if (to >= from) return t('compressNoGain')
+  return t('compressSaved', {
+    from: formatBytes(from),
+    to: formatBytes(to),
+    pct: Math.round((1 - to / from) * 100),
+  })
+}
