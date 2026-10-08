@@ -15,7 +15,8 @@ export const UPDATE_CHECK_KEY = 'updateCheck'
 export const UPDATE_LAST_CHECK_KEY = 'updateCheckLastAt'
 export const UPDATE_NOTIFIED_KEY = 'updateNotifiedVersion'
 
-export const REPO = 'omar-184/Hyper-Files'
+// the repository was renamed from Hyper-Files; GitHub redirects the old name
+export const REPO = 'omar-184/Hypercube-Office'
 export const LATEST_RELEASE_API = `https://api.github.com/repos/${REPO}/releases/latest`
 export const RELEASES_PAGE = `https://github.com/${REPO}/releases`
 

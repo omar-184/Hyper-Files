@@ -10,7 +10,7 @@ import {
 } from '../src/main/update-install'
 import type { UpdateInstallDeps } from '../src/main/update-install'
 
-const BASE = 'https://github.com/omar-184/Hyper-Files/releases/download/v0.2.0/'
+const BASE = 'https://github.com/omar-184/Hypercube-Office/releases/download/v0.2.0/'
 const EXE = 'Hypercube-Office-Setup-0.2.0-x64.exe'
 const PAYLOAD = Buffer.from('MZ fake installer bytes '.repeat(50_000))
 const SHA = createHash('sha256').update(PAYLOAD).digest('hex')
