@@ -7,13 +7,13 @@ import {
   type PivotActionContext,
 } from '../src/renderer/pivot-actions'
 import type { OoXmlPivotConfig } from '../src/renderer/PivotDialog'
-import { applyAiPivotAdd } from '../src/renderer/workbook-ops'
+import { applyDslPivotAdd } from '../src/renderer/workbook-ops'
 import { createEditJournal } from '../src/renderer/edit-journal'
 import type { LazyWorkbookState } from '../src/renderer/univer-state'
 
 vi.mock('../src/renderer/workbook-ops', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../src/renderer/workbook-ops')>()),
-  applyAiPivotAdd: vi.fn(),
+  applyDslPivotAdd: vi.fn(),
 }))
 
 type TestRange = {
@@ -253,7 +253,7 @@ describe('pivot source selection', () => {
       values: [{ fieldIndex: 1, agg: 'sum' }],
     }
     expect(handleCreatePivot(f.ctx, config)).toBeNull()
-    expect(applyAiPivotAdd).toHaveBeenLastCalledWith(
+    expect(applyDslPivotAdd).toHaveBeenLastCalledWith(
       f.ctx.univerRef.current,
       f.state,
       expect.objectContaining({

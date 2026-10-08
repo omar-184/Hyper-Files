@@ -39,7 +39,7 @@ import {
   revealCellBelowFreeze,
 } from './univer-sync'
 import type { LazyWorkbookState, UniverRuntime, UniverWorksheet } from './univer-state'
-import { applyAiTableAdd } from './workbook-ops'
+import { applyDslTableAdd } from './workbook-ops'
 
 /** The App refs/state the data-tool actions need; built fresh per call. */
 export interface DataToolsContext {
@@ -664,7 +664,7 @@ export function handleFormatAsTable(ctx: DataToolsContext, style: string): void 
     }
   }
   try {
-    applyAiTableAdd(runtime, state, {
+    applyDslTableAdd(runtime, state, {
       op: 'add_table',
       sheetId,
       range: `${columnLabel(startColumn)}${startRow + 1}:${columnLabel(endColumn)}${endRow + 1}`,

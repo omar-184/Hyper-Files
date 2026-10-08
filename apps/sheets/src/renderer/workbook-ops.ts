@@ -41,7 +41,7 @@ import type { PivotDefinition } from '@genoffice/xlsx-gateway/gateway/xlsx-pivot
 import { applyFormatPatchToRange, nextSessionPivotName, nextSessionTableName } from './univer-sync'
 import type { LazyWorkbookState, UniverRuntime, UniverWorksheet } from './univer-state'
 
-export function applyAiTableAdd(
+export function applyDslTableAdd(
   runtime: UniverRuntime,
   state: LazyWorkbookState,
   op: AddTableOperation,
@@ -117,9 +117,9 @@ export function applyAiTableAdd(
   })
 }
 
-/// AI add_table_row: inserts one or more rows into a session-added table.
+/// DSL add_table_row: inserts one or more rows into a session-added table.
 /// The row index is 1-based within the data region (header = row 0).
-export function applyAiTableRowAdd(
+export function applyDslTableRowAdd(
   runtime: UniverRuntime,
   state: LazyWorkbookState,
   op: AddTableRowOperation,
@@ -144,8 +144,8 @@ export function applyAiTableRowAdd(
   })
 }
 
-/// AI delete_table_row: removes one or more rows from a session-added table.
-export function applyAiTableRowDelete(
+/// DSL delete_table_row: removes one or more rows from a session-added table.
+export function applyDslTableRowDelete(
   runtime: UniverRuntime,
   state: LazyWorkbookState,
   op: DeleteTableRowOperation,
@@ -164,8 +164,8 @@ export function applyAiTableRowDelete(
   })
 }
 
-/// AI delete_table_column: removes one or more columns from a session-added table.
-export function applyAiTableColumnDelete(
+/// DSL delete_table_column: removes one or more columns from a session-added table.
+export function applyDslTableColumnDelete(
   runtime: UniverRuntime,
   state: LazyWorkbookState,
   op: DeleteTableColumnOperation,
@@ -187,7 +187,7 @@ export function applyAiTableColumnDelete(
   })
 }
 
-export function applyAiTableColumnAdd(
+export function applyDslTableColumnAdd(
   runtime: UniverRuntime,
   state: LazyWorkbookState,
   op: AddTableColumnOperation,
@@ -287,7 +287,7 @@ const LAYOUT_ERROR_KEYS = {
   needsValues: 'appPivotNeedsValues',
 } satisfies Record<PivotLayoutErrorCode, Parameters<typeof t>[0]>
 
-export function applyAiPivotAdd(
+export function applyDslPivotAdd(
   runtime: UniverRuntime,
   state: LazyWorkbookState,
   op: AddPivotOperation,

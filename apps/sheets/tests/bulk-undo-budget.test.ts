@@ -2,8 +2,8 @@ import { LocalUndoRedoService } from '@univerjs/core'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
-  AI_UNDO_CELL_BUDGET,
-  aiBulkUndoGate,
+  BULK_UNDO_CELL_BUDGET,
+  bulkUndoGate,
   installJournalSuppressionUndoFilter,
   undoPayloadCells,
 } from '../src/renderer/univer-state'
@@ -29,13 +29,13 @@ function fakeService(stack: unknown[], redoStack: unknown[] = []) {
   }
 }
 
-describe('AI bulk-apply undo budget', () => {
+describe('bulk-apply undo budget', () => {
   beforeEach(() => {
     installJournalSuppressionUndoFilter()
-    aiBulkUndoGate.active = false
-    aiBulkUndoGate.dropped = false
-    aiBulkUndoGate.cells = 0
-    aiBulkUndoGate.pushed = 0
+    bulkUndoGate.active = false
+    bulkUndoGate.dropped = false
+    bulkUndoGate.cells = 0
+    bulkUndoGate.pushed = 0
   })
 
   it('counts payload cells with a bounded walk', () => {
@@ -53,11 +53,11 @@ describe('AI bulk-apply undo budget', () => {
         fakeService(stack),
         item,
       )
-    aiBulkUndoGate.active = true
+    bulkUndoGate.active = true
     push(setRangeItem(500))
     push(setRangeItem(500))
     expect(stack.length).toBe(2)
-    expect(aiBulkUndoGate.dropped).toBe(false)
+    expect(bulkUndoGate.dropped).toBe(false)
   })
 
   it('discards the whole batch once the cumulative payload crosses the budget', () => {
@@ -67,14 +67,14 @@ describe('AI bulk-apply undo budget', () => {
         fakeService(stack),
         item,
       )
-    aiBulkUndoGate.active = true
-    push(setRangeItem(AI_UNDO_CELL_BUDGET))
+    bulkUndoGate.active = true
+    push(setRangeItem(BULK_UNDO_CELL_BUDGET))
     expect(stack.length).toBe(1)
     // The next chunk crosses the budget: the already-pushed part of the batch
     // must go too, or undo would revert only some chunks of the operation.
     push(setRangeItem(10))
     expect(stack.length).toBe(0)
-    expect(aiBulkUndoGate.dropped).toBe(true)
+    expect(bulkUndoGate.dropped).toBe(true)
     // Later chunks of the same batch stay dropped.
     push(setRangeItem(10))
     expect(stack.length).toBe(0)
@@ -83,21 +83,21 @@ describe('AI bulk-apply undo budget', () => {
   it('a batch dropped on its first item still clears stale redo', () => {
     const stack: unknown[] = []
     const redoStack: unknown[] = [setRangeItem(5)]
-    aiBulkUndoGate.active = true
+    bulkUndoGate.active = true
     ;(LocalUndoRedoService.prototype.pushUndoRedo as (i: unknown) => void).call(
       fakeService(stack, redoStack),
-      setRangeItem(AI_UNDO_CELL_BUDGET + 10),
+      setRangeItem(BULK_UNDO_CELL_BUDGET + 10),
     )
     expect(stack.length).toBe(0)
     expect(redoStack.length).toBe(0)
-    expect(aiBulkUndoGate.dropped).toBe(true)
+    expect(bulkUndoGate.dropped).toBe(true)
   })
 
-  it('leaves non-AI pushes alone', () => {
+  it('leaves pushes outside a bulk apply alone', () => {
     const stack: unknown[] = []
     ;(LocalUndoRedoService.prototype.pushUndoRedo as (i: unknown) => void).call(
       fakeService(stack),
-      setRangeItem(AI_UNDO_CELL_BUDGET + 10),
+      setRangeItem(BULK_UNDO_CELL_BUDGET + 10),
     )
     expect(stack.length).toBe(1)
   })

@@ -55,7 +55,7 @@ import {
   structuralDeleteFormulaError,
   type StreamedRefSheet,
 } from './plan-operations'
-import { aiBulkUndoGate, journalSuppression } from './univer-state'
+import { bulkUndoGate, journalSuppression } from './univer-state'
 import type {
   ActiveWorkbook,
   LazyWorkbookState,
@@ -64,9 +64,9 @@ import type {
 } from './univer-state'
 import {
   absRangeRef,
-  applyAiConditionalFormat,
-  applyAiDataValidation,
-  applyAiHyperlink,
+  applyDslConditionalFormat,
+  applyDslDataValidation,
+  applyDslHyperlink,
   applyFilterCriteria,
   applyFormatPatchToRange,
   applyJournalOverlay,
@@ -82,20 +82,20 @@ import {
   workbookStructureLocked,
 } from './univer-sync'
 import {
-  applyAiShapeEdit,
-  buildAiChartEdit,
-  insertAiChartVisual,
-  insertAiImageVisual,
-  insertAiShapeVisual,
+  applyDslShapeEdit,
+  buildDslChartEdit,
+  insertDslChartVisual,
+  insertDslImageVisual,
+  insertDslShapeVisual,
   type VisualActionContext,
 } from './visual-actions'
 import {
-  applyAiPivotAdd,
-  applyAiTableAdd,
-  applyAiTableColumnAdd,
-  applyAiTableColumnDelete,
-  applyAiTableRowAdd,
-  applyAiTableRowDelete,
+  applyDslPivotAdd,
+  applyDslTableAdd,
+  applyDslTableColumnAdd,
+  applyDslTableColumnDelete,
+  applyDslTableRowAdd,
+  applyDslTableRowDelete,
 } from './workbook-ops'
 import type { ChartEditData, ShapeEditChanges } from './WorkbookVisuals'
 
@@ -218,7 +218,7 @@ export async function precheckStructuralDeletes(
           table.sheetId === op.sheetId && table.name.toLowerCase() === op.tableName.toLowerCase(),
       )
       if (!entry) return 'shifts'
-      // mirrors applyAiTableRowDelete/applyAiTableColumnDelete addressing
+      // mirrors applyDslTableRowDelete/applyDslTableColumnDelete addressing
       return op.op === 'delete_table_row'
         ? {
             op: 'delete_rows',
@@ -259,17 +259,17 @@ export async function precheckStructuralDeletes(
  * All commands of one batch merge into a single undo item (⌘Z / [Undo] rolls
  * back the whole batch in one step). Disposing pushes the batched item
  * through the undo gate, so the success path must settle before reading
- * `aiBulkUndoGate.dropped`.
+ * `bulkUndoGate.dropped`.
  */
 export function beginUndoBatch(runtime: UniverRuntime): { settle(): void } {
   const batchUnitId = runtime.univerAPI.getActiveWorkbook()?.getId()
   const undoBatching = batchUnitId
     ? runtime.univer.__getInjector().get(IUndoRedoService).__tempBatchingUndoRedo(batchUnitId)
     : null
-  aiBulkUndoGate.active = true
-  aiBulkUndoGate.dropped = false
-  aiBulkUndoGate.cells = 0
-  aiBulkUndoGate.pushed = 0
+  bulkUndoGate.active = true
+  bulkUndoGate.dropped = false
+  bulkUndoGate.cells = 0
+  bulkUndoGate.pushed = 0
   let settled = false
   return {
     settle() {
@@ -278,7 +278,7 @@ export function beginUndoBatch(runtime: UniverRuntime): { settle(): void } {
       try {
         undoBatching?.dispose()
       } finally {
-        aiBulkUndoGate.active = false
+        bulkUndoGate.active = false
       }
     },
   }
@@ -328,7 +328,7 @@ export function applyChangePlan(
   ctx: OpExecutorContext,
   options: ApplyPlanOptions = {},
 ): Promise<ApplyOutcome> {
-  // One apply at a time: the undo batch and aiBulkUndoGate are not reentrant,
+  // One apply at a time: the undo batch and bulkUndoGate are not reentrant,
   // and the async prechecks yield — a ribbon click landing during another apply
   // (or a second click during a delete precheck) must wait its turn.
   const run = applyQueue.then(() => applyChangePlanNow(plan, ctx, options))
@@ -470,7 +470,7 @@ async function applyChangePlanNow(
       setMessage(options.successMessage ?? t('appAppliedJournaled'))
     }
     undoBatch.settle()
-    if (aiBulkUndoGate.dropped) {
+    if (bulkUndoGate.dropped) {
       notices.push(
         'this change is too large for the undo history — the [Undo] button and ⌘Z will not revert it',
       )
@@ -483,7 +483,7 @@ async function applyChangePlanNow(
     // and a budget-dropped batch must not advertise the ⌘Z rollback.
     undoBatch.settle()
     return anyApplied
-      ? { ok: false, reason, partiallyApplied: true, undoDropped: aiBulkUndoGate.dropped }
+      ? { ok: false, reason, partiallyApplied: true, undoDropped: bulkUndoGate.dropped }
       : { ok: false, reason }
   } finally {
     undoBatch.settle()
@@ -595,29 +595,29 @@ async function executeOp(op: PlannedOp, run: OpRun): Promise<void> {
     }
     setPendingEdits(journalSize(state.editJournal))
   } else if (op.op === 'add_chart') {
-    await insertAiChartVisual(ctx.visualContext(), runtime, state, op)
+    await insertDslChartVisual(ctx.visualContext(), runtime, state, op)
   } else if (op.op === 'add_shape') {
-    insertAiShapeVisual(ctx.visualContext(), runtime, state, op)
+    insertDslShapeVisual(ctx.visualContext(), runtime, state, op)
   } else if (op.op === 'edit_shape') {
-    applyAiShapeEdit(ctx.visualContext(), runtime, state, op)
+    applyDslShapeEdit(ctx.visualContext(), runtime, state, op)
   } else if (op.op === 'add_image') {
     const image = imageData.get(op.path)
     if (!image) throw new Error(t('appImageNotLoaded', { path: op.path }))
-    insertAiImageVisual(ctx.visualContext(), runtime, state, op, image)
+    insertDslImageVisual(ctx.visualContext(), runtime, state, op, image)
   } else if (op.op === 'add_table') {
-    applyAiTableAdd(runtime, state, op)
+    applyDslTableAdd(runtime, state, op)
   } else if (op.op === 'add_table_row') {
-    applyAiTableRowAdd(runtime, state, op)
+    applyDslTableRowAdd(runtime, state, op)
   } else if (op.op === 'add_table_column') {
-    applyAiTableColumnAdd(runtime, state, op)
+    applyDslTableColumnAdd(runtime, state, op)
   } else if (op.op === 'delete_table_row') {
-    applyAiTableRowDelete(runtime, state, op)
+    applyDslTableRowDelete(runtime, state, op)
   } else if (op.op === 'delete_table_column') {
-    applyAiTableColumnDelete(runtime, state, op)
+    applyDslTableColumnDelete(runtime, state, op)
   } else if (op.op === 'add_pivot') {
-    applyAiPivotAdd(runtime, state, op)
+    applyDslPivotAdd(runtime, state, op)
   } else if (op.op === 'set_hyperlink') {
-    applyAiHyperlink(state, sheetById(op.sheetId), op)
+    applyDslHyperlink(state, sheetById(op.sheetId), op)
   } else if (op.op === 'protect_sheet') {
     const guard = protectSheetGuard(state, op.sheetId, op.protected)
     if (guard) throw new Error(guard)
@@ -649,7 +649,7 @@ async function executeOp(op: PlannedOp, run: OpRun): Promise<void> {
       op.values === null ? null : { values: op.values },
     )
   } else if (op.op === 'add_conditional_format') {
-    applyAiConditionalFormat(sheetById(op.sheetId), op)
+    applyDslConditionalFormat(sheetById(op.sheetId), op)
   } else if (op.op === 'clear_conditional_formats') {
     const target = sheetById(op.sheetId)
     for (const rule of target.getConditionalFormattingRules()) {
@@ -659,7 +659,7 @@ async function executeOp(op: PlannedOp, run: OpRun): Promise<void> {
       }
     }
   } else if (op.op === 'set_data_validation') {
-    applyAiDataValidation(runtime, sheetById(op.sheetId), op)
+    applyDslDataValidation(runtime, sheetById(op.sheetId), op)
   } else if (op.op === 'add_defined_name') {
     if (!workbook) throw new Error(t('appNoWorkbookOpen'))
     workbook.insertDefinedName(op.name, op.ref)
@@ -1499,7 +1499,7 @@ async function executeOp(op: PlannedOp, run: OpRun): Promise<void> {
   } else {
     ctx.chartEditRef.current(
       op.chartPath,
-      await buildAiChartEdit(ctx.visualContext(), state, workbook, op),
+      await buildDslChartEdit(ctx.visualContext(), state, workbook, op),
     )
   }
   run.markApplied()

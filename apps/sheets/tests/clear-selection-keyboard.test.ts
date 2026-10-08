@@ -160,7 +160,7 @@ describe('shouldInterceptClearSelection', () => {
     expect(
       isGridKeyTarget(keyEvent('5', ['[data-u-comp="formula-bar"]', '#univer-container']).target),
     ).toBe(false)
-    // App fields: AI composer (contenteditable outside the grid), dialogs.
+    // App fields: contenteditable chrome outside the grid, dialogs.
     expect(isGridKeyTarget(keyEvent('5', ['[contenteditable="true"]']).target)).toBe(false)
     expect(isGridKeyTarget(keyEvent('5', ['[role="dialog"]']).target)).toBe(false)
   })

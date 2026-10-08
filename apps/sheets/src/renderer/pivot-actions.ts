@@ -23,7 +23,7 @@ import type { TimelineUiState } from './TimelinePanel'
 import { resolvePivotSource } from './pivot-source'
 import type { LazyWorkbookState, UniverRuntime } from './univer-state'
 import {
-  applyAiPivotAdd,
+  applyDslPivotAdd,
   applyGrownPivotOutput,
   pivotConfigToOpParts,
   readPivotSourceGrid,
@@ -249,7 +249,7 @@ export function handleCreatePivot(
   const parts = pivotConfigToOpParts(config, pivotFieldOptions(ctx, config.sourceRange))
   if (typeof parts === 'string') return parts
   try {
-    applyAiPivotAdd(runtime, state, {
+    applyDslPivotAdd(runtime, state, {
       op: 'add_pivot',
       sheetId,
       sourceRange: config.sourceRange,
@@ -370,7 +370,7 @@ export function handleEditPivotApply(
   const parts = pivotConfigToOpParts(config, context.fields)
   if (typeof parts === 'string') return parts
   try {
-    applyAiPivotAdd(
+    applyDslPivotAdd(
       runtime,
       state,
       {

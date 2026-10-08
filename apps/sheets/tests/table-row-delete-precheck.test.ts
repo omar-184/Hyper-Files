@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { precheckStructuralDeletes } from '../src/renderer/op-executor'
-import { applyAiTableRowDelete } from '../src/renderer/workbook-ops'
+import { applyDslTableRowDelete } from '../src/renderer/workbook-ops'
 import type { LazyWorkbookState } from '../src/renderer/univer-state'
 
-/// An AI delete_table_row is a whole-sheet row delete underneath, so the
+/// A DSL delete_table_row is a whole-sheet row delete underneath, so the
 /// batch precheck translates it to the same span the apply path deletes. This
 /// drives both paths and compares them, so the precheck cannot drift onto a
 /// different row base (which either false-rejects a legal batch or misses the
@@ -56,7 +56,7 @@ function stubFormulaOn(sheetRow: number): void {
 const op = (row: number, count = 1) =>
   ({ op: 'delete_table_row', sheetId: 'sh1', tableName: 'Sales', row, count }) as never
 
-/// The 0-based sheet row applyAiTableRowDelete hands to Univer's deleteRows.
+/// The 0-based sheet row applyDslTableRowDelete hands to Univer's deleteRows.
 function applyRow(row: number, count = 1): number {
   const calls: number[] = []
   const runtime = {
@@ -68,7 +68,7 @@ function applyRow(row: number, count = 1): number {
       }),
     },
   } as never
-  applyAiTableRowDelete(runtime, state(), op(row, count))
+  applyDslTableRowDelete(runtime, state(), op(row, count))
   return calls[0] as number
 }
 

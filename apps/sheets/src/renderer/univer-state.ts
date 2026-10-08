@@ -245,12 +245,12 @@ export const journalSuppression = { active: false }
 /// entry: the stack retains the full mutation matrices both ways (five
 /// 200k-cell copies held ~336MB), and entries accumulate across batches.
 /// The apply path surfaces a "too large to undo" notice instead.
-export const AI_UNDO_CELL_BUDGET = 100_000
+export const BULK_UNDO_CELL_BUDGET = 100_000
 
 /// Raised around a DSL plan apply. Batching merges each command's small item
 /// into the stack-top entry, so the budget must be tracked cumulatively over
 /// the activation; `dropped` reports the batch entry was discarded.
-export const aiBulkUndoGate = { active: false, dropped: false, cells: 0, pushed: 0 }
+export const bulkUndoGate = { active: false, dropped: false, cells: 0, pushed: 0 }
 
 export interface UndoRedoItemLike {
   readonly unitID: string
@@ -291,11 +291,11 @@ export function installJournalSuppressionUndoFilter(): void {
   const originalPush = proto.pushUndoRedo
   proto.pushUndoRedo = function (this: unknown, item: UndoRedoItemLike) {
     if (journalSuppression.active) return
-    if (aiBulkUndoGate.active) {
-      if (aiBulkUndoGate.dropped) return
-      aiBulkUndoGate.cells += undoPayloadCells(item, AI_UNDO_CELL_BUDGET + 1)
-      if (aiBulkUndoGate.cells > AI_UNDO_CELL_BUDGET) {
-        aiBulkUndoGate.dropped = true
+    if (bulkUndoGate.active) {
+      if (bulkUndoGate.dropped) return
+      bulkUndoGate.cells += undoPayloadCells(item, BULK_UNDO_CELL_BUDGET + 1)
+      if (bulkUndoGate.cells > BULK_UNDO_CELL_BUDGET) {
+        bulkUndoGate.dropped = true
         // Chunks already merged into the stack-top batch entry must go too —
         // keeping them would make undo revert only part of the operation.
         const service = this as {
@@ -303,7 +303,7 @@ export function installJournalSuppressionUndoFilter(): void {
           _getRedoStack?: (unitId: string) => unknown[] | undefined
           _updateStatus?: () => void
         }
-        if (aiBulkUndoGate.pushed > 0) {
+        if (bulkUndoGate.pushed > 0) {
           const stack = service._getUndoStack?.(item.unitID)
           if (Array.isArray(stack) && stack.length > 0) stack.pop()
         }
@@ -314,7 +314,7 @@ export function installJournalSuppressionUndoFilter(): void {
         service._updateStatus?.()
         return
       }
-      aiBulkUndoGate.pushed += 1
+      bulkUndoGate.pushed += 1
     }
     originalPush.call(this, item)
   }

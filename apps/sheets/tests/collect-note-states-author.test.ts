@@ -28,7 +28,7 @@ function harness(comments: Comment[], live: { row: number; col: number; note: st
 
 describe('collectNoteStates author marker', () => {
   it('keeps a note that was authored this session whole', () => {
-    // Neither the AI set_note op nor the note editor writes an "Author:\n"
+    // Neither the DSL set_note op nor the note editor writes an "Author:\n"
     // marker, so an author-less note whose first line ends in a colon used to be
     // read as author="Status" and lost that line on save.
     const authored = { row: 0, col: 0, note: 'Status:\nOn track' }

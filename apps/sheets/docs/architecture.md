@@ -9,26 +9,15 @@ Renderer (React spreadsheet shell + Univer)
   -> Rust XLSX sidecar
   -> temporary row-chunk index
   -> copy-on-write OOXML gateway
-
-Renderer
-  -> context extractor
-  -> local privacy policy
-  -> cloud planner
-  -> untrusted command DSL
-  -> local validation and dry-run
-  -> user approval
-  -> atomic commit and audit
 ```
 
-The document core is the only workbook writer. The renderer cannot access disk, model credentials, or subprocesses. A cloud model cannot invoke native capabilities or commit files.
+The document core is the only workbook writer. The renderer cannot access disk or subprocesses.
 
 The Electron main process owns the XLSX sidecar lifecycle. The renderer receives an opaque session ID and can request only validated, size-limited worksheet ranges. External workbooks are read-only while this streaming path is being validated.
 
 ## Renderer composition
 
-React owns the desktop title bar, Ribbon navigation, AI panel, async status, and file metadata. Univer owns the formula bar, worksheet canvas, sheet tabs, selection, scrolling, and zoom controls.
-
-The AI panel is a collapsible peer of the worksheet rather than a permanent overlay. Collapsing it expands the worksheet column without recreating the Univer runtime or workbook session.
+React owns the desktop title bar, Ribbon navigation, async status, and file metadata. Univer owns the formula bar, worksheet canvas, sheet tabs, selection, scrolling, and zoom controls.
 
 ## Styles and visual objects
 
@@ -61,7 +50,7 @@ Product code depends on `WorkbookAdapter`, not Univer APIs. The adapter exposes:
 - `apply`
 - `undo`
 
-This keeps AI planning, transaction safety, and audit behavior replaceable if the editor changes.
+This keeps planning, transaction safety, and audit behavior replaceable if the editor changes.
 
 ## XLSX preservation
 

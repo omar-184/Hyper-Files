@@ -44,7 +44,7 @@ describe('hasPendingFormulaCells', () => {
 
 describe('buildStreamedChartGrid', () => {
   // Summary!L2:L6 of a streamed workbook: the sidecar still holds the file's
-  // cached results, the AI rewrote L2:L4 as =B6/=C6/=D6.
+  // cached results, an edit rewrote L2:L4 as =B6/=C6/=D6.
   const bounds = { startRow: 1, endRow: 5, startColumn: 11, endColumn: 11 }
   const screen = [
     { row: 1, column: 11, value: 232532.97, formula: 'SUM(B2:B5)' },

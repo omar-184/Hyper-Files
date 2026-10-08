@@ -474,7 +474,7 @@ export function handleInsertShape(
 
 /// DSL edit_chart → renderer edit data. Series ranges are read from the
 /// sheet here so the file cache and the on-screen render update together.
-export async function buildAiChartEdit(
+export async function buildDslChartEdit(
   ctx: VisualActionContext,
   state: LazyWorkbookState,
   workbook: ReturnType<UniverRuntime['univerAPI']['getActiveWorkbook']>,
@@ -531,7 +531,7 @@ export async function buildAiChartEdit(
 
 /// DSL add_image: same visual pipeline as the picker-based insert, sized
 /// from the measured natural dimensions.
-export function insertAiImageVisual(
+export function insertDslImageVisual(
   ctx: VisualActionContext,
   runtime: UniverRuntime,
   state: LazyWorkbookState,
@@ -570,7 +570,7 @@ export function insertAiImageVisual(
 
 /// DSL edit_shape: in-place journal update of a session-added shape,
 /// preserving the frame size on a move.
-export function applyAiShapeEdit(
+export function applyDslShapeEdit(
   ctx: VisualActionContext,
   runtime: UniverRuntime,
   state: LazyWorkbookState,
@@ -602,7 +602,7 @@ export function applyAiShapeEdit(
 /// DSL add_chart: same visual-add pipeline as the ribbon's Insert Chart,
 /// fed an explicit data range instead of the selection. Values come from
 /// the sidecar-mapped read, so ranges outside the streamed viewport work.
-export async function insertAiChartVisual(
+export async function insertDslChartVisual(
   ctx: VisualActionContext,
   runtime: UniverRuntime,
   state: LazyWorkbookState,
@@ -626,7 +626,7 @@ export async function insertAiChartVisual(
   queueCtxVisualInstall(ctx, runtime)
 }
 
-export function insertAiShapeVisual(
+export function insertDslShapeVisual(
   ctx: VisualActionContext,
   runtime: UniverRuntime,
   state: LazyWorkbookState,

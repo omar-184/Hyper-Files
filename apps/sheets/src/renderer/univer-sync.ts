@@ -651,7 +651,7 @@ export function protectSheetGuard(
 }
 
 /// Same journal write + link styling as the Insert Link menu action.
-export function applyAiHyperlink(
+export function applyDslHyperlink(
   state: LazyWorkbookState,
   worksheet: UniverWorksheet,
   op: SetHyperlinkOperation,
@@ -676,7 +676,7 @@ export function applyAiHyperlink(
   } as unknown as ICellData)
 }
 
-export function applyAiConditionalFormat(
+export function applyDslConditionalFormat(
   worksheet: UniverWorksheet,
   op: AddConditionalFormatOperation,
 ): void {
@@ -730,7 +730,7 @@ export function applyAiConditionalFormat(
     )
     return
   }
-  let styled = buildAiHighlight(builder, rule)
+  let styled = buildDslHighlight(builder, rule)
   if (rule.format.fillColor !== undefined) styled = styled.setBackground(rule.format.fillColor)
   if (rule.format.fontColor !== undefined) styled = styled.setFontColor(rule.format.fontColor)
   if (rule.format.bold) styled = styled.setBold(true)
@@ -738,7 +738,7 @@ export function applyAiConditionalFormat(
   worksheet.addConditionalFormattingRule(styled.setRanges(ranges).build())
 }
 
-function buildAiHighlight(
+function buildDslHighlight(
   builder: ReturnType<UniverWorksheet['newConditionalFormattingRule']>,
   rule: Exclude<
     AddConditionalFormatOperation['rule'],
@@ -794,7 +794,7 @@ function buildAiHighlight(
   throw new Error('Unsupported conditional-format rule.')
 }
 
-export function applyAiDataValidation(
+export function applyDslDataValidation(
   runtime: UniverRuntime,
   worksheet: UniverWorksheet,
   op: SetDataValidationOperation,
@@ -7454,7 +7454,7 @@ export function clearLazyState(state: LazyWorkbookState | null): void {
 }
 
 /// Reads a cell's current content (display value, formula, raw value).
-export function lazyCellReader(worksheet: UniverWorksheet): (address: string) => CellState {
+function lazyCellReader(worksheet: UniverWorksheet): (address: string) => CellState {
   return (address) => {
     const range = worksheet.getRange(address)
     const formula = range.getFormula()
