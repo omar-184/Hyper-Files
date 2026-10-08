@@ -1,20 +1,19 @@
 /**
- * Op-docs sync inside pptx-ops: the markdown prompt docs (src/prompts/ops/*.md,
+ * Op-docs sync inside pptx-ops: the markdown op docs (src/docs/*.md,
  * parsed into OP_DOCS) must track the executor registry exactly. A new op
  * without a doc block (or a block for a removed op) fails here, not in
- * production. Mirrors apps/slides/tests/op-docs*.test.ts so the package is
- * self-checking without the app harness.
+ * production.
  */
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { OP_DOCS, OP_GROUPS, opUsage, opVocabulary } from '../src/op-docs'
+import { OP_DOCS, OP_GROUPS, opUsage } from '../src/op-docs'
 import { opNames } from '../src/ops/registry'
 import '../src/ops/index'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const opsDir = join(here, '../src/prompts/ops')
+const opsDir = join(here, '../src/docs')
 const groupFiles = readdirSync(opsDir).filter((f) => f.endsWith('.md'))
 const pending = new Set(Object.keys(OP_DOCS).filter((n) => OP_DOCS[n]!.pending))
 
@@ -50,7 +49,7 @@ describe('op-docs sync', () => {
     expect(stale).toEqual([])
   })
 
-  it('every registered op appears as a ### heading in the prompt docs', () => {
+  it('every registered op appears as a ### heading in the op docs', () => {
     const seen = new Set<string>()
     for (const file of groupFiles) {
       if (file === '_format.md') continue
@@ -59,7 +58,7 @@ describe('op-docs sync', () => {
     expect(opNames().filter((n) => !seen.has(n))).toEqual([])
   })
 
-  it('every prompt-doc heading matches a registered op (or pending)', () => {
+  it('every op-doc heading matches a registered op (or pending)', () => {
     const registered = new Set(opNames())
     const stale: string[] = []
     for (const file of groupFiles) {
@@ -83,7 +82,6 @@ describe('op-docs sync', () => {
   it('usage lines resolve for registered ops and stay undefined for unknown ops', () => {
     expect(opUsage('setText')).toContain('Usage: setText')
     expect(opUsage('sparkle')).toBeUndefined()
-    expect(opVocabulary()).toContain('setText')
   })
 })
 

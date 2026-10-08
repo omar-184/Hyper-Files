@@ -76,7 +76,7 @@ register({
     const { slide, el } = resolveElement(ctx, op, { types: ['table'] })
     const row = op.row as number
     const col = op.col as number
-    // Callers (the cell editor, the AI tools, scripts) send EditParagraphs:
+    // Callers (the cell editor, scripts) send EditParagraphs:
     // rebuild them onto the cell's current paragraphs exactly like setText does
     // for shapes, so the run/paragraph properties the caller cannot express
     // (size, color, font, bold, bullets, theme links) stay with the cell instead
@@ -217,7 +217,7 @@ register({
 })
 
 // ── setTableStyle ───────────────────────────────────────────────────────
-// Model-facing fields resolve here so the ribbon and the AI send the same op:
+// Caller-facing fields resolve here so the ribbon and scripts send the same op:
 // a preset name pins its fixed-color style definition into tableStyles.xml
 // (built-in GUIDs track theme colors, so colors would drift), and applying a
 // preset clears direct cell formatting like PowerPoint's style gallery does.

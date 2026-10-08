@@ -52,7 +52,7 @@ after it.
 
 Inserts a page bound to one of the deck's layouts, with that layout's
 placeholders as empty prompt boxes. `layout` is the layout's gallery name or
-its 0-based index as listed by `slides read --layouts`; the error names every
+its 0-based index in the deck's layout list; the error names every
 layout when the reference misses. The new slide's id is reported in `created`.
 
 ```json
@@ -61,20 +61,20 @@ layout when the reference misses. The new slide's id is reported in `created`.
 
 Common mistakes
 
-- Guessing layout names from another deck: list them with `slides read --layouts` first.
-- Filling the new placeholders in the same batch: they get ids only after the insert; `slides read` the new slide, then `setText`.
+- Guessing layout names from another deck: check the deck's layout list first.
+- Filling the new placeholders in the same batch: they get ids only after the insert; read the new slide's outline, then `setText`.
 
-### pasteSlide (not-ai-callable)
+### pasteSlide (internal)
 
 `{afterIndex,bundle|png,mode?} — clipboard payload`
 
 Pastes a copied slide bundle from the internal clipboard.
 
-### insertSlidePptx (not-ai-callable)
+### insertSlidePptx (internal)
 
-`{source,at?,replace?} — generated-page landing payload (use generate_deck/regenerate_slide)`
+`{source,at?,replace?} — one-slide pptx payload`
 
-Lands a generated one-slide pptx into the deck; the generation tools call it.
+Lands a one-slide pptx into the deck, optionally replacing an existing slide.
 
 ### moveSlide
 
@@ -113,7 +113,7 @@ slide in the same transaction.
 | `"gradient"` | `from`, `to`, `angleDeg?`, `radial?` | Two-stop gradient; `angleDeg` in degrees (default 0); `radial:true` ignores the angle |
 | `"reset"`    | none                                 | Remove the page override and inherit the layout/master background                     |
 | `"graphics"` | `hidden`                             | `true` hides the master's background graphics on this page                            |
-| `"image"`    | `source`                             | Bytes or media-part payload; not usable from `apply_ops`                              |
+| `"image"`    | `source`                             | Bytes or media-part payload from the UI's picture picker                              |
 
 ```json
 { "op": "setBackground", "target": { "slide": 0 }, "kind": "solid", "color": "#0B1F3A" }
@@ -137,7 +137,7 @@ slide in the same transaction.
 Common mistakes
 
 - Dark backgrounds without lightening the text: follow up with `setFont` color changes on the page's text.
-- `kind:"image"` from the model: use the picture tools; the op needs bytes.
+- `kind:"image"` without bytes: the op needs an image payload, not a URL.
 
 ### setHidden
 
@@ -162,7 +162,7 @@ Slide transition. Accepted kinds: `none`, `morph`, `fade`, `push`, `wipe`,
 
 Common mistakes
 
-- Names from other tools such as `"slide"` or `"cut"`: only the kinds listed above are accepted; the error lists them.
+- Names from other apps such as `"slide"` or `"cut"`: only the kinds listed above are accepted; the error lists them.
 
 ### setAdvanceTime
 
@@ -174,7 +174,7 @@ Automatic advance after the given milliseconds; `null` returns to click-to-advan
 { "op": "setAdvanceTime", "target": { "slide": 0 }, "ms": 5000 }
 ```
 
-### setAnimations (not-ai-callable)
+### setAnimations (internal)
 
 `{items:[{spid,effect,trigger,durationMs,delayMs,…}]} — spid-addressed (cNvPr id), no id translation yet`
 
@@ -187,7 +187,7 @@ animation pane owns it for now.
 
 Adds one animation for the element at the end of the page's timeline (or right
 after position `after`). The timeline is read back as `animations[]` in
-`slides read`, each item with its `seq` (0-based position), `el`, `effect`,
+the slide outline, each item with its `seq` (0-based position), `el`, `effect`,
 `kind`, `trigger`, `durationMs`, `delayMs`.
 
 | Field      | Type                                                                                                                                                                                                                                                                                   | Notes                                                                                                                                             |
@@ -261,7 +261,7 @@ Adds a review comment to the page.
   "op": "addComment",
   "target": { "slide": 0 },
   "text": "Consider a stronger verb in the title.",
-  "author": "AI Assistant"
+  "author": "Reviewer"
 }
 ```
 

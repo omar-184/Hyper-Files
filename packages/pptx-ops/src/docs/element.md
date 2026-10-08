@@ -444,7 +444,7 @@ individual runs are set through `setText` run `link` fields.
 Lines up several top-level elements on one edge or center line. By default
 the reference is the selection's bounding box (at least two elements);
 `to: "slide"` aligns to the slide edges and accepts a single element. Frames
-are the axis-aligned boxes `slides read` reports (rotation is ignored, as in
+are the axis-aligned boxes the slide outline reports (rotation is ignored, as in
 PowerPoint's Align menu); attached connectors follow.
 
 | Field | Type                                 | Notes                                                                   |
@@ -489,9 +489,9 @@ Common mistakes
 
 - Two elements with the default `to`: there is no gap to even out; align them or pass `to: "slide"`.
 
-### setImageFill (not-ai-callable)
+### setImageFill (internal)
 
-`{source:{mediaPath}|{bytes:base64|dataURL,ext},tile?} — use the image tools instead`
+`{source:{mediaPath}|{bytes:base64|dataURL,ext},tile?} — bytes or media-part payload`
 
 Picture or texture fill of a shape. The payload is image bytes or an existing
-media part path, which the model cannot produce; the UI's fill picker uses it.
+media part path; the UI's fill picker sends it.

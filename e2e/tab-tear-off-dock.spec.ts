@@ -13,7 +13,7 @@ import { closeAndSaveVideo, launchShell, waitForPageWithUrl } from './helpers'
  */
 
 interface TabsApiOnWindow {
-  aiOfficeTabs: {
+  hyperFilesTabs: {
     list(): Promise<Array<{ id: string; kind: string; title: string; active: boolean }>>
     tearOff(id: string, screenX: number, screenY: number): Promise<boolean>
     dragTornWindow(screenX: number, screenY: number): void
@@ -46,7 +46,7 @@ test.describe('tab tear-off and dock', () => {
       })
 
       const tabs = await page.evaluate(() =>
-        (window as unknown as TabsApiOnWindow).aiOfficeTabs.list(),
+        (window as unknown as TabsApiOnWindow).hyperFilesTabs.list(),
       )
       const mdTab = tabs.find((t) => t.kind === 'markdown')
       expect(mdTab, 'the markdown file opened in a tab').toBeTruthy()
@@ -60,7 +60,7 @@ test.describe('tab tear-off and dock', () => {
 
       // ── tear off: the tab leaves the strip, a window appears under the pointer
       const torn = await page.evaluate(
-        (id) => (window as unknown as TabsApiOnWindow).aiOfficeTabs.tearOff(id, 640, 480),
+        (id) => (window as unknown as TabsApiOnWindow).hyperFilesTabs.tearOff(id, 640, 480),
         mdTab!.id,
       )
       expect(torn).toBe(true)
@@ -72,7 +72,7 @@ test.describe('tab tear-off and dock', () => {
 
       // ── the held pointer steers the window
       await page.evaluate(() =>
-        (window as unknown as TabsApiOnWindow).aiOfficeTabs.dragTornWindow(700, 540),
+        (window as unknown as TabsApiOnWindow).hyperFilesTabs.dragTornWindow(700, 540),
       )
       await expect
         .poll(async () => (await windowsNow()).find((w) => w.title === 'notes.md')?.position)
@@ -80,7 +80,7 @@ test.describe('tab tear-off and dock', () => {
 
       // ── back over the strip: the window folds into a tab again, same document
       await page.evaluate(() =>
-        (window as unknown as TabsApiOnWindow).aiOfficeTabs.dockTornWindow(1),
+        (window as unknown as TabsApiOnWindow).hyperFilesTabs.dockTornWindow(1),
       )
       const docked = page.locator('.tab-bar .tab-item:not(.tab-home)')
       await expect(docked).toHaveCount(1)
@@ -93,11 +93,11 @@ test.describe('tab tear-off and dock', () => {
 
       // ── the context-menu path ("Open in New Window") reaches markdown as well
       const redocked = await page.evaluate(() =>
-        (window as unknown as TabsApiOnWindow).aiOfficeTabs.list(),
+        (window as unknown as TabsApiOnWindow).hyperFilesTabs.list(),
       )
       const again = redocked.find((t) => t.kind === 'markdown')!
       await page.evaluate(
-        (id) => (window as unknown as TabsApiOnWindow).aiOfficeTabs.detach(id),
+        (id) => (window as unknown as TabsApiOnWindow).hyperFilesTabs.detach(id),
         again.id,
       )
       await expect(page.locator('.tab-bar .tab-item:not(.tab-home)')).toHaveCount(0)

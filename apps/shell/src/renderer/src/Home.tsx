@@ -29,7 +29,7 @@ import { useToolsI18n } from './tools/use-tools-i18n'
 
 declare global {
   interface Window {
-    aiOffice: HomeApi
+    hyperFiles: HomeApi
   }
 }
 
@@ -333,7 +333,7 @@ function useFolderListings() {
       return
     }
     inflight.current.set(dir, false)
-    void window.aiOffice
+    void window.hyperFiles
       .listFolder(dir)
       .then((listing) => {
         setListings((prev) => {
@@ -435,7 +435,7 @@ function FolderPicker({
     const parent = pending?.parent
     const name = pending?.name.trim()
     if (!parent || !name) return
-    const result = await window.aiOffice.createFolder(parent, name)
+    const result = await window.hyperFiles.createFolder(parent, name)
     if (!result.ok) {
       window.alert(result.error ?? t('renameFailed'))
       return
@@ -874,7 +874,7 @@ export function Home() {
   const dragExpandTimer = useRef<number | null>(null)
 
   const loadRoot = useCallback(() => {
-    void window.aiOffice.folderRoots().then((next) => {
+    void window.hyperFiles.folderRoots().then((next) => {
       setRoots((prev) => {
         if (prev[0] && prev[0].path !== next[0]?.path) {
           // the default save folder changed in settings: the old tree is meaningless
@@ -929,7 +929,7 @@ export function Home() {
   }, [roots, selectedFolder, listings])
 
   useEffect(() => {
-    return window.aiOffice.onFolderChanged((dirs) => {
+    return window.hyperFiles.onFolderChanged((dirs) => {
       invalidateFolders(dirs.filter(trackedFolder))
     })
   }, [invalidateFolders, trackedFolder])
@@ -945,8 +945,8 @@ export function Home() {
     const seq = ++requestSeq.current
     const ext = filter === 'all' ? undefined : filter
     const limit = keepCount ? Math.max(entriesLen.current, PAGE_SIZE) : PAGE_SIZE
-    const primary = view === 'recent' ? window.aiOffice.recents : window.aiOffice.starred
-    const secondary = view === 'recent' ? window.aiOffice.starred : window.aiOffice.recents
+    const primary = view === 'recent' ? window.hyperFiles.recents : window.hyperFiles.starred
+    const secondary = view === 'recent' ? window.hyperFiles.starred : window.hyperFiles.recents
     void primary({ offset: 0, limit, ext }).then((page) => {
       if (seq !== requestSeq.current) return
       setEntries(page.entries)
@@ -998,7 +998,7 @@ export function Home() {
       }
       const seq = ++searchSeq.current
       const ext = filter === 'all' ? undefined : filter
-      void window.aiOffice.searchFiles({ q, ext, limit: 100 }).then((page) => {
+      void window.hyperFiles.searchFiles({ q, ext, limit: 100 }).then((page) => {
         if (seq !== searchSeq.current) return
         setSearchPage(page)
         // results grow while the background index catches up
@@ -1044,7 +1044,7 @@ export function Home() {
     setLoadingMore(true)
     const seq = requestSeq.current
     const ext = filter === 'all' ? undefined : filter
-    const api = view === 'recent' ? window.aiOffice.recents : window.aiOffice.starred
+    const api = view === 'recent' ? window.hyperFiles.recents : window.hyperFiles.starred
     void api({ offset: entriesLen.current, limit: PAGE_SIZE, ext }).then((page) => {
       setLoadingMore(false)
       if (seq !== requestSeq.current) return
@@ -1236,13 +1236,13 @@ export function Home() {
   }
 
   const toggleStar = (path: string) => {
-    void window.aiOffice.toggleStar(path).then(refresh)
+    void window.hyperFiles.toggleStar(path).then(refresh)
   }
 
   const removeRecent = (paths: string[]) => {
     setRowMenu(null)
     setSelected(new Set())
-    void window.aiOffice.removeRecent(paths).then(refresh)
+    void window.hyperFiles.removeRecent(paths).then(refresh)
   }
 
   const deleteFiles = (paths: string[]) => {
@@ -1254,12 +1254,12 @@ export function Home() {
     const paths = confirmDelete ?? []
     setConfirmDelete(null)
     setSelected(new Set())
-    void window.aiOffice.deleteFiles(paths).then(refresh)
+    void window.hyperFiles.deleteFiles(paths).then(refresh)
   }
 
   const duplicateFile = (path: string) => {
     setRowMenu(null)
-    void window.aiOffice.duplicateFile(path).then(refresh)
+    void window.hyperFiles.duplicateFile(path).then(refresh)
   }
 
   const startRename = (entry: RecentEntry) => {
@@ -1272,7 +1272,7 @@ export function Home() {
     setRenaming(null)
     if (!value || value === baseName(entry)) return
     const newName = entry.ext ? `${value}.${entry.ext}` : value
-    void window.aiOffice.renameFile(entry.path, newName).then((result) => {
+    void window.hyperFiles.renameFile(entry.path, newName).then((result) => {
       if (!result.ok) window.alert(result.error ?? t('renameFailed'))
       refresh()
     })
@@ -1302,7 +1302,7 @@ export function Home() {
     setCreating(null)
     setNewFolderName('')
     if (!pending || !name) return
-    const result = await window.aiOffice.createFolder(pending.parent, name)
+    const result = await window.hyperFiles.createFolder(pending.parent, name)
     if (!result.ok) {
       window.alert(result.error ?? t('renameFailed'))
       return
@@ -1323,7 +1323,7 @@ export function Home() {
     if (!pending) return
     const value = pending.value.trim()
     if (!value || value === fileName(pending.path)) return
-    const result = await window.aiOffice.renameFolder(pending.path, value)
+    const result = await window.hyperFiles.renameFolder(pending.path, value)
     if (!result.ok) {
       window.alert(result.error ?? t('renameFailed'))
       return
@@ -1343,7 +1343,7 @@ export function Home() {
     const dir = confirmDeleteFolder
     setConfirmDeleteFolder(null)
     if (!dir) return
-    await window.aiOffice.deleteFolder(dir)
+    await window.hyperFiles.deleteFolder(dir)
     if (selectedFolder && (selectedFolder === dir || isUnder(dir, selectedFolder))) {
       setSelectedFolder(dirOf(dir))
     }
@@ -1360,7 +1360,7 @@ export function Home() {
     setMovePicker(null)
     setConflict(null)
     setSelected(new Set())
-    const result = await window.aiOffice.movePaths(paths, targetDir, policy)
+    const result = await window.hyperFiles.movePaths(paths, targetDir, policy)
     if (result.moved.length > 0 && selectedFolder) {
       // a moved folder that held the selection drags the selection along
       for (const { from, to } of result.moved) {
@@ -1444,37 +1444,37 @@ export function Home() {
       ext: 'docx',
       title: t('newDoc'),
       sub: '.docx',
-      action: () => window.aiOffice.newDoc(newFileOpts),
+      action: () => window.hyperFiles.newDoc(newFileOpts),
     },
     {
       ext: 'xlsx',
       title: t('newSheet'),
       sub: '.xlsx',
-      action: () => window.aiOffice.newSheet(newFileOpts),
+      action: () => window.hyperFiles.newSheet(newFileOpts),
     },
     {
       ext: 'pptx',
       title: t('newSlide'),
       sub: '.pptx',
-      action: () => window.aiOffice.newSlide(newFileOpts),
+      action: () => window.hyperFiles.newSlide(newFileOpts),
     },
     {
       ext: 'md',
       title: t('newMarkdown'),
       sub: '.md',
-      action: () => window.aiOffice.newMarkdown(newFileOpts),
+      action: () => window.hyperFiles.newMarkdown(newFileOpts),
     },
     {
       ext: 'html',
       title: t('newHtml'),
       sub: '.html',
-      action: () => window.aiOffice.newHtml(newFileOpts),
+      action: () => window.hyperFiles.newHtml(newFileOpts),
     },
     {
       ext: 'pdf',
       title: t('newPdf'),
       sub: '.pdf',
-      action: () => window.aiOffice.newPdf(newFileOpts),
+      action: () => window.hyperFiles.newPdf(newFileOpts),
     },
   ]
 
@@ -1494,7 +1494,7 @@ export function Home() {
         ))}
         <button
           className="quick-card"
-          onClick={() => void window.aiOffice.browse()}
+          onClick={() => void window.hyperFiles.browse()}
           data-tip={OPEN_LOCAL_EXTENSIONS}
         >
           <span className="quick-folder">
@@ -1514,7 +1514,7 @@ export function Home() {
   // ── Sidebar folder tree ──
 
   const addFolderRoot = () => {
-    void window.aiOffice.addFolderRoot().then((added) => {
+    void window.hyperFiles.addFolderRoot().then((added) => {
       if (added) loadRoot()
     })
   }
@@ -1524,7 +1524,7 @@ export function Home() {
     setFolderMenu(null)
     if (selectedFolder && isUnder(path, selectedFolder)) setSelectedFolder(null)
     setExpanded((prev) => new Set([...prev].filter((dir) => !isUnder(path, dir))))
-    void window.aiOffice.removeFolderRoot(path).then(loadRoot)
+    void window.hyperFiles.removeFolderRoot(path).then(loadRoot)
   }
 
   // folders dragged in from the OS join the tree in place; documents open as they do anywhere else
@@ -1544,10 +1544,10 @@ export function Home() {
       event.preventDefault()
       setPanelDrop(false)
       const paths = Array.from(event.dataTransfer.files)
-        .map((file) => window.aiOffice.pathForFile(file))
+        .map((file) => window.hyperFiles.pathForFile(file))
         .filter(Boolean)
       if (paths.length === 0) return
-      void window.aiOffice.dropFolderRoots(paths).then((added) => {
+      void window.hyperFiles.dropFolderRoots(paths).then((added) => {
         if (added.length > 0) loadRoot()
       })
     },
@@ -1605,7 +1605,7 @@ export function Home() {
               role="menuitem"
               onClick={() => {
                 setFolderMenu(null)
-                void window.aiOffice.revealPath(entry.path)
+                void window.hyperFiles.revealPath(entry.path)
               }}
             >
               {t('revealInFolder')}
@@ -1816,7 +1816,7 @@ export function Home() {
               <p>{t('rootUnusable')}</p>
               <button
                 className="btn btn-secondary"
-                onClick={() => void window.aiOffice.pickDefaultSaveDir().then(() => loadRoot())}
+                onClick={() => void window.hyperFiles.pickDefaultSaveDir().then(() => loadRoot())}
               >
                 {t('pickSaveDir')}
               </button>
@@ -1852,12 +1852,12 @@ export function Home() {
           onClick={() => {
             if (isRenaming) return
             if (entry.missing) setConfirmMissing(entry)
-            else void window.aiOffice.openPath(entry.path)
+            else void window.hyperFiles.openPath(entry.path)
           }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && event.target === event.currentTarget) {
               if (entry.missing) setConfirmMissing(entry)
-              else void window.aiOffice.openPath(entry.path)
+              else void window.hyperFiles.openPath(entry.path)
             }
           }}
         >
@@ -1940,7 +1940,7 @@ export function Home() {
                   role="menuitem"
                   onClick={() => {
                     setRowMenu(null)
-                    void window.aiOffice.openPath(entry.path)
+                    void window.hyperFiles.openPath(entry.path)
                   }}
                 >
                   {t('open')}
@@ -1949,7 +1949,7 @@ export function Home() {
                   role="menuitem"
                   onClick={() => {
                     setRowMenu(null)
-                    void window.aiOffice.revealPath(entry.path)
+                    void window.hyperFiles.revealPath(entry.path)
                   }}
                 >
                   {t('revealInFolder')}
@@ -2127,7 +2127,7 @@ export function Home() {
                   role="menuitem"
                   onClick={() => {
                     setFolderMenu(null)
-                    void window.aiOffice.revealPath(entry.path)
+                    void window.hyperFiles.revealPath(entry.path)
                   }}
                 >
                   {t('revealInFolder')}
@@ -2236,9 +2236,9 @@ export function Home() {
       className="search-row"
       role="button"
       tabIndex={0}
-      onClick={() => void window.aiOffice.openPath(hit.path)}
+      onClick={() => void window.hyperFiles.openPath(hit.path)}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') void window.aiOffice.openPath(hit.path)
+        if (e.key === 'Enter') void window.hyperFiles.openPath(hit.path)
       }}
     >
       <span className="recent-icon">

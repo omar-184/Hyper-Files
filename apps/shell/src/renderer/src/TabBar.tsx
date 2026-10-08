@@ -7,7 +7,7 @@ import { useI18n } from './locale'
 
 declare global {
   interface Window {
-    aiOfficeTabs: TabsApi
+    hyperFilesTabs: TabsApi
   }
 }
 
@@ -195,7 +195,7 @@ export function TabBar() {
     // half of the current title is a no-op rather than a pointless IPC.
     const newName = renamedFileName(tab.filePath, value)
     if (newName === tab.title) return
-    void window.aiOffice.renameFile(tab.filePath, newName).then((result) => {
+    void window.hyperFiles.renameFile(tab.filePath, newName).then((result) => {
       if (!result.ok) window.alert(result.error ?? t('renameFailed'))
       // Home shares this renderer and only re-pulls on window focus, which the
       // rename input already holds: tell it the recents / folder rows moved.
@@ -249,7 +249,7 @@ export function TabBar() {
     dragRef.current = null
     if (drag.torn) {
       // release: the window under the pointer stays where it is and takes focus
-      void window.aiOfficeTabs.endTornDrag()
+      void window.hyperFilesTabs.endTornDrag()
       return
     }
     // released while main is still creating the window: the tearOff callback
@@ -277,19 +277,19 @@ export function TabBar() {
         next.splice(Math.min(Math.max(drag.target, 1), next.length), 0, moved)
         return next
       })
-      void window.aiOfficeTabs.reorder(drag.id, drag.target)
+      void window.hyperFilesTabs.reorder(drag.id, drag.target)
     }
   }
 
   useEffect(() => {
-    void window.aiOfficeTabs.list().then(setTabs)
-    return window.aiOfficeTabs.onChanged(setTabs)
+    void window.hyperFilesTabs.list().then(setTabs)
+    return window.hyperFilesTabs.onChanged(setTabs)
   }, [])
 
   // document tabs are sibling WebContentsViews: they see neither this press
   // nor a focus change, so relay it for them to dismiss open popovers
   useEffect(() => {
-    const notify = (): void => window.aiOfficeTabs.notifyChromePressed?.()
+    const notify = (): void => window.hyperFilesTabs.notifyChromePressed?.()
     document.addEventListener('pointerdown', notify, true)
     return () => document.removeEventListener('pointerdown', notify, true)
   }, [])
@@ -308,7 +308,7 @@ export function TabBar() {
   // A detached window dragged over this strip: place the insertion indicator
   // at the slot under the pointer and tell main which slot that is.
   useEffect(() => {
-    return window.aiOfficeTabs.onDockPreview?.((preview) => {
+    return window.hyperFilesTabs.onDockPreview?.((preview) => {
       const strip = stripRef.current
       if (!preview || !strip) {
         setDockX(null)
@@ -316,7 +316,7 @@ export function TabBar() {
       }
       const rects = tabRects()
       const index = insertionIndexForX(rects, preview.x)
-      window.aiOfficeTabs.reportDockIndex(index)
+      window.hyperFilesTabs.reportDockIndex(index)
       const stripLeft = strip.getBoundingClientRect().left - strip.scrollLeft
       const slot = rects[index]
       const last = rects[rects.length - 1]
@@ -330,11 +330,11 @@ export function TabBar() {
     const drag = dragRef.current
     if (!drag || event.pointerId !== drag.pointerId) return
     if (drag.torn) {
-      window.aiOfficeTabs.dragTornWindow(event.screenX, event.screenY)
+      window.hyperFilesTabs.dragTornWindow(event.screenX, event.screenY)
       // back over the strip: the window folds back into a tab at the pointer's slot
       if (!isBeyondBand(event.clientY, drag.stripTop, drag.stripBottom, 0)) {
         dragRef.current = null
-        void window.aiOfficeTabs.dockTornWindow(insertionIndexForX(tabRects(), event.clientX))
+        void window.hyperFilesTabs.dockTornWindow(insertionIndexForX(tabRects(), event.clientX))
       }
       return
     }
@@ -355,11 +355,11 @@ export function TabBar() {
     if (isBeyondBand(event.clientY, drag.stripTop, drag.stripBottom, TEAR_OFF_SLACK)) {
       drag.tearing = true
       const { screenX, screenY, pointerId } = event
-      void window.aiOfficeTabs.tearOff(drag.id, screenX, screenY).then((ok) => {
+      void window.hyperFilesTabs.tearOff(drag.id, screenX, screenY).then((ok) => {
         const current = dragRef.current
         if (!current || current.pointerId !== pointerId) {
           // released meanwhile: let the window go (it exists only when ok)
-          if (ok) void window.aiOfficeTabs.endTornDrag()
+          if (ok) void window.hyperFilesTabs.endTornDrag()
           return
         }
         current.tearing = false
@@ -441,7 +441,7 @@ export function TabBar() {
           aria-label={t('appMenu')}
           onClick={(event) => {
             const rect = event.currentTarget.getBoundingClientRect()
-            void window.aiOfficeTabs.showAppMenu(Math.round(rect.left), Math.round(rect.bottom))
+            void window.hyperFilesTabs.showAppMenu(Math.round(rect.left), Math.round(rect.bottom))
           }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -491,7 +491,7 @@ export function TabBar() {
               onContextMenu={(event) => {
                 event.preventDefault()
                 if (tab.id === 'home') return
-                void window.aiOfficeTabs.showTabMenu(
+                void window.hyperFilesTabs.showTabMenu(
                   tab.id,
                   Math.round(event.clientX),
                   Math.round(event.clientY),
@@ -519,7 +519,7 @@ export function TabBar() {
                 if ((event.target as HTMLElement).closest('.tab-rename-input')) return
                 // Chrome-style: pressing a tab activates it immediately, so
                 // activation never depends on the click that a drag would eat
-                if (!tab.active) void window.aiOfficeTabs.activate(tab.id)
+                if (!tab.active) void window.hyperFilesTabs.activate(tab.id)
                 if (tab.id === 'home') return
                 const strip = stripRef.current
                 if (!strip) return
@@ -577,7 +577,7 @@ export function TabBar() {
                   aria-label={t('closeTab')}
                   onClick={(event) => {
                     event.stopPropagation()
-                    void window.aiOfficeTabs.close(tab.id)
+                    void window.hyperFilesTabs.close(tab.id)
                   }}
                 >
                   ×
@@ -592,7 +592,7 @@ export function TabBar() {
           aria-label={t('newTab')}
           onClick={(event) => {
             const rect = event.currentTarget.getBoundingClientRect()
-            void window.aiOfficeTabs.showNewMenu(Math.round(rect.left), Math.round(rect.bottom))
+            void window.hyperFilesTabs.showNewMenu(Math.round(rect.left), Math.round(rect.bottom))
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
@@ -613,7 +613,7 @@ export function TabBar() {
         aria-label={t('tabList')}
         onClick={(event) => {
           const rect = event.currentTarget.getBoundingClientRect()
-          void window.aiOfficeTabs.showMenu(Math.round(rect.left), Math.round(rect.bottom))
+          void window.hyperFilesTabs.showMenu(Math.round(rect.left), Math.round(rect.bottom))
         }}
       >
         {/* window-with-tab-bar glyph: slanted tab cells above a full-width

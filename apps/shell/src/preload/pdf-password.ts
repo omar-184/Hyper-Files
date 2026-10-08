@@ -21,4 +21,4 @@ const api: PdfPasswordWindowApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('aiOfficePdfPassword', api)
+contextBridge.exposeInMainWorld('hyperFilesPdfPassword', api)

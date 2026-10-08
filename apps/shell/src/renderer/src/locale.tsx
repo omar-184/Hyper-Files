@@ -23,7 +23,7 @@ export function LocaleProvider({ initial, children }: { initial: Lang; children:
       setLang: (next) => {
         // the main process rejects when app-settings.json is unwritable; a language
         // committed here first would survive only until the next launch
-        window.aiOffice.setLanguage(next).then(
+        window.hyperFiles.setLanguage(next).then(
           () => {
             setLangState(next)
             document.documentElement.lang = htmlLang(next)

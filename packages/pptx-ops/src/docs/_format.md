@@ -1,17 +1,16 @@
-# Op documentation format (authoring guide — not loaded into any prompt)
+# Op documentation format (authoring guide)
 
-The `ops/*.md` files are the single source of truth for what the model knows
-about canonical edit ops. `shared/op-docs.ts` parses them at import time into
-`OP_DOCS`; `opVocabulary()` / `opUsage()` / `opSignatureIndex()` / `opGuide()`
-are all derived from the parse. Tests in `apps/slides/tests/op-docs*.test.ts`
-assert that the docs track the op registry exactly, that every example
-validates against a fixture deck, and that the files contain no CJK text.
+The `docs/*.md` files are the reference for every canonical edit op the
+executor registers. `op-docs.ts` parses them at import time into `OP_DOCS`;
+`opUsage()` derives the one-line signature that guided errors append.
+`tests/op-docs-sync.test.ts` asserts that the docs track the op registry
+exactly and that the files contain no CJK text.
 
 ## File layout
 
 ```
 # <Group title>
-> <one-line summary shown in the load_guide catalog>
+> <one-line summary of the group>
 
 <optional group-level prose: addressing, units, conventions>
 
@@ -20,7 +19,7 @@ validates against a fixture deck, and that the files contain no CJK text.
 
 <prose, field table, examples, common mistakes, related ops>
 
-### <nextOpName> (not-ai-callable)
+### <nextOpName> (internal)
 `<signature>`
 ...
 ```
@@ -31,13 +30,11 @@ validates against a fixture deck, and that the files contain no CJK text.
 - The first non-empty line after the heading is the **signature**, wrapped in
   single backticks. It is emitted verbatim as `Usage: <opName> <signature>` in
   guided errors, so keep it compact and free of backticks.
-- Heading suffixes in parentheses set flags: `(not-ai-callable)` hides the op
-  from the vocabulary and the signature index (byte / clipboard / part-path
-  payloads the model cannot produce); `(pending)` hides it entirely until the
-  registering branch lands. Combine as `(not-ai-callable, pending)`.
-- Every ```json fenced block inside an AI-callable op block is an example that
-  the test suite runs through `runTxn(dryRun)`. Use the placeholder ids below;
-  the test substitutes real ids from its fixture deck.
+- Heading suffixes in parentheses set flags: `(internal)` marks an op whose
+  payload (bytes, clipboard data, part paths) only the app's own UI produces;
+  `(pending)` hides its usage line until the registering branch lands.
+  Combine as `(internal, pending)`.
+- Fenced `json` code blocks are examples. Use the placeholder ids below.
 
 ## Placeholder ids for examples
 
@@ -53,7 +50,7 @@ validates against a fixture deck, and that the files contain no CJK text.
 | `e_CHILD`    | a direct child of that group    |
 | `SECTION_ID` | an existing section GUID        |
 
-The fixture deck has exactly two slides (indices 0 and 1; durable ids `s_1`
+The example deck has exactly two slides (indices 0 and 1; durable ids `s_1`
 and `s_2`).
 
 ## Writing rules
@@ -63,7 +60,7 @@ and `s_2`).
   `...Pct`, `...Deg`). Say so in the field table.
 - Field tables list every field the op's `validate` / `apply` reads, not only
   the ones in the signature.
-- "Common mistakes" entries describe what the model tends to get wrong and the
-  corrective action, in the same voice as the guided errors.
-- Keep each group file under roughly 8 KB; split a group into sub-files (and
-  add a catalog entry) rather than exceeding that.
+- "Common mistakes" entries describe a frequent misuse and the corrective
+  action, in the same voice as the guided errors.
+- Keep each group file under roughly 8 KB; split a group into sub-files rather
+  than exceeding that.

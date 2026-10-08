@@ -21,8 +21,8 @@ document.body.classList.add(IS_MAC ? 'mac' : 'overlay-title-bar')
 
 // resolve the persisted language and theme before first paint so the UI never flashes
 void Promise.all([
-  window.aiOffice.getLanguage(),
-  window.aiOffice.getTheme().catch(() => 'system' as const),
+  window.hyperFiles.getLanguage(),
+  window.hyperFiles.getTheme().catch(() => 'system' as const),
 ]).then(([lang, theme]) => {
   document.documentElement.lang = htmlLang(lang)
   document.documentElement.dir = htmlDir(lang)
@@ -30,7 +30,7 @@ void Promise.all([
   if (theme !== 'system') {
     document.documentElement.setAttribute('data-theme', theme)
   }
-  window.aiOffice.onThemeChanged((next) => {
+  window.hyperFiles.onThemeChanged((next) => {
     if (next === 'system') document.documentElement.removeAttribute('data-theme')
     else document.documentElement.setAttribute('data-theme', next)
   })

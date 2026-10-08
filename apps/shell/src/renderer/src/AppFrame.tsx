@@ -6,12 +6,12 @@ export function AppFrame() {
   const [homeActive, setHomeActive] = useState(true)
 
   useEffect(() => {
-    const applyTabs = (tabs: Awaited<ReturnType<typeof window.aiOfficeTabs.list>>) => {
+    const applyTabs = (tabs: Awaited<ReturnType<typeof window.hyperFilesTabs.list>>) => {
       const active = tabs.find((tab) => tab.active)
       setHomeActive(!active || active.kind === 'home')
     }
-    void window.aiOfficeTabs.list().then(applyTabs)
-    return window.aiOfficeTabs.onChanged(applyTabs)
+    void window.hyperFilesTabs.list().then(applyTabs)
+    return window.hyperFilesTabs.onChanged(applyTabs)
   }, [])
 
   return (

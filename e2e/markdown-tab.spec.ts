@@ -50,7 +50,7 @@ test.describe('markdown editor', () => {
     }
   })
 
-  test('AI Markdown quick card opens a markdown editor tab', async () => {
+  test('Markdown quick card opens a markdown editor tab', async () => {
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'new-markdown-tab' })
     const { app, page } = launched
     try {

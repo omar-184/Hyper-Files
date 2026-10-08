@@ -267,7 +267,7 @@ export class TabManager {
       id,
       kind: 'sheets',
       view,
-      title: openPath ? basename(openPath) : this.untitled('sheets', 'AI Sheets'),
+      title: openPath ? basename(openPath) : this.untitled('sheets', 'Hyper-Files Sheets'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -284,7 +284,7 @@ export class TabManager {
       id,
       kind: 'slides',
       view,
-      title: openPath ? basename(openPath) : this.untitled('slides', 'AI Slides'),
+      title: openPath ? basename(openPath) : this.untitled('slides', 'Hyper-Files Slides'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -321,7 +321,7 @@ export class TabManager {
       id,
       kind: 'markdown',
       view,
-      title: openPath ? basename(openPath) : this.untitled('markdown', 'AI Markdown'),
+      title: openPath ? basename(openPath) : this.untitled('markdown', 'Hyper-Files Markdown'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -338,7 +338,7 @@ export class TabManager {
       id,
       kind: 'html',
       view,
-      title: openPath ? basename(openPath) : this.untitled('html', 'AI HTML'),
+      title: openPath ? basename(openPath) : this.untitled('html', 'Hyper-Files HTML'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -356,7 +356,7 @@ export class TabManager {
       id,
       kind: 'html',
       view,
-      title: title || this.untitled('html', 'AI HTML'),
+      title: title || this.untitled('html', 'Hyper-Files HTML'),
       present: true,
     })
     this.activateTab(id)

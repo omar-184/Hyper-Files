@@ -36,9 +36,9 @@ async function openFromHome(app: ElectronApplication, home: Page, file: string):
     .toBe(true)
   await home.evaluate(
     (p) =>
-      (window as unknown as { aiOffice: { openPath(p: string): Promise<void> } }).aiOffice.openPath(
-        p,
-      ),
+      (
+        window as unknown as { hyperFiles: { openPath(p: string): Promise<void> } }
+      ).hyperFiles.openPath(p),
     file,
   )
 }

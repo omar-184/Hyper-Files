@@ -115,8 +115,8 @@ export function dataUrlExt(value: unknown): string | null {
 
 /**
  * Media bytes arrive as Uint8Array from in-process callers, or as a base64 /
- * data-URL string from JSON surfaces — the AI tool channel cannot carry
- * binary, so without string support these ops are unreachable for the model.
+ * data-URL string from JSON surfaces (IPC payloads, scripts), which cannot
+ * carry binary.
  */
 export function coerceBytes(value: unknown, opName: string, field: string): Uint8Array {
   if (value instanceof Uint8Array && value.length > 0) return value

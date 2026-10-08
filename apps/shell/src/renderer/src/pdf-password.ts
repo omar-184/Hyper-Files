@@ -1,7 +1,8 @@
 import type { PdfPasswordUiState, PdfPasswordWindowApi } from '../../shared/pdf-password-api'
 
 // exposed by src/preload/pdf-password.ts
-const api = (window as unknown as { aiOfficePdfPassword: PdfPasswordWindowApi }).aiOfficePdfPassword
+const api = (window as unknown as { hyperFilesPdfPassword: PdfPasswordWindowApi })
+  .hyperFilesPdfPassword
 
 const el = (id: string): HTMLElement => document.getElementById(id) as HTMLElement
 const title = el('title')

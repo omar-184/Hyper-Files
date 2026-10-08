@@ -1,6 +1,6 @@
 /**
  * Blank presentation template — starting point for the start screen's
- * "AI generate / New blank" actions. A hand-written minimal set of valid OOXML
+ * "New blank" action. A hand-written minimal set of valid OOXML
  * parts (16:9, single blank slide); once parsed by openPptx it goes through
  * exactly the same edit/save pipeline as opening a real file.
  */

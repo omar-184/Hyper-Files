@@ -3,8 +3,8 @@
 > Edit an existing table element: cell text, merges, row/column structure, row heights, column widths, cell anchors, style presets and borders.
 
 All ops take `target:{slide, el}` where `el` is the table's id (type `table` in
-the outline). `row` and `col` are 0-based. Chart edits (`setChart`) live in the
-`edit_chart` tool.
+the outline). `row` and `col` are 0-based. Chart edits use `setChart` (internal; the
+chart editor sends it).
 
 ### setTableCell
 
@@ -129,7 +129,7 @@ of PowerPoint's 74 built-in styles by `styleId` (gallery name such as
 colors), or change individual region flags, cell shading and border lines. A
 preset wins over the other fields; a preset or `styleId` clears direct cell
 fills and borders like PowerPoint's style gallery (`keepFormatting: true`
-keeps them). `slides read` shows a table's current `style`.
+keeps them). The slide outline shows a table's current `style`.
 
 | Field                               | Type                  | Notes                                                                                                                                                                                                                                          |
 | ----------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -176,9 +176,9 @@ Common mistakes
 - A built-in name in `styleName`: gallery names and GUIDs go in `styleId`.
 - Restyling one cell's text: that is `setTableCell` with styled runs, not this op.
 
-### setChart (not-ai-callable)
+### setChart (internal)
 
-`{patch:ChartEdit} — use the edit_chart tool instead`
+`{patch:ChartEdit} — chart editor payload`
 
-Changes a chart's type, data, colors or elements. The `edit_chart` tool exposes
-this with a validated schema.
+Changes a chart's type, data, colors or elements; the chart editor validates
+the patch before sending it.

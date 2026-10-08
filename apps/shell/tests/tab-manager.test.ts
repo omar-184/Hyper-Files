@@ -246,7 +246,11 @@ describe('opening tabs', () => {
   it('uses module default titles for pathless tabs', () => {
     manager.openSheetsTab()
     manager.openSlidesTab()
-    expect(manager.list().map((t) => t.title)).toEqual(['Hyper-Files', 'AI Sheets', 'AI Slides'])
+    expect(manager.list().map((t) => t.title)).toEqual([
+      'Hyper-Files',
+      'Hyper-Files Sheets',
+      'Hyper-Files Slides',
+    ])
   })
 
   it('assigns unique, monotonic tab ids', () => {
