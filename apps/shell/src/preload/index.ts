@@ -134,6 +134,9 @@ const homeApi: HomeApi = {
   async newPdf(opts) {
     await ipcRenderer.invoke(HOME_CHANNELS.newPdf, opts)
   },
+  async newFromTemplate(id, opts) {
+    await ipcRenderer.invoke(HOME_CHANNELS.newFromTemplate, id, opts)
+  },
   async removeRecent(paths) {
     await ipcRenderer.invoke(HOME_CHANNELS.removeRecent, paths)
   },

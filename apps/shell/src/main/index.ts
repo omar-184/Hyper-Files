@@ -189,7 +189,8 @@ import type {
   FileSearchPage,
   FileSearchQuery,
 } from '../shared/home-api'
-import { HOME_CHANNELS } from '../shared/home-api'
+import { HOME_CHANNELS, type HomeTemplateId } from '../shared/home-api'
+import { HOME_TEMPLATES, homeTemplateBytes, isHomeTemplateId } from './home-templates'
 import type { TabKind } from '../shared/tabs-api'
 import { TABS_CHANNELS } from '../shared/tabs-api'
 import { showErrorDialog } from './error-dialog'
@@ -3324,6 +3325,22 @@ async function newPdfTab(): Promise<void> {
 }
 
 /**
+ * Home ▸ Templates: the starter file is copied into the default folder (or
+ * the one picked on Home) under a free name and opened like any saved file,
+ * the same way New PDF works.
+ */
+async function newFromTemplate(id: HomeTemplateId): Promise<void> {
+  const { kind, fileName } = HOME_TEMPLATES[id]
+  try {
+    const filePath = uniquePathIn(newFileDir(kind), fileName)
+    await atomicWriteFile(filePath, await homeTemplateBytes(id))
+    routeDocumentPath(filePath)
+  } catch (err) {
+    surfaceNewTabError(err)
+  }
+}
+
+/**
  * The sheets renderer subscribes to menu actions only after Univer finishes
  * mounting (seconds on cold start), so a single 'open' can fire into the
  * void. Re-send until the queued workbook is consumed; consumption clears the
@@ -3460,6 +3477,12 @@ function registerHomeIpc(): void {
   ipcMain.handle(HOME_CHANNELS.newPdf, (_event, opts?: NewFileOpts) => {
     rememberPendingDir('pdf', opts)
     void newPdfTab()
+  })
+
+  ipcMain.handle(HOME_CHANNELS.newFromTemplate, (_event, id: unknown, opts?: NewFileOpts) => {
+    if (!isHomeTemplateId(id)) return
+    rememberPendingDir(HOME_TEMPLATES[id].kind, opts)
+    void newFromTemplate(id)
   })
 
   ipcMain.handle(HOME_CHANNELS.removeRecent, (_event, paths: unknown) => {

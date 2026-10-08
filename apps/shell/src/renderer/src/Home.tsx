@@ -12,6 +12,7 @@ import type {
   FolderListing,
   FolderRoot,
   HomeApi,
+  HomeTemplateId,
   MoveConflictPolicy,
   RecentEntry,
   FileSearchHit,
@@ -26,6 +27,7 @@ import { SettingsModal } from './SettingsModal'
 import { onFilesChanged } from './file-events'
 import { PdfToolsView } from './tools/PdfToolsView'
 import { useToolsI18n } from './tools/use-tools-i18n'
+import { translateTemplates, type TemplateStringKey } from './i18n/strings-templates'
 
 declare global {
   interface Window {
@@ -1511,6 +1513,47 @@ export function Home() {
     )
   }
 
+  const tt = (key: TemplateStringKey) => translateTemplates(lang, key)
+  const TEMPLATE_ITEMS: Array<{
+    id: HomeTemplateId
+    ext: string
+    title: TemplateStringKey
+    sub: TemplateStringKey
+  }> = [
+    { id: 'letter', ext: 'docx', title: 'tplLetter', sub: 'tplLetterSub' },
+    { id: 'resume', ext: 'docx', title: 'tplResume', sub: 'tplResumeSub' },
+    { id: 'budget', ext: 'xlsx', title: 'tplBudget', sub: 'tplBudgetSub' },
+    { id: 'invoice', ext: 'xlsx', title: 'tplInvoice', sub: 'tplInvoiceSub' },
+    { id: 'presentation', ext: 'pptx', title: 'tplPresentation', sub: 'tplPresentationSub' },
+  ]
+
+  function renderTemplateCards() {
+    return (
+      <>
+        <div className="section-head template-head">
+          <span className="section-label">{tt('secTemplates')}</span>
+        </div>
+        <div className="quick-cards template-cards">
+          {TEMPLATE_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              className="template-card"
+              onClick={() => void window.hyperFiles.newFromTemplate(item.id, newFileOpts)}
+            >
+              <FileBadge ext={item.ext} size={24} />
+              <span className="quick-text">
+                <span className="quick-title-row">
+                  <span className="quick-title">{tt(item.title)}</span>
+                </span>
+                <span className="quick-sub">{tt(item.sub)}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </>
+    )
+  }
+
   // ── Sidebar folder tree ──
 
   const addFolderRoot = () => {
@@ -2309,6 +2352,7 @@ export function Home() {
             <span className="section-label">{t('secQuickStart')}</span>
           </div>
           {renderQuickCards()}
+          {renderTemplateCards()}
         </section>
 
         <section className="recents" aria-label={t('folders')}>
@@ -2424,6 +2468,7 @@ export function Home() {
             </h1>
           </div>
           {renderQuickCards()}
+          {renderTemplateCards()}
         </section>
 
         <section

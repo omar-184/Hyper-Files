@@ -160,6 +160,8 @@ export interface HomeApi {
   newHtml(opts?: NewFileOpts): Promise<void>
   /** create a blank single-page PDF in the default save folder and open it */
   newPdf(opts?: NewFileOpts): Promise<void>
+  /** copy a starter file into the default save folder (or `dir`) and open it */
+  newFromTemplate(id: HomeTemplateId, opts?: NewFileOpts): Promise<void>
   /** drop entries from the recent list (does not touch the files) */
   removeRecent(paths: string[]): Promise<void>
   /** reveal the file in Finder / Explorer */
@@ -304,6 +306,10 @@ export interface MoveResult {
   failed: Array<{ path: string; error: string }>
 }
 
+/** Starter files offered under Home ▸ Templates */
+export const HOME_TEMPLATE_IDS = ['letter', 'resume', 'budget', 'invoice', 'presentation'] as const
+export type HomeTemplateId = (typeof HOME_TEMPLATE_IDS)[number]
+
 export const HOME_CHANNELS = {
   recents: 'home:recents',
   searchFiles: 'home:search-files',
@@ -318,6 +324,7 @@ export const HOME_CHANNELS = {
   newMarkdown: 'home:new-markdown',
   newHtml: 'home:new-html',
   newPdf: 'home:new-pdf',
+  newFromTemplate: 'home:new-from-template',
   removeRecent: 'home:remove-recent',
   revealPath: 'home:reveal-path',
   renameFile: 'home:rename-file',
