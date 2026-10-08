@@ -788,6 +788,15 @@ export function App({
   /** The shell can repeat its queued-open nudge while the renderer starts.
    * Only one picker/open request may own the workbook session at a time. */
   const workbookOpeningRef = useRef(false)
+  /** Set when an open finishes; the grid is repaired and focused once the
+   * opening guard (`inert` on main.app-shell) is gone from the DOM. */
+  const focusGridAfterOpenRef = useRef(false)
+  useEffect(() => {
+    if (openingWorkbook || !focusGridAfterOpenRef.current) return
+    focusGridAfterOpenRef.current = false
+    rebuildUniverInputsAfterOpeningGuard()
+    focusSheetGrid()
+  }, [openingWorkbook])
 
   // File renamed externally (in the shell Home list) → sync the title-bar file
   // name (the save path is synced by the main process)
@@ -2888,6 +2897,27 @@ export function App({
     return true
   }
 
+  // The opening guard puts `inert` on main.app-shell. In a view whose Univer
+  // was already mounted before the guard went up (the prewarmed spare), the
+  // hidden contenteditable inputs Univer reads typing from can come out of it
+  // still treated as non-editable by Chromium: keydowns reach them (Enter and
+  // arrows work) but typed characters fire no `input` and
+  // execCommand('insertText') fails, so nothing reaches the cell. Refocusing
+  // or moving the caret does not clear it; rebuilding the element's layout
+  // box does. Intermittent, so it is done after every guarded open.
+  function rebuildUniverInputsAfterOpeningGuard(): void {
+    const inputs = document.querySelectorAll<HTMLElement>(
+      '#univer-container [data-u-comp="editor"]',
+    )
+    for (const input of inputs) {
+      const display = input.style.display
+      input.style.display = 'none'
+      // forces the restyle that drops the old layout box
+      void input.offsetHeight
+      input.style.display = display
+    }
+  }
+
   // A workbook loaded into an already-mounted view (the prewarmed spare) can
   // leave document focus on a node Univer no longer reads keys from; hand it
   // back to the cell editor unless chrome (dialogs) holds it.
@@ -2910,8 +2940,11 @@ export function App({
     setOpeningWorkbook(true)
     const finishOpening = (): void => {
       workbookOpeningRef.current = false
+      // Focusing here would land while main.app-shell is still inert (the
+      // state update has not rendered yet); the effect on openingWorkbook
+      // does it once the guard is gone.
+      focusGridAfterOpenRef.current = true
       setOpeningWorkbook(false)
-      focusSheetGrid()
     }
     try {
       if (!window.desktopApi) {
