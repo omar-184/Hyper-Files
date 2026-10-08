@@ -497,7 +497,7 @@ function Results({
   onAgain: () => void
   onReset: () => void
 }) {
-  const home = window.aiOffice
+  const home = window.hyperFiles
   const items = result.ok ? result.items : []
   const failed = !result.ok || items.every((i) => i.error)
   const partial = !failed && items.some((i) => i.error)
