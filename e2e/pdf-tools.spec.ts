@@ -43,7 +43,7 @@ test.describe('PDF tools', () => {
     const { app, page } = launched
     try {
       await page.locator('.nav-item', { hasText: 'PDF Tools' }).click()
-      await expect(page.locator('.pt-card')).toHaveCount(17)
+      await expect(page.locator('.pt-card')).toHaveCount(18)
       await page.screenshot({ path: screenshotPath('pdf-tools-grid') })
 
       // the native file picker cannot be driven; answer it from the main process
