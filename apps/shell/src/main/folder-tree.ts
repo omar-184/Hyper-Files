@@ -43,6 +43,10 @@ export const TREE_FILE_EXTENSIONS: ReadonlySet<string> = new Set([
   'json',
   'html',
   'htm',
+  'rtf',
+  'odt',
+  'ods',
+  'odp',
 ])
 
 const HIDDEN_DIR_NAMES = new Set(['node_modules', '__macosx'])

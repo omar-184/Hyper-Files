@@ -211,6 +211,13 @@ import {
   XLSX_RE,
   renameStaysInApp,
 } from './app-routing'
+import {
+  configureLegacyOffice,
+  LEGACY_EXTENSIONS,
+  legacyOfficeMenuItem,
+  openLegacyDocument,
+  shouldOpenAsLegacy,
+} from './legacy-office/legacy-office'
 import { isSameFile, pdfSaveAsTarget, isValidRawRenameName } from './rename-validation'
 import {
   FolderWatcher,
@@ -2573,6 +2580,15 @@ const tMain = createI18n({
 const tm = (key: Parameters<typeof tMain>[1], params?: Parameters<typeof tMain>[2]) =>
   tMain(currentLang(), key, params)
 
+configureLegacyOffice({
+  settingsPath: APP_SETTINGS_PATH,
+  lang: currentLang,
+  parentWindow: () => shellWindow,
+  openConverted: (path) => {
+    openDocumentPath(path)
+  },
+})
+
 // ---- the shell window + its tab manager (recreated if the user closes it on macOS) ----
 
 let shellWindow: BrowserWindow | null = null
@@ -3047,9 +3063,9 @@ function createShellWindow(): void {
 // ---- routing: one dispatch function for every open path ----
 
 /**
- * Single source of truth for the open-dialog filter. Includes the
- * legacy .doc/.ppt binaries so they are selectable and surface the explicit
- * "not supported" dialog via openDocumentPath instead of being grayed out.
+ * Single source of truth for the open-dialog filter. Includes the legacy
+ * .doc/.xls/.ppt binaries and the OpenDocument/RTF formats: the Old Office
+ * Formats add-on converts them, or explains how to get it.
  */
 const OPEN_DIALOG_EXTENSIONS = [
   'docx',
@@ -3068,6 +3084,8 @@ const OPEN_DIALOG_EXTENSIONS = [
   'json',
   'html',
   'htm',
+  // Old Office Formats add-on (LibreOffice converts them on open)
+  ...LEGACY_EXTENSIONS.filter((ext) => !['doc', 'xls', 'ppt'].includes(ext)),
 ]
 
 function notifyUnsupportedFile(filePath: string): void {
@@ -3134,6 +3152,10 @@ function routeDocumentPath(filePath: string): boolean {
   // a detached editor window already shows this file — focus it, never a second copy
   if (focusDetachedByPath(filePath)) return true
   if (!tabManager) return false
+  if (shouldOpenAsLegacy(filePath)) {
+    void openLegacyDocument(filePath)
+    return true
+  }
   if (DOCX_RE.test(filePath)) {
     recordRecentFile(filePath)
     const existing = tabManager.findDocsTabByPath(filePath)
@@ -3398,9 +3420,9 @@ function registerHomeIpc(): void {
       title: tm('dlgOpenTitle'),
       filters: [
         { name: tm('filterSupported'), extensions: OPEN_DIALOG_EXTENSIONS },
-        { name: tm('filterWord'), extensions: ['docx', 'doc'] },
-        { name: tm('filterExcel'), extensions: ['xlsx', 'xlsm', 'xls', 'csv', 'tsv'] },
-        { name: tm('filterPpt'), extensions: ['pptx', 'ppt'] },
+        { name: tm('filterWord'), extensions: ['docx', 'doc', 'rtf', 'odt'] },
+        { name: tm('filterExcel'), extensions: ['xlsx', 'xlsm', 'xls', 'ods', 'csv', 'tsv'] },
+        { name: tm('filterPpt'), extensions: ['pptx', 'ppt', 'odp'] },
         { name: tm('filterPdf'), extensions: ['pdf'] },
         { name: tm('filterMarkdown'), extensions: ['md', 'markdown', 'txt', 'json'] },
         { name: tm('filterHtml'), extensions: ['html', 'htm'] },
@@ -4155,6 +4177,7 @@ function buildHomeMenu(): void {
       label: tm('menuHelp'),
       submenu: [
         { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
+        legacyOfficeMenuItem(),
         { type: 'separator' },
         aboutMenuItem(appMenuLabels(currentLang())),
       ],
@@ -4237,6 +4260,7 @@ function buildPdfMenu(): void {
       label: tm('menuHelp'),
       submenu: [
         { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
+        legacyOfficeMenuItem(),
         { type: 'separator' },
         aboutMenuItem(appMenuLabels(currentLang())),
       ],
@@ -4335,6 +4359,7 @@ function buildMarkdownMenu(): void {
       label: tm('menuHelp'),
       submenu: [
         { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
+        legacyOfficeMenuItem(),
         { type: 'separator' },
         aboutMenuItem(appMenuLabels(currentLang())),
       ],
@@ -4426,6 +4451,7 @@ function buildHtmlMenu(): void {
       label: tm('menuHelp'),
       submenu: [
         { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
+        legacyOfficeMenuItem(),
         { type: 'separator' },
         aboutMenuItem(appMenuLabels(currentLang())),
       ],

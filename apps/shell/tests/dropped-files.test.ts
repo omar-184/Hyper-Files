@@ -50,18 +50,18 @@ describe('handleDroppedFiles', () => {
 
   it('warns once with the combined extensions for known-unsupported drops', () => {
     const deps = fakeDeps()
-    handleDroppedFiles(['/tmp/old.doc', '/tmp/deck.pages', '/tmp/note.rtf'], deps)
+    handleDroppedFiles(['/tmp/old.xlsb', '/tmp/deck.pages', '/tmp/talk.key'], deps)
     expect(deps.opened).toEqual([])
     expect(deps.revealed).not.toHaveBeenCalled()
-    expect(deps.warned).toEqual(['unsupported: doc, pages, rtf'])
+    expect(deps.warned).toEqual(['unsupported: xlsb, pages, key'])
   })
 
   it('opens the supported files and warns about the rest in a mixed drop', () => {
     const deps = fakeDeps()
-    handleDroppedFiles(['/tmp/new.docx', '/tmp/old.doc'], deps)
-    expect(deps.opened).toEqual(['/tmp/new.docx'])
+    handleDroppedFiles(['/tmp/new.docx', '/tmp/old.doc', '/tmp/deck.pages'], deps)
+    expect(deps.opened).toEqual(['/tmp/new.docx', '/tmp/old.doc'])
     expect(deps.revealed).toHaveBeenCalledOnce()
-    expect(deps.warned).toEqual(['unsupported: doc'])
+    expect(deps.warned).toEqual(['unsupported: pages'])
   })
 
   it('ignores junk payloads and unrecognized file types entirely', () => {
