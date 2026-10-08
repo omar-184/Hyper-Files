@@ -1,0 +1,156 @@
+import { appStrings } from './strings-app'
+import { editorStrings } from './strings-editor'
+import { ribbonStrings } from './strings-ribbon'
+import { tableStrings } from './strings-table'
+import { zoteroStrings } from './strings-zotero'
+
+export const strings = {
+  zh: {
+    ...appStrings.zh,
+    ...ribbonStrings.zh,
+    ...tableStrings.zh,
+    ...editorStrings.zh,
+    ...zoteroStrings.zh,
+  },
+  en: {
+    ...appStrings.en,
+    ...ribbonStrings.en,
+    ...tableStrings.en,
+    ...editorStrings.en,
+    ...zoteroStrings.en,
+  },
+  ja: {
+    ...appStrings.ja,
+    ...ribbonStrings.ja,
+    ...tableStrings.ja,
+    ...editorStrings.ja,
+    ...zoteroStrings.ja,
+  },
+  ko: {
+    ...appStrings.ko,
+    ...ribbonStrings.ko,
+    ...tableStrings.ko,
+    ...editorStrings.ko,
+    ...zoteroStrings.ko,
+  },
+  fr: {
+    ...appStrings.fr,
+    ...ribbonStrings.fr,
+    ...tableStrings.fr,
+    ...editorStrings.fr,
+    ...zoteroStrings.fr,
+  },
+  de: {
+    ...appStrings.de,
+    ...ribbonStrings.de,
+    ...tableStrings.de,
+    ...editorStrings.de,
+    ...zoteroStrings.de,
+  },
+  es: {
+    ...appStrings.es,
+    ...ribbonStrings.es,
+    ...tableStrings.es,
+    ...editorStrings.es,
+    ...zoteroStrings.es,
+  },
+  th: {
+    ...appStrings.th,
+    ...ribbonStrings.th,
+    ...tableStrings.th,
+    ...editorStrings.th,
+    ...zoteroStrings.th,
+  },
+  id: {
+    ...appStrings.id,
+    ...ribbonStrings.id,
+    ...tableStrings.id,
+    ...editorStrings.id,
+    ...zoteroStrings.id,
+  },
+  ru: {
+    ...appStrings.ru,
+    ...ribbonStrings.ru,
+    ...tableStrings.ru,
+    ...editorStrings.ru,
+    ...zoteroStrings.ru,
+  },
+  ar: {
+    ...appStrings.ar,
+    ...ribbonStrings.ar,
+    ...tableStrings.ar,
+    ...editorStrings.ar,
+    ...zoteroStrings.ar,
+  },
+  pt: {
+    ...appStrings.pt,
+    ...ribbonStrings.pt,
+    ...tableStrings.pt,
+    ...editorStrings.pt,
+    ...zoteroStrings.pt,
+  },
+  it: {
+    ...appStrings.it,
+    ...ribbonStrings.it,
+    ...tableStrings.it,
+    ...editorStrings.it,
+    ...zoteroStrings.it,
+  },
+  pl: {
+    ...appStrings.pl,
+    ...ribbonStrings.pl,
+    ...tableStrings.pl,
+    ...editorStrings.pl,
+    ...zoteroStrings.pl,
+  },
+  cs: {
+    ...appStrings.cs,
+    ...ribbonStrings.cs,
+    ...tableStrings.cs,
+    ...editorStrings.cs,
+    ...zoteroStrings.cs,
+  },
+  nl: {
+    ...appStrings.nl,
+    ...ribbonStrings.nl,
+    ...tableStrings.nl,
+    ...editorStrings.nl,
+    ...zoteroStrings.nl,
+  },
+  ms: {
+    ...appStrings.ms,
+    ...ribbonStrings.ms,
+    ...tableStrings.ms,
+    ...editorStrings.ms,
+    ...zoteroStrings.ms,
+  },
+  he: {
+    ...appStrings.he,
+    ...ribbonStrings.he,
+    ...tableStrings.he,
+    ...editorStrings.he,
+    ...zoteroStrings.he,
+  },
+  hi: {
+    ...appStrings.hi,
+    ...ribbonStrings.hi,
+    ...tableStrings.hi,
+    ...editorStrings.hi,
+    ...zoteroStrings.hi,
+  },
+
+  vi: {
+    ...appStrings.vi,
+    ...ribbonStrings.vi,
+    ...tableStrings.vi,
+    ...editorStrings.vi,
+    ...zoteroStrings.vi,
+  },
+  'zh-TW': {
+    ...appStrings['zh-TW'],
+    ...ribbonStrings['zh-TW'],
+    ...tableStrings['zh-TW'],
+    ...editorStrings['zh-TW'],
+    ...zoteroStrings['zh-TW'],
+  },
+}

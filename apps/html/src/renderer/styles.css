@@ -1,0 +1,1007 @@
+:root {
+  --accent: #232425;
+  --accent-dark: #000000;
+  --accent-soft: rgba(35, 36, 37, 0.1);
+  /* document surface: a page without its own background is white in every browser, so the theme never repaints it */
+  --preview-page-bg: #ffffff;
+  --hx-on-accent: #ffffff;
+  --hx-node-outline: color-mix(in srgb, var(--accent) 60%, transparent);
+  --hx-error: #c62828;
+  --hx-error-bg: rgb(198 40 40 / 8%);
+  --hx-shadow-color: rgb(0 0 0 / 13%);
+  --hx-tip-shadow: 0 4px 6px rgb(0 0 0 / 10%);
+  --hx-code-bg: #f6f8fa;
+  --hx-code-inline-bg: rgb(129 139 152 / 14%);
+  --hx-link: #0a69da;
+  --cm-tag: #0550ae;
+  --cm-attr: #953800;
+  --cm-string: #0a3069;
+  --cm-comment: #6e7781;
+  --cm-keyword: #cf222e;
+  --cm-number: #0550ae;
+  --cm-punct: #57606a;
+}
+
+[data-theme='dark'] {
+  --hx-on-accent: #ffffff;
+  --hx-node-outline: color-mix(in srgb, var(--accent) 70%, transparent);
+  --hx-error: #ef5350;
+  --hx-error-bg: rgb(239 83 80 / 10%);
+  --hx-shadow-color: rgb(0 0 0 / 45%);
+  --hx-tip-shadow: 0 4px 6px rgb(0 0 0 / 40%);
+  --hx-code-bg: #23272e;
+  --hx-code-inline-bg: rgb(129 139 152 / 22%);
+  --hx-link: #4a9eff;
+  --accent: #e4e4e4;
+  --accent-dark: #ffffff;
+  --accent-soft: rgba(228, 228, 228, 0.16);
+  --cm-tag: #7ee787;
+  --cm-attr: #79c0ff;
+  --cm-string: #a5d6ff;
+  --cm-comment: #8b949e;
+  --cm-keyword: #ff7b72;
+  --cm-number: #79c0ff;
+  --cm-punct: #8b949e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --hx-on-accent: #ffffff;
+    --hx-node-outline: color-mix(in srgb, var(--accent) 70%, transparent);
+    --hx-error: #ef5350;
+    --hx-error-bg: rgb(239 83 80 / 10%);
+    --hx-shadow-color: rgb(0 0 0 / 45%);
+    --hx-tip-shadow: 0 4px 6px rgb(0 0 0 / 40%);
+    --hx-code-bg: #23272e;
+    --hx-code-inline-bg: rgb(129 139 152 / 22%);
+    --hx-link: #4a9eff;
+    --accent: #e4e4e4;
+    --accent-dark: #ffffff;
+    --accent-soft: rgba(228, 228, 228, 0.16);
+    --cm-tag: #7ee787;
+    --cm-attr: #79c0ff;
+    --cm-string: #a5d6ff;
+    --cm-comment: #8b949e;
+    --cm-keyword: #ff7b72;
+    --cm-number: #79c0ff;
+    --cm-punct: #8b949e;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ---- ribbon (same structure and metrics as the markdown/docs ribbons) ---- */
+
+.ribbon {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  user-select: none;
+  color: var(--text-primary);
+}
+
+/* quick-access row (save / undo / redo / autosave); doubles as the window drag strip */
+.ribbon-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 10px 0;
+  min-height: 39px;
+  -webkit-app-region: drag;
+}
+
+html.genoffice-popover-open .ribbon-tabs {
+  -webkit-app-region: no-drag;
+}
+
+.ribbon-tabs button,
+.ribbon-tabs .autosave-toggle {
+  -webkit-app-region: no-drag;
+}
+
+.ribbon-body {
+  display: flex;
+  align-items: stretch;
+  padding: 6px 12px;
+  height: 80px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.ribbon-body::-webkit-scrollbar {
+  display: none;
+}
+
+.rb-sep {
+  width: 1px;
+  flex-shrink: 0;
+  align-self: stretch;
+  background: var(--border);
+  margin: 2px 6px;
+}
+
+.qa-btn {
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.qa-save-as {
+  width: auto;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.qa-btn svg {
+  display: block;
+  margin: 0 auto;
+}
+
+.qa-btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.qa-btn:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.autosave-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  margin: 0 4px;
+  user-select: none;
+}
+
+.autosave-toggle input {
+  display: none;
+}
+
+.autosave-knob {
+  width: 26px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--border-strong, var(--border));
+  position: relative;
+  transition: background 0.15s;
+}
+
+.autosave-knob::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: left 0.15s;
+}
+
+.autosave-toggle.on .autosave-knob {
+  background: var(--accent);
+}
+
+.autosave-toggle.on .autosave-knob::after {
+  left: 14px;
+}
+
+.autosave-text {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.rb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 28px;
+  height: 30px;
+  padding: 0 4px;
+  white-space: nowrap;
+  border: none;
+  border-radius: 3px;
+  font-size: 15px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.rb-btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.rb-btn.active {
+  background: var(--active-bg);
+  color: var(--text-primary);
+}
+
+.rb-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.rb-view {
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.ribbon-group-items {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+/* muted verb leading a button row ("Insert  Heading Paragraph Image …"): the ribbon has no tabs to say it */
+.rb-group-lead {
+  flex-shrink: 0;
+  padding: 0 6px 0 4px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ---- main layout ---- */
+
+.app-main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.app-content {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ---- workspace ---- */
+
+.workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.pane {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.view-split .pane {
+  flex: 1 1 50%;
+}
+
+.view-split .pane-source {
+  border-left: 1px solid var(--border);
+}
+
+.view-preview .pane-preview,
+.view-source .pane-source {
+  flex: 1 1 100%;
+}
+
+/* hidden, not unmounted: the CodeMirror instance (and its undo history) must survive view switches */
+.view-preview .pane-source,
+.view-source .pane-preview {
+  display: none;
+}
+
+.preview-host {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--preview-page-bg);
+}
+
+.preview-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+}
+
+.source-editor {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.source-editor .cm-editor {
+  height: 100%;
+}
+
+/* ---- status bar ---- */
+
+.status-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  user-select: none;
+}
+
+.status-left,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.status-right {
+  margin-left: auto;
+}
+
+.status-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-failed {
+  color: var(--danger);
+}
+
+.zoom-btn {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.zoom-btn:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.zoom-slider {
+  width: 90px;
+  accent-color: var(--accent);
+}
+
+.zoom-value {
+  min-width: 38px;
+  text-align: right;
+}
+
+.center-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.app-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---- element breadcrumb ---- */
+
+.crumbs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 26px;
+  padding: 2px 12px;
+  border-bottom: 1px solid var(--border);
+  font:
+    12px/1.4 'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+  color: var(--text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.crumbs-empty {
+  font-family: inherit;
+}
+
+.crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.crumb-sep {
+  margin: 0 3px;
+  opacity: 0.6;
+}
+
+.crumb {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  padding: 1px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.crumb:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.crumb.current {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.crumb-state {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--hover);
+}
+
+.crumb-state.dirty {
+  color: var(--hx-error);
+  background: var(--hx-error-bg);
+}
+
+.status-notice {
+  color: var(--text);
+}
+
+/* ---- design canvas: floating toolbar + style panel over the preview ---- */
+
+/* the preview stays ltr under an RTL UI — the chrome mirrors, the content does not */
+
+.preview-stage {
+  direction: ltr;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-2, var(--surface));
+}
+
+.preview-stage .preview-host {
+  flex: 1;
+  min-height: 0;
+}
+
+/* device preview: fixed-width page centred on a neutral stage */
+.preview-stage[data-device='tablet'] .preview-host,
+.preview-stage[data-device='mobile'] .preview-host {
+  flex: none;
+  height: 100%;
+  margin: 0 auto;
+  box-shadow: var(--shadow-menu);
+}
+
+.preview-stage[data-device='tablet'] .preview-host {
+  width: 768px;
+}
+
+.preview-stage[data-device='mobile'] .preview-host {
+  width: 390px;
+}
+
+.hx-float {
+  position: absolute;
+  /* above the style panel: in a narrow split view the panel can sit under the
+     selection's toolbar, and the toolbar's own panel toggle must stay reachable */
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-menu);
+  user-select: none;
+}
+
+.hx-float-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 5px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hx-float-btn.text {
+  padding: 0 8px;
+}
+
+.hx-float-btn:hover {
+  background: var(--hover);
+}
+
+.hx-float-btn.on {
+  background: var(--active-bg);
+}
+
+.hx-float-btn.danger:hover {
+  color: var(--hx-error);
+}
+
+.hx-float-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 2px;
+  background: var(--border);
+}
+
+.hx-float-size {
+  min-width: 22px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hx-float-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+}
+
+.hx-float-pop-host {
+  position: relative;
+  display: inline-flex;
+}
+
+.hx-color-pop {
+  position: fixed;
+  z-index: 40;
+}
+
+.hx-color-pop .gcp-palette {
+  border-radius: 0 0 8px 8px;
+}
+
+.hx-color-pop .gcp-palette:first-child {
+  border-radius: 8px;
+}
+
+.hx-color-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 6px 0;
+  border: 1px solid var(--border-strong);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: var(--surface);
+}
+
+.hx-color-tabs button {
+  flex: 1;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.hx-color-tabs button:hover {
+  background: var(--hover);
+}
+
+.hx-color-tabs button.on {
+  background: var(--active-bg);
+  color: var(--text);
+}
+
+.hx-color-tabs + .gcp-palette {
+  border-top: none;
+}
+
+.hx-color-field {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 5px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.hx-color-field:hover {
+  background: var(--hover);
+}
+
+.hx-color-swatch {
+  flex: 1;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.hx-color-swatch.none {
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 1px),
+    var(--hx-error) calc(50% - 1px),
+    var(--hx-error) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+}
+
+.hx-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 6;
+  width: 250px;
+  max-height: calc(100% - 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-menu);
+  overflow: auto;
+  font-size: 12px;
+}
+
+.hx-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hx-panel-tag {
+  flex: 1;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.hx-panel-action {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.hx-panel-revert,
+.hx-panel-action {
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: none;
+  color: var(--text-primary);
+  font-size: 11.5px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.hx-panel-close {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hx-panel-close:hover,
+.hx-panel-revert:hover,
+.hx-panel-action:hover {
+  background: var(--hover);
+}
+
+.hx-panel-section {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.hx-panel-row {
+  display: flex;
+  gap: 8px;
+}
+
+.hx-panel-row label {
+  flex: 1;
+  min-width: 0;
+}
+
+.hx-panel-lock {
+  align-self: flex-end;
+  flex: 0 0 auto;
+  height: 28px;
+  width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.hx-panel-lock.on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.hx-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-dim);
+}
+
+.hx-panel input[type='number'],
+.hx-panel input[type='text'],
+.hx-panel select,
+.hx-panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 5px 7px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.hx-panel textarea {
+  resize: vertical;
+}
+
+.device-dd.gs-dd {
+  min-width: 84px;
+}
+
+.device-dd .gs-dd-btn {
+  height: 22px;
+  padding: 0 6px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* ── canvas modes (Comment / Edit / Present) in the QAT row ─────────────── */
+/* ── Present: chrome-free preview, only the QAT row stays ── */
+.app.present .ribbon-body,
+.app.present .ribbon-collapse-btn,
+.app.present .crumbs,
+.app.present .status-bar {
+  display: none;
+}
+/* Fullscreen: the whole screen is the page; only the exit button floats */
+.app.present-full .ribbon {
+  display: none;
+}
+.present-exit {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 7;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: var(--shadow-menu);
+  cursor: pointer;
+}
+
+/* ── the present-only view ─────────────────────────────────────────────── */
+.present-view,
+.present-view .preview-host {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── ribbon button menus (Theme directions, Present): anchored + fixed like the
+   link popover, because the ribbon body clips overflow ─────────────────── */
+.rb-menu-wrap {
+  display: flex;
+  anchor-name: --rb-menu-anchor;
+  anchor-scope: --rb-menu-anchor;
+}
+.rb-menu,
+.table-picker {
+  position: fixed;
+  position-anchor: --rb-menu-anchor;
+  top: calc(anchor(bottom) + 4px);
+  left: anchor(left);
+  position-try-fallbacks: flip-inline;
+  position-visibility: anchors-visible;
+  z-index: 62;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-menu);
+}
+.rb-menu {
+  min-width: 140px;
+  padding: 4px;
+}
+
+/* Insert: split button (main action + narrow caret), one pill on hover like the docs / slides ribbons */
+.rb-split .rb-split-main {
+  border-radius: 3px 0 0 3px;
+}
+.rb-split .rb-split-caret {
+  min-width: 16px;
+  width: 16px;
+  height: 30px;
+  padding: 0;
+  border-radius: 0 3px 3px 0;
+  color: var(--text-dim);
+}
+.rb-split:hover > .rb-btn:not(:disabled) {
+  background: var(--hover);
+}
+.rb-split > .rb-btn:hover:not(:disabled),
+.rb-split > .rb-split-caret.active {
+  background: var(--active-bg);
+}
+
+/* Insert: table size picker (hover grid) */
+.table-picker {
+  padding: 8px;
+}
+.table-picker-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+  white-space: nowrap;
+}
+.table-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 18px);
+  gap: 3px;
+}
+.table-cell {
+  width: 18px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.table-cell.hot {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.rb-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rb-menu button:hover {
+  background: var(--hover);
+}
+.rb-url-form {
+  display: flex;
+  gap: 6px;
+  min-width: 320px;
+  padding: 8px;
+}
+.rb-url-form input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.rb-menu .rb-url-submit {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0 12px;
+  background: var(--accent);
+  color: var(--hx-on-accent);
+}
+.rb-menu .rb-url-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.rb-menu button svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}

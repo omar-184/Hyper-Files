@@ -1,0 +1,1038 @@
+import {
+  captureMarkdownSource,
+  roundTripMarkdownEnabled,
+  serializeMarkdown,
+  type MarkdownSourceSnapshot,
+} from './markdown/roundtripSerializer'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ImageViewer, useAutoSavePref } from '@genoffice/ui'
+import {
+  pollUntilReady,
+  runHeadlessRendererExport,
+} from '@genoffice/electron-utils/headless-export'
+import { EditorContent, useEditor } from '@tiptap/react'
+import { FindPanel, type FindFocusRequest, type FindPanelStrings } from '@genoffice/ui'
+import type { Editor } from '@tiptap/core'
+import { TextSelection } from '@tiptap/pm/state'
+import { exportImages } from './export/imageExport'
+import type { StringKey } from './i18n/locale'
+import { useI18n } from './i18n/locale'
+import {
+  buildFrontmatterRaw,
+  frontmatterInner,
+  parseDocText,
+  stripLegacyFencedDivs,
+  type DocEnvelope,
+} from './markdown/docText'
+import { buildSourceMap, spliceMarkdown, type SourceMap } from './markdown/sourceSplice'
+import { applySourceText } from './markdown/sourceView'
+import { isSourceMode, textModeForPath, type TextMode } from '../shared/text-mode'
+import { renameAction } from '../shared/rename-mode'
+import { readSourceText, writeSourceText, type SourceTextFormat } from '../shared/source-text'
+import { PlainTextEditor, type PlainTextEditorHandle } from './source/PlainTextEditor'
+import { buildExtensions } from './editor/extensions'
+import { tiptapFindTarget } from './editor/findTarget'
+import { collectOutline, type OutlineItem } from './editor/outline'
+import { buildSlashItems } from './editor/slashCommand'
+import type { SlashController, SlashMenuState } from './editor/slashCommand'
+import { dirOf, setImageBaseDir, VIEW_IMAGE_EVENT } from './editor/localImage'
+import { Ribbon } from './components/Ribbon'
+import { OutlinePane } from './components/OutlinePane'
+import { SourcePane } from './components/SourcePane'
+import { SlashMenu, type SlashMenuHandle } from './components/SlashMenu'
+import { ToastHost } from './components/toast'
+import { showToast } from './components/toast-bus'
+import { TableMenu } from './components/TableMenu'
+import { FrontmatterPanel } from './components/FrontmatterPanel'
+import { DOCX_MAX_IMAGE_PX, exportDocxBytes } from './export/docxExport'
+import { decodeImageDataUrl, toDocxImage } from './export/exportImage'
+import { buildPrintHtml } from './export/printHtml'
+import { diagramSvgToPng, renderDiagram } from './editor/diagrams'
+import type { DiagramLanguage } from './editor/diagrams'
+import type { ExportFormat, SaveMode } from '../shared/ipc'
+import { uiOp } from './editor/ops'
+
+type LoadStatus = 'loading' | 'ready' | 'error'
+type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
+
+const MIN_ZOOM = 50
+const MAX_ZOOM = 200
+const ZOOM_STEP = 10
+
+const EMPTY_ENVELOPE: DocEnvelope = {
+  frontmatter: '',
+  body: '',
+  eol: '\n',
+  trailingNewline: true,
+  bom: false,
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = ''
+  const CHUNK = 0x8000
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
+  return btoa(binary)
+}
+
+function imageSourcesFromEditor(editor: Editor): string[] {
+  const sources: string[] = []
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === 'image' && typeof node.attrs.src === 'string') {
+      sources.push(node.attrs.src)
+    }
+  })
+  return sources
+}
+
+function applyImageRewrites(
+  editor: Editor,
+  rewrites: ReadonlyArray<{ from: string; to: string }>,
+): void {
+  const bySource = new Map(rewrites.map(({ from, to }) => [from, to]))
+  if (bySource.size === 0) return
+  let transaction = editor.state.tr
+  let changed = false
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name !== 'image') return
+    const replacement = bySource.get(String(node.attrs.src ?? ''))
+    if (!replacement || replacement === node.attrs.src) return
+    transaction = transaction.setNodeMarkup(pos, undefined, { ...node.attrs, src: replacement })
+    changed = true
+  })
+  if (!changed) return
+  transaction.setMeta('addToHistory', false).setMeta('uiOnly', true)
+  editor.view.dispatch(transaction)
+}
+
+/** Suggested export/print name for an untitled document: first heading, else first words */
+export function deriveAutoFileName(editor: Editor): string {
+  const doc = editor.state.doc
+  for (let i = 0; i < doc.childCount; i++) {
+    const node = doc.child(i)
+    const text = node.textContent.replace(/\s+/g, ' ').trim()
+    if (!text) continue
+    if (node.type.name === 'heading') return text.slice(0, 60)
+    return text.split(' ').slice(0, 8).join(' ').slice(0, 60)
+  }
+  return ''
+}
+
+export default function App() {
+  const { lang, t } = useI18n()
+  const [status, setStatus] = useState<LoadStatus>('loading')
+  const [filePath, setFilePath] = useState<string | null>(null)
+  // a .txt/.json has no block document behind it: it is edited as source so
+  // that saving cannot reinterpret it as markdown
+  const [textMode, setTextMode] = useState<TextMode>('markdown')
+  const sourceRef = useRef<PlainTextEditorHandle | null>(null)
+  const sourceTextRef = useRef('')
+  const sourceFormatRef = useRef<SourceTextFormat>({ bom: false, eol: '\n', trailingNewline: true })
+  const sourceMode = isSourceMode(textMode)
+  const [dirty, setDirty] = useState(false)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const exportingImagesRef = useRef(false)
+  const [imageExportStatus, setImageExportStatus] = useState<{
+    key: StringKey
+    params?: Record<string, string | number>
+  } | null>(null)
+  const [slashState, setSlashState] = useState<SlashMenuState | null>(null)
+  const [fmOpen, setFmOpen] = useState(false)
+  const [fmText, setFmText] = useState('')
+  const [autoSave, setAutoSave] = useAutoSavePref('mdapp.autoSave', window.markdownApi)
+  const [showFind, setShowFind] = useState(false)
+  const [findFocus, setFindFocus] = useState<FindFocusRequest>({ field: 'find', nonce: 0 })
+  const [outlineOpen, setOutlineOpen] = useState(false)
+  const [outlineWidth, setOutlineWidth] = useState(
+    () => Number(localStorage.getItem('mdapp.outlineWidth')) || undefined,
+  )
+  // Source view: the document canvas is swapped for the exact file text, and
+  // every keystroke there is pushed back into the editor (see applySourceText).
+  const [sourceViewOpen, setSourceViewOpen] = useState(false)
+  const [sourceText, setSourceText] = useState('')
+  const sourceViewOpenRef = useRef(false)
+  const [spellcheck, setSpellcheck] = useState(
+    () => localStorage.getItem('mdapp.spellcheck') !== '0',
+  )
+  const [viewImage, setViewImage] = useState<string | null>(null)
+  useEffect(() => {
+    const onEvent = (e: Event) => setViewImage((e as CustomEvent<{ src: string }>).detail.src)
+    window.addEventListener(VIEW_IMAGE_EVENT, onEvent)
+    const off = window.markdownApi.onViewImage((src) => setViewImage(src))
+    return () => {
+      window.removeEventListener(VIEW_IMAGE_EVENT, onEvent)
+      off()
+    }
+  }, [])
+  const [outlineItems, setOutlineItems] = useState<OutlineItem[]>([])
+  const [zoom, setZoom] = useState(100)
+
+  const statusRef = useRef<LoadStatus>('loading')
+  const dirtyRef = useRef(false)
+  const savingRef = useRef(false)
+  const [roundTripEnabled] = useState(roundTripMarkdownEnabled)
+  const originalSourceRef = useRef<MarkdownSourceSnapshot | undefined>(undefined)
+  const envelopeRef = useRef<DocEnvelope>(EMPTY_ENVELOPE)
+  const editorRef = useRef<Editor | null>(null)
+  // blocks of the text on disk paired with the editor's nodes; null until a
+  // file is loaded or saved, and whenever the pairing could not be established
+  const sourceMapRef = useRef<SourceMap | null>(null)
+  /** the body a save writes: unchanged blocks verbatim from disk, edited runs re-serialized */
+  const bodyMarkdown = (current: Editor): string => {
+    const map = sourceMapRef.current
+    return map ? spliceMarkdown(current, current.state.doc, map) : current.getMarkdown()
+  }
+  const filePathRef = useRef<string | null>(null)
+  const slashMenuRef = useRef<SlashMenuHandle>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const zoomOut = useCallback(
+    () => setZoom((value) => Math.max(MIN_ZOOM, Math.round(value) - ZOOM_STEP)),
+    [],
+  )
+  const zoomIn = useCallback(
+    () => setZoom((value) => Math.min(MAX_ZOOM, Math.round(value) + ZOOM_STEP)),
+    [],
+  )
+
+  const markDirty = useCallback(() => {
+    if (statusRef.current !== 'ready' || dirtyRef.current) return
+    dirtyRef.current = true
+    setDirty(true)
+    setSaveState('idle')
+    window.markdownApi.setDirty(true)
+  }, [])
+
+  const insertImage = useCallback(() => {
+    void (async () => {
+      const relPath = await window.markdownApi.pickImage()
+      const current = editorRef.current
+      if (relPath && current) uiOp(current, { op: 'insertImage', after: 'selection', src: relPath })
+    })()
+  }, [])
+
+  const extensions = useMemo(() => {
+    const controller: SlashController = {
+      onOpen: setSlashState,
+      onUpdate: setSlashState,
+      onKeyDown: (event) => slashMenuRef.current?.handleKey(event) ?? false,
+      onClose: () => setSlashState(null),
+    }
+    return buildExtensions({
+      slashController: controller,
+      slashItems: () =>
+        buildSlashItems({ insertImage: filePathRef.current ? insertImage : undefined }),
+    })
+  }, [insertImage])
+
+  const editor = useEditor({
+    extensions,
+    content: '',
+    autofocus: true,
+    editorProps: { attributes: { class: 'doc-editor', spellcheck: String(spellcheck) } },
+    // uiOnly transactions (toggle fold state) never reach the file — not dirty
+    onUpdate: ({ editor: updated, transaction }) => {
+      if (!transaction.getMeta('uiOnly')) markDirty()
+      setOutlineItems(collectOutline(updated))
+    },
+  })
+  editorRef.current = editor
+  filePathRef.current = filePath
+
+  useEffect(() => {
+    localStorage.setItem('mdapp.spellcheck', spellcheck ? '1' : '0')
+    editor?.setOptions({
+      editorProps: { attributes: { class: 'doc-editor', spellcheck: String(spellcheck) } },
+    })
+  }, [editor, spellcheck])
+
+  useEffect(() => {
+    if (outlineWidth) localStorage.setItem('mdapp.outlineWidth', String(outlineWidth))
+  }, [outlineWidth])
+  const tiptapTarget = useMemo(() => (editor ? tiptapFindTarget(editor) : null), [editor])
+  // source mode searches the buffer the user is actually looking at
+  const findTarget = sourceMode ? (sourceRef.current?.findTarget() ?? null) : tiptapTarget
+
+  useEffect(() => {
+    setImageBaseDir(filePath ? dirOf(filePath) : null)
+  }, [filePath])
+
+  /**
+   * Read `path` and put it on the surface its extension calls for. Shared by
+   * the initial load and by a rename that crossed surfaces, so a file cannot
+   * end up on one surface because of the path it happened to be renamed to.
+   */
+  const loadFromPath = useCallback(
+    (path: string, raw: string) => {
+      const mode = textModeForPath(path)
+      setTextMode(mode)
+      if (isSourceMode(mode)) {
+        // source files keep their own bytes; the block editor never sees them
+        const { text, format } = readSourceText(raw)
+        sourceTextRef.current = text
+        sourceFormatRef.current = format
+        setFilePath(path)
+        setFmText('')
+        setFmOpen(false)
+        setOutlineItems([])
+        return
+      }
+      const envelope = parseDocText(raw)
+      envelopeRef.current = envelope
+      setImageBaseDir(dirOf(path))
+      // the initial load must not be undoable — Cmd+Z right after opening
+      // would otherwise blank the document (and Cmd+S overwrite the file)
+      const body = stripLegacyFencedDivs(envelope.body)
+      editor
+        ?.chain()
+        .setMeta('addToHistory', false)
+        .setContent(body, { contentType: 'markdown' })
+        .setTextSelection(1)
+        .run()
+      if (editor) {
+        sourceMapRef.current = buildSourceMap(editor, editor.state.doc, body)
+        originalSourceRef.current = roundTripEnabled
+          ? captureMarkdownSource(raw, envelope, editor.state.doc)
+          : undefined
+      }
+      setFilePath(path)
+      const inner = frontmatterInner(envelope.frontmatter)
+      setFmText(inner)
+      setFmOpen(inner !== '')
+    },
+    [editor, roundTripEnabled],
+  )
+
+  useEffect(() => {
+    if (!editor) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const path = await window.markdownApi.consumePending()
+        if (cancelled) return
+        if (path) {
+          const raw = await window.markdownApi.readFile(path)
+          if (cancelled) return
+          loadFromPath(path, raw)
+        } else {
+          envelopeRef.current = { ...EMPTY_ENVELOPE }
+        }
+        statusRef.current = 'ready'
+        setStatus('ready')
+      } catch (err) {
+        console.error('[markdown] load failed:', err)
+        if (!cancelled) {
+          statusRef.current = 'error'
+          setStatus('error')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [editor, roundTripEnabled, loadFromPath])
+
+  const onFrontmatterChange = useCallback(
+    (inner: string) => {
+      setFmText(inner)
+      envelopeRef.current.frontmatter = buildFrontmatterRaw(inner)
+      markDirty()
+    },
+    [markDirty],
+  )
+
+  /**
+   * Write a source-mode file. The text goes to disk exactly as the editor
+   * holds it, with the file's own BOM and line endings restored — no markdown
+   * serialization, no image extraction, no trailing-newline fixups.
+   */
+  const doSaveSource = useCallback(async (mode: SaveMode): Promise<boolean> => {
+    if (statusRef.current !== 'ready' || savingRef.current) return false
+    savingRef.current = true
+    setSaveState('saving')
+    const textAtSave = sourceTextRef.current
+    try {
+      const result = await window.markdownApi.save({
+        text: writeSourceText(textAtSave, sourceFormatRef.current),
+        imageSources: [],
+        mode,
+      })
+      if (result.ok && 'path' in result) {
+        // an edit that landed mid-write is still unsaved
+        const unchanged = sourceTextRef.current === textAtSave
+        setFilePath(result.path)
+        if (unchanged) {
+          dirtyRef.current = false
+          setDirty(false)
+          window.markdownApi.setDirty(false)
+          setSaveState('saved')
+        } else {
+          dirtyRef.current = true
+          setDirty(true)
+          window.markdownApi.setDirty(true)
+          setSaveState('idle')
+        }
+        return true
+      }
+      setSaveState(result.ok ? 'idle' : 'failed')
+      return false
+    } catch (err) {
+      console.error('[markdown] save failed:', err)
+      setSaveState('failed')
+      return false
+    } finally {
+      savingRef.current = false
+    }
+  }, [])
+
+  /** The exact text a save would write right now; null before the document is ready. */
+  const currentFileText = useCallback((): string | null => {
+    const current = editorRef.current
+    if (!current || statusRef.current !== 'ready') return null
+    return serializeMarkdown(
+      envelopeRef.current,
+      current.state.doc,
+      () => bodyMarkdown(current),
+      originalSourceRef.current,
+    )
+  }, [])
+
+  const openSource = useCallback(() => {
+    const text = currentFileText()
+    if (text === null) return
+    setSourceText(text)
+    // the Find panel drives a selection in the canvas the user can no longer see
+    setShowFind(false)
+    setSourceViewOpen(true)
+  }, [currentFileText])
+
+  const closeSource = useCallback(() => {
+    setSourceViewOpen(false)
+  }, [])
+
+  const toggleSource = useCallback(() => {
+    if (sourceViewOpenRef.current) closeSource()
+    else openSource()
+  }, [closeSource, openSource])
+
+  /**
+   * A keystroke in the pane is re-parsed into the editor rather than saved, so
+   * every other consumer — save, autosave, the outline — keeps
+   * reading one document and no save-path special case is needed.
+   */
+  const onSourceChange = useCallback(
+    (text: string) => {
+      setSourceText(text)
+      const current = editorRef.current
+      if (!current || statusRef.current !== 'ready') return
+      const hadFrontmatter = envelopeRef.current.frontmatter !== ''
+      const applied = applySourceText(current, text)
+      envelopeRef.current = applied.envelope
+      sourceMapRef.current = applied.sourceMap
+      const inner = frontmatterInner(applied.envelope.frontmatter)
+      setFmText(inner)
+      // surface a frontmatter block that just appeared, but leave a panel the
+      // user closed on purpose closed
+      if (inner && !hadFrontmatter) setFmOpen(true)
+      markDirty()
+    },
+    [markDirty],
+  )
+
+  /**
+   * The pane re-syncs from the editor whenever its focus changes, so a write
+   * that landed while it sat unfocused is picked up before the user can read stale text, while a half-typed line
+   * under their own cursor is never touched.
+   */
+  const onSourceFocusChange = useCallback(() => {
+    const text = currentFileText()
+    if (text !== null) setSourceText(text)
+  }, [currentFileText])
+
+  useEffect(() => {
+    sourceViewOpenRef.current = sourceViewOpen
+  }, [sourceViewOpen])
+
+  /** Serialize and write to disk; false when canceled/failed (caller keeps the tab open) */
+  const doSave = useCallback(
+    async (mode: SaveMode): Promise<boolean> => {
+      if (sourceMode) return doSaveSource(mode)
+      const current = editorRef.current
+      if (!current || statusRef.current !== 'ready' || savingRef.current) return false
+      savingRef.current = true
+      setSaveState('saving')
+      try {
+        // edits landing while the write is in flight (fast typing)
+        // must keep the document dirty — compare doc identity after the await
+        const docAtSave = current.state.doc
+        const fmAtSave = envelopeRef.current.frontmatter
+        const sourceAtSave = originalSourceRef.current
+        let body: string | undefined
+        const text = serializeMarkdown(
+          envelopeRef.current,
+          current.state.doc,
+          () => (body = bodyMarkdown(current)),
+          sourceAtSave,
+        )
+        const imageSources = imageSourcesFromEditor(current)
+        const result = await window.markdownApi.save({ text, imageSources, mode })
+        if (result.ok && 'path' in result) {
+          const unchanged =
+            editorRef.current?.state.doc === docAtSave &&
+            envelopeRef.current.frontmatter === fmAtSave
+          // Save As can rewrite sources absent from the visual projection (e.g. HTML).
+          // Never reuse a snapshot containing paths from the previous location.
+          if (result.imageRewrites?.length) originalSourceRef.current = undefined
+          if (result.imageRewrites?.length && editorRef.current) {
+            applyImageRewrites(editorRef.current, result.imageRewrites)
+          }
+          // the next save splices against what is now on disk: after image
+          // rewrites that is writtenText paired with the rewritten document
+          if (result.writtenText === undefined) {
+            sourceMapRef.current = buildSourceMap(
+              current,
+              docAtSave,
+              body ?? stripLegacyFencedDivs(parseDocText(text).body),
+            )
+          } else {
+            sourceMapRef.current =
+              unchanged && editorRef.current
+                ? buildSourceMap(
+                    editorRef.current,
+                    editorRef.current.state.doc,
+                    stripLegacyFencedDivs(parseDocText(result.writtenText).body),
+                  )
+                : null
+          }
+          if (
+            unchanged &&
+            sourceAtSave?.source === text &&
+            result.writtenText !== undefined &&
+            editorRef.current
+          ) {
+            originalSourceRef.current = captureMarkdownSource(
+              result.writtenText,
+              envelopeRef.current,
+              editorRef.current.state.doc,
+            )
+          }
+          setImageBaseDir(dirOf(result.path))
+          setFilePath(result.path)
+          if (unchanged) {
+            dirtyRef.current = false
+            setDirty(false)
+            window.markdownApi.setDirty(false)
+            setSaveState('saved')
+          } else {
+            // the main process cleared its dirty flag on write — re-assert it
+            dirtyRef.current = true
+            setDirty(true)
+            window.markdownApi.setDirty(true)
+            setSaveState('idle')
+          }
+          return true
+        }
+        setSaveState(result.ok ? 'idle' : 'failed')
+        return false
+      } catch (err) {
+        console.error('[markdown] save failed:', err)
+        setSaveState('failed')
+        return false
+      } finally {
+        savingRef.current = false
+      }
+    },
+    [sourceMode, doSaveSource],
+  )
+
+  /** `outPath` (headless export only) skips the save dialog; resolves true when a file was written. */
+  const runExport = useCallback(
+    async (format: ExportFormat, outPath?: string) => {
+      // a source file has no rendered document to export
+      if (sourceMode) return false
+      const current = editorRef.current
+      if (!current || statusRef.current !== 'ready') return false
+      const suggestedName =
+        (filePathRef.current
+          ? filePathRef.current.replace(/^.*[/\\]/, '').replace(/\.(md|markdown)$/i, '')
+          : deriveAutoFileName(current)) || 'Untitled'
+      if (format === 'png') {
+        if (exportingImagesRef.current) return false
+        exportingImagesRef.current = true
+        setImageExportStatus({ key: 'appExportingImages' })
+        try {
+          await document.fonts.ready
+          await Promise.all(
+            [
+              ...current.view.dom.querySelectorAll<HTMLImageElement>(
+                'img[src]:not(.ProseMirror-separator)',
+              ),
+            ].map((image) => image.decode().catch(() => {})),
+          )
+          const result = await exportImages(
+            buildPrintHtml(current.view.dom, suggestedName),
+            suggestedName,
+            (count) => setImageExportStatus({ key: 'appExportImagesProgress', params: { count } }),
+          )
+          if (!result.ok) throw new Error(result.error)
+          if ('canceled' in result) {
+            setImageExportStatus(null)
+            return false
+          }
+          setImageExportStatus({
+            key: 'appExportImagesDone',
+            params: { count: result.count ?? 0, dir: result.path },
+          })
+          return true
+        } catch (err) {
+          setImageExportStatus({
+            key: 'appExportImagesFailed',
+            params: { error: err instanceof Error ? err.message : String(err) },
+          })
+          return false
+        } finally {
+          exportingImagesRef.current = false
+        }
+      }
+      try {
+        if (format === 'pdf') {
+          const html = buildPrintHtml(current.view.dom, suggestedName)
+          const result = await window.markdownApi.exportPdf({
+            html,
+            suggestedName,
+            ...(outPath ? { outPath } : {}),
+          })
+          if (!result.ok) console.error('[markdown] pdf export failed:', result.error)
+          return result.ok && !('canceled' in result)
+        }
+        const loadImage = async (src: string) => {
+          const data = decodeImageDataUrl(src) ?? (await window.markdownApi.readImage(src))
+          return data ? toDocxImage(data, DOCX_MAX_IMAGE_PX) : null
+        }
+        const rasterizeDiagram = async (source: string, language: DiagramLanguage) => {
+          const result = await renderDiagram(language, source)
+          return result.ok ? diagramSvgToPng(result.svg, DOCX_MAX_IMAGE_PX) : null
+        }
+        const bytes = await exportDocxBytes(current.getJSON(), loadImage, rasterizeDiagram)
+        const result = await window.markdownApi.exportDocx({
+          base64: bytesToBase64(bytes),
+          suggestedName,
+          mode: format === 'docs' ? 'openInDocs' : 'dialog',
+        })
+        if (!result.ok) console.error('[markdown] docx export failed:', result.error)
+        return result.ok && !('canceled' in result)
+      } catch (err) {
+        console.error('[markdown] export failed:', err)
+        return false
+      }
+    },
+    [sourceMode],
+  )
+
+  // Headless export mode (--headless-export): this renderer lives in a hidden
+  // window whose only job is to run the File menu's PDF export against a path
+  // the CLI chose, then report back so the main process can quit.
+  const headlessExportStartedRef = useRef(false)
+  useEffect(() => {
+    if (headlessExportStartedRef.current) return
+    headlessExportStartedRef.current = true
+    void (async () => {
+      const outPath = await window.markdownApi.consumeHeadlessExport()
+      if (!outPath) return
+      const report = await runHeadlessRendererExport(
+        outPath,
+        () =>
+          pollUntilReady(() => {
+            if (statusRef.current === 'error') throw new Error('the input document did not open')
+            return statusRef.current === 'ready'
+          }, 'no document opened'),
+        (target) => runExport('pdf', target),
+      )
+      window.markdownApi.headlessExportDone(report)
+    })()
+  }, [runExport])
+
+  /**
+   * Print through the same self-contained HTML the PDF export uses, loaded into a
+   * hidden same-session iframe (md-asset:// images keep resolving) — printing the
+   * live page would drag the ribbon/panels along, and Electron has no built-in
+   * preview to crop them out.
+   */
+  const printingRef = useRef(false)
+  const printDoc = useCallback(async () => {
+    const current = editorRef.current
+    if (!current || statusRef.current !== 'ready' || printingRef.current) return
+    printingRef.current = true
+    const title =
+      (filePathRef.current
+        ? filePathRef.current.replace(/^.*[/\\]/, '').replace(/\.(md|markdown)$/i, '')
+        : deriveAutoFileName(current)) || 'Untitled'
+    const frame = document.createElement('iframe')
+    frame.style.position = 'fixed'
+    frame.style.right = '100%'
+    frame.style.bottom = '100%'
+    frame.style.width = '0'
+    frame.style.height = '0'
+    frame.style.border = '0'
+    try {
+      await new Promise<void>((resolve) => {
+        frame.onload = () => resolve()
+        frame.srcdoc = buildPrintHtml(current.view.dom, title)
+        document.body.appendChild(frame)
+      })
+      const fdoc = frame.contentDocument
+      const fwin = frame.contentWindow
+      if (!fdoc || !fwin) return
+      // the export path passes printToPDF margins instead; the dialog needs @page
+      const pageStyle = fdoc.createElement('style')
+      pageStyle.textContent = '@page { margin: 0.6in; }'
+      fdoc.head.appendChild(pageStyle)
+      await Promise.all([...fdoc.images].map((img) => img.decode().catch(() => {})))
+      // resolve on afterprint so the frame survives until the dialog closes (cancel included)
+      await new Promise<void>((resolve) => {
+        fwin.addEventListener('afterprint', () => resolve())
+        fwin.print()
+      })
+    } catch (err) {
+      console.error('[markdown] print failed:', err)
+    } finally {
+      frame.remove()
+      printingRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    const offExport = window.markdownApi.onExportRequest((format) => void runExport(format))
+    const offPrint = window.markdownApi.onPrintRequest(() => void printDoc())
+    return () => {
+      offExport()
+      offPrint()
+    }
+  }, [runExport, printDoc])
+
+  const openFind = useCallback((replace: boolean) => {
+    if (statusRef.current !== 'ready') return
+    setShowFind(true)
+    setFindFocus((f) => ({ field: replace ? 'replace' : 'find', nonce: f.nonce + 1 }))
+  }, [])
+
+  useEffect(() => {
+    const offSave = window.markdownApi.onSaveRequest((mode) => {
+      void (async () => {
+        // same as the close-save path: wait out an in-flight autosave instead of
+        // answering false, or a menu save during a blur autosave fails
+        while (savingRef.current) {
+          await new Promise((resolve) => setTimeout(resolve, 50))
+        }
+        window.markdownApi.sendSaveRequestAck(await doSave(mode))
+      })()
+    })
+    const offClose = window.markdownApi.onCloseSaveRequest(() => {
+      void (async () => {
+        // A close-save arriving during an in-flight autosave must wait for it
+        // instead of failing (the old immediate `false` from `savingRef` made
+        // "Save and close" silently give up during a blur autosave — the same
+        // bug the docs app fixed with its save serializer).
+        while (savingRef.current) {
+          await new Promise((resolve) => setTimeout(resolve, 50))
+        }
+        // The in-flight save may have already persisted everything.
+        if (!dirtyRef.current) {
+          window.markdownApi.sendCloseSaveResult(true)
+          return
+        }
+        const ok = await doSave('save')
+        window.markdownApi.sendCloseSaveResult(ok)
+      })()
+    })
+    const offRenamed = window.markdownApi.onFileRenamed((newPath) => {
+      // A rename that changes the extension changes what the file is, so the
+      // open document has to follow it onto the matching surface. Reloading
+      // throws away unsaved edits, so a dirty document is refused instead —
+      // the file on disk is untouched and the tab stays open.
+      const action = renameAction(filePathRef.current, newPath, dirtyRef.current)
+      if (action === 'keep') {
+        setFilePath(newPath)
+        return
+      }
+      if (action === 'block-dirty') {
+        showToast(t('renameNeedsSave'), 'error')
+        return
+      }
+      void (async () => {
+        try {
+          const raw = await window.markdownApi.readFile(newPath)
+          // loadFromPath replaces the content with addToHistory off, so the
+          // old surface's undo stack cannot walk back into a document that
+          // has a different shape now
+          loadFromPath(newPath, raw)
+        } catch (err) {
+          console.error('[markdown] reload after rename failed:', err)
+        }
+      })()
+    })
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return
+      const key = event.key.toLowerCase()
+      if (key === 's') {
+        event.preventDefault()
+        void doSave(event.shiftKey ? 'saveAs' : 'save')
+      } else if (key === 'p' && !event.shiftKey) {
+        event.preventDefault()
+        void printDoc()
+      } else if (key === 'f' && !event.shiftKey) {
+        event.preventDefault()
+        openFind(false)
+      } else if (key === 'h' && !event.shiftKey) {
+        // Word's replace shortcut; macOS Cmd+H is the system hide role and never reaches here
+        event.preventDefault()
+        openFind(true)
+      } else if (key === 'e' && !event.shiftKey) {
+        // Obsidian's edit/preview toggle: the source view
+        event.preventDefault()
+        toggleSource()
+      } else if (key === '=' || key === '+') {
+        event.preventDefault()
+        zoomIn()
+      } else if (key === '-' || key === '_') {
+        event.preventDefault()
+        zoomOut()
+      } else if (key === '0') {
+        event.preventDefault()
+        setZoom(100)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      offSave()
+      offClose()
+      offRenamed()
+      window.removeEventListener('keydown', onKeyDown, true)
+    }
+  }, [doSave, printDoc, zoomIn, zoomOut, openFind, toggleSource, loadFromPath, t])
+
+  // Chromium reports trackpad pinch as ctrl+wheel. Also support Cmd/Ctrl+scroll
+  // while the pointer is over the document canvas.
+  useEffect(() => {
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return
+      if (!(event.target as HTMLElement | null)?.closest?.('.editor-scroll')) return
+      event.preventDefault()
+      setZoom((value) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value - event.deltaY * 0.6)))
+    }
+    window.addEventListener('wheel', onWheel, { passive: false })
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [])
+
+  // autosave: every 30s and on window blur, silently persist pending changes
+  // (same policy as the docs app; untitled documents are skipped — the first
+  // save must go through the explicit save path that names the file)
+  useEffect(() => {
+    if (!autoSave || !filePath) return
+    const tick = () => {
+      if (!dirtyRef.current) return
+      if (editorRef.current?.view.composing) return // don't interrupt IME input
+      void doSave('save')
+    }
+    const id = window.setInterval(tick, 30_000)
+    window.addEventListener('blur', tick)
+    return () => {
+      window.clearInterval(id)
+      window.removeEventListener('blur', tick)
+    }
+  }, [autoSave, filePath, doSave])
+
+  /** outline click: move the cursor into the heading and scroll it into view */
+  const jumpToOutline = useCallback((pos: number): void => {
+    const current = editorRef.current
+    if (!current) return
+    const selection = TextSelection.near(current.state.doc.resolve(pos))
+    current.view.dispatch(current.state.tr.setSelection(selection).scrollIntoView())
+    current.view.focus()
+  }, [])
+  const fileName = filePath ? filePath.replace(/^.*[/\\]/, '') : null
+  const statusText =
+    saveState === 'saving'
+      ? t('saving')
+      : saveState === 'failed'
+        ? t('saveFailed')
+        : dirty
+          ? t('unsaved')
+          : saveState === 'saved'
+            ? t('savedOk')
+            : ''
+
+  const findStrings: FindPanelStrings = {
+    findPlaceholder: t('findPlaceholder'),
+    replacePlaceholder: t('replacePlaceholder'),
+    matchCase: t('matchCase'),
+    wholeWord: t('wholeWord'),
+    noResults: t('noResults'),
+    prevMatch: t('prevMatch'),
+    nextMatch: t('nextMatch'),
+    closeEsc: t('closeEsc'),
+    replace: t('replace'),
+    replaceAll: t('replaceAll'),
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="app">
+        <div className="center-note">{t('loadError')}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="app">
+      <Ribbon
+        editor={editor}
+        disabled={status !== 'ready'}
+        dirty={dirty}
+        onSave={() => void doSave('save')}
+        onSaveAs={() => void doSave('saveAs')}
+        onFind={() => openFind(false)}
+        autoSave={autoSave}
+        onToggleAutoSave={setAutoSave}
+        imageEnabled={Boolean(filePath)}
+        onInsertImage={insertImage}
+        frontmatterOpen={fmOpen}
+        onToggleFrontmatter={() => setFmOpen((v) => !v)}
+        sourceViewOpen={sourceViewOpen}
+        onToggleSource={toggleSource}
+        outlineOpen={outlineOpen}
+        onToggleOutline={() => setOutlineOpen((v) => !v)}
+        hasOutline={outlineItems.length > 0}
+        spellcheck={spellcheck}
+        onToggleSpellcheck={() => setSpellcheck((v) => !v)}
+        sourceMode={sourceMode}
+      />
+      {status === 'loading' && <div className="center-note">{t('loading')}</div>}
+      <div className="app-main" style={status === 'ready' ? undefined : { display: 'none' }}>
+        {outlineOpen && !sourceMode && (
+          <OutlinePane
+            items={outlineItems}
+            onJump={jumpToOutline}
+            width={outlineWidth}
+            onResize={setOutlineWidth}
+          />
+        )}
+        <div className="app-content">
+          {showFind && findTarget && (
+            <FindPanel
+              target={findTarget}
+              strings={findStrings}
+              onClose={() => setShowFind(false)}
+              focusRequest={findFocus}
+            />
+          )}
+          {/* Two different things, three branches. A .txt/.json has no block
+              document behind it at all, so its source text replaces the canvas
+              outright. The markdown source view is a different case: there the
+              editor still owns a live ProseMirror view, and unmounting
+              EditorContent tears it down, so the canvas stays mounted and only
+              hidden while SourcePane sits beside it. */}
+          {sourceMode ? (
+            <div className="source-editor">
+              <PlainTextEditor
+                ref={sourceRef}
+                initialText={sourceTextRef.current}
+                mode={textMode === 'json' ? 'json' : 'plain'}
+                spellcheck={spellcheck}
+                onChange={(text) => {
+                  sourceTextRef.current = text
+                  markDirty()
+                }}
+              />
+            </div>
+          ) : (
+            <>
+              <div
+                className={`editor-scroll${sourceViewOpen ? ' source-off' : ''}`}
+                ref={scrollRef}
+              >
+                <div className="doc-page" style={{ zoom: zoom / 100 }}>
+                  {fmOpen && <FrontmatterPanel value={fmText} onChange={onFrontmatterChange} />}
+                  <EditorContent editor={editor} />
+                </div>
+              </div>
+              {sourceViewOpen && (
+                <SourcePane
+                  value={sourceText}
+                  onChange={onSourceChange}
+                  onFocusChange={onSourceFocusChange}
+                />
+              )}
+            </>
+          )}
+          <footer className="status-bar">
+            <div className="status-left">
+              {imageExportStatus && (
+                <span className="status-item status-export" role="status">
+                  {t(imageExportStatus.key, imageExportStatus.params)}
+                </span>
+              )}
+              {fileName && <span className="status-item status-file">{fileName}</span>}
+            </div>
+            <div className="status-right">
+              {statusText && (
+                <span className={`status-save status-${saveState}`}>{statusText}</span>
+              )}
+              <button
+                type="button"
+                className="zoom-btn"
+                aria-label={t('zoomOut')}
+                onClick={zoomOut}
+                disabled={zoom <= MIN_ZOOM}
+              >
+                −
+              </button>
+              <input
+                className="zoom-slider"
+                type="range"
+                min={MIN_ZOOM}
+                max={MAX_ZOOM}
+                step={ZOOM_STEP}
+                value={Math.round(zoom)}
+                aria-label={t('zoom')}
+                onChange={(event) => setZoom(Number(event.target.value))}
+              />
+              <button
+                type="button"
+                className="zoom-btn"
+                aria-label={t('zoomIn')}
+                onClick={zoomIn}
+                disabled={zoom >= MAX_ZOOM}
+              >
+                +
+              </button>
+              <span className="zoom-value">{Math.round(zoom)}%</span>
+            </div>
+          </footer>
+        </div>
+      </div>
+      {!sourceMode && (
+        <SlashMenu ref={slashMenuRef} state={slashState} onDismiss={() => setSlashState(null)} />
+      )}
+      <ToastHost />
+      {viewImage && (
+        <ImageViewer
+          src={viewImage}
+          lang={lang}
+          labels={{
+            zoomIn: t('zoomIn'),
+            zoomOut: t('zoomOut'),
+            actualSize: t('imageActualSize'),
+            fitToWindow: t('imageFitWindow'),
+            save: t('saveImageAs'),
+            close: t('closeEsc'),
+          }}
+          onClose={() => setViewImage(null)}
+          onSave={() => void window.markdownApi.saveImageAs(viewImage)}
+        />
+      )}
+      {!sourceMode && <TableMenu editor={editor} scrollRef={scrollRef} zoom={zoom} />}
+    </div>
+  )
+}
