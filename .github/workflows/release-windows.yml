@@ -5,14 +5,22 @@ name: Windows installer
 # The installer is smoke-tested on the runner: silent per-user install, check the
 # files and the Default Programs registration, silent uninstall.
 #
-# Nothing is published: there is no GitHub Release step and electron-builder
-# runs with --publish never. A public release is a manual, separate decision.
+# Publishing is a deliberate, separate step: the `publish` job runs only on a
+# manual "Run workflow" with publish=true (or a pushed v* tag). It creates the
+# GitHub Release v<version> (version from apps/shell/package.json) on the
+# built commit and attaches the installer and its SHA-256. electron-builder
+# itself always runs with --publish never.
 # The installer is unsigned until a code-signing certificate is configured
 # (GENOFFICE_WIN_SIGN_MODE, see apps/shell/electron-builder.cjs), so Windows
 # SmartScreen shows "Unknown publisher" on first run.
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish a public GitHub Release v<version> with the installer'
+        type: boolean
+        default: false
   push:
     tags: ['v*']
   pull_request:
@@ -138,3 +146,51 @@ jobs:
             apps/shell/release/Hyper-Files-Setup-*-x64.exe.sha256
           if-no-files-found: error
           retention-days: 30
+
+  publish:
+    needs: installer
+    if: (github.event_name == 'workflow_dispatch' && inputs.publish) || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download installer
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: hyper-files-windows-x64
+          path: dist
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./apps/shell/package.json').version")
+          tag="v$version"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "$tag" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match apps/shell/package.json version $version" >&2
+            exit 1
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release $tag already exists; bump the version first" >&2
+            exit 1
+          fi
+          exe=$(ls dist/Hyper-Files-Setup-*-x64.exe)
+          sha=$(cut -d' ' -f1 "$exe.sha256")
+          cat > notes.md <<NOTES
+          Hyper-Files $version for Windows 10 and 11 (x64).
+
+          Download **$(basename "$exe")** below and run it. It installs for your user account (no admin needed); "for all users" is offered on the first page. The last page offers to make Hyper-Files the default app for PDF and Office files.
+
+          - Fully offline: no accounts, no telemetry. The update check is off until you turn it on in Settings > About.
+          - The installer is not code-signed yet. Windows SmartScreen may say "Windows protected your PC": choose **More info** > **Run anyway**.
+          - SHA-256: \`$sha\`
+
+          Hyper-Files is free software under the GNU AGPL-3.0. Source code: this repository at tag $tag.
+          NOTES
+          gh release create "$tag" "$exe" "$exe.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "Hyper-Files $version" \
+            --notes-file notes.md
