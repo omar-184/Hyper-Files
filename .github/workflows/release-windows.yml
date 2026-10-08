@@ -187,6 +187,7 @@ jobs:
           - Fully offline: no accounts, no telemetry. The update check is off until you turn it on in Settings > About.
           - The installer is not code-signed yet. Windows SmartScreen may say "Windows protected your PC": choose **More info** > **Run anyway**.
           - SHA-256: \`$sha\`
+          - Code signing policy: https://github.com/${GITHUB_REPOSITORY}/blob/main/CODE_SIGNING_POLICY.md
 
           Hyper-Files is free software under the GNU AGPL-3.0. Source code: this repository at tag $tag.
           NOTES

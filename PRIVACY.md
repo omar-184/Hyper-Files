@@ -14,6 +14,9 @@ The app works fully offline. It only touches the network when you ask it to:
 - an HTML document you open may load images, fonts or scripts it links to,
   as a web browser would
 - clicking a link opens it in your default browser
+- the update check, off by default, asks GitHub Releases
+  (`api.github.com`) whether a newer version exists once a day after you turn
+  it on in Settings > About; it sends no information about you or your files
 
 ## Data stored on your computer
 
