@@ -95,6 +95,12 @@ export const IconNote = () => (
     <path d="M8.25 9.32 L15.75 9.32 M8.25 12 L13.07 12" />
   </Icon>
 )
+export const IconTextBox = () => (
+  <Icon>
+    <rect x="4.5" y="5.5" width="15" height="13" rx="1" />
+    <path d="M8.5 9.25 L15.5 9.25 M12 9.25 L12 15.25" />
+  </Icon>
+)
 export const IconSign = () => (
   <Icon>
     <path d="M5.5 15.1 C7.8 12.3 9.5 9 9.2 7 C9 5.7 7.9 5.9 7.6 7.4 C7.2 9.6 8.6 13.4 10.5 14.9 C12 16.1 13.9 15.3 14.7 13.8 C15.1 13 15.9 13 16.3 13.8 C16.7 14.7 17.7 15 18.5 14.4" />

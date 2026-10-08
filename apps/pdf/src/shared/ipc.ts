@@ -162,6 +162,23 @@ export type DrawingInput =
       formFieldName?: string
     }
   | {
+      /** Text-box comment, written as a FreeText annotation */
+      kind: 'freetext'
+      pageIndex: number
+      /** PDF user space [x1,y1,x2,y2] */
+      rect: [number, number, number, number]
+      contents: string
+      fontSize: number
+      /** Text and border color, rgb 0-1 */
+      color: [number, number, number]
+      /** Annotation author (/T); omitted → 'Hyper-Files' */
+      author?: string
+      /** Creation time (ms since epoch); omitted → save time */
+      createdMs?: number
+      /** PNG (base64, no data: prefix) appearance for text Helvetica cannot draw */
+      image?: string
+    }
+  | {
       kind: 'note'
       pageIndex: number
       color: [number, number, number]

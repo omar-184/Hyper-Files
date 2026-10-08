@@ -84,6 +84,16 @@ import { createSearchIndexCache, findInIndex, searchInIndex, textInRects } from 
 import type { SearchIndex, SearchMatch } from './search'
 import type { FindTarget, RedactPattern } from '../shared/text-match'
 import { marksFromMatches, padMatchRect } from './redact-marks'
+import {
+  TEXT_BOX_DEFAULT_SIZE,
+  TEXT_BOX_FONT_SIZES,
+  TEXT_BOX_LEADING,
+  TEXT_BOX_PAD,
+  isWinAnsi,
+  textBoxHeight,
+  wrapTextBox,
+} from '../shared/text-box'
+import { measureTextBox, rasterTextBox } from './text-box-render'
 import { buildCommentList } from './comments-list'
 import type { CommentEntry, CommentKind } from './comments-list'
 import { CommentsPanel } from './CommentsPanel'
@@ -209,6 +219,7 @@ import {
   IconEllipse,
   IconArrow,
   IconNote,
+  IconTextBox,
   IconSign,
   IconPreviousField,
   IconNextField,
@@ -271,6 +282,7 @@ const DRAW_TOOLS = [
   { tool: 'ellipse' as const, icon: IconEllipse, key: 'drawEllipse' as const },
   { tool: 'arrow' as const, icon: IconArrow, key: 'drawArrow' as const },
   { tool: 'note' as const, icon: IconNote, key: 'drawNote' as const },
+  { tool: 'textbox' as const, icon: IconTextBox, key: 'drawTextBox' as const },
 ]
 
 /** A native picker was dismissed; flushed = the pending edits had already been saved to disk first */
@@ -677,6 +689,16 @@ export default function App() {
   const [colorOpen, setColorOpen] = useState(false)
   /** Note just placed with the note tool; its content is typed into a margin draft card */
   const [noteDraft, setNoteDraft] = useState<{ origIdx: number; at: [number, number] } | null>(null)
+  /** Text-box comment being typed: a new box (editId null) or a pending one reopened */
+  const [textBoxDraft, setTextBoxDraft] = useState<{
+    origIdx: number
+    rect: [number, number, number, number]
+    text: string
+    fontSize: number
+    color: [number, number, number]
+    editId: string | null
+  } | null>(null)
+  const [textBoxSize, setTextBoxSize] = useState<number>(TEXT_BOX_DEFAULT_SIZE)
   /** In-progress rewrite of an existing comment. Hoisted out of the margin card so a
       save can fold it in before the post-save reload tears the edit box down. */
   const [noteEditDraft, setNoteEditDraft] = useState<{
@@ -3766,6 +3788,71 @@ export default function App() {
     applyEditOps([{ op: 'addDrawing', drawing: { ...input, pageIndex: origIdx } }])
   }
 
+  /** Close the text-box editor, writing its text as a new or updated pending box.
+      The box grows downward on screen to fit its lines; text Helvetica cannot draw
+      (e.g. Arabic, CJK) carries a rendered image as its saved appearance. */
+  const commitTextBox = () => {
+    const draft = textBoxDraft
+    if (!draft) return
+    setTextBoxDraft(null)
+    const text = draft.text.replace(/\s+$/, '')
+    if (!text.trim()) {
+      if (draft.editId) applyEditOps([{ op: 'removeDrawing', id: draft.editId }])
+      return
+    }
+    const geom = pageGeom(draft.origIdx)
+    const box = pdfRectToCss(geom, draft.rect, 1)
+    const lines = wrapTextBox(text, box.width - 2 * TEXT_BOX_PAD, measureTextBox(draft.fontSize))
+    const height = Math.max(box.height, textBoxHeight(lines.length, draft.fontSize))
+    const [ax, ay] = viewToPdf(geom, box.left, box.top)
+    const [bx, by] = viewToPdf(geom, box.left + box.width, box.top + height)
+    const rect: [number, number, number, number] = [
+      Math.min(ax, bx),
+      Math.min(ay, by),
+      Math.max(ax, bx),
+      Math.max(ay, by),
+    ]
+    const image = isWinAnsi(text)
+      ? undefined
+      : rasterTextBox(text, box.width, height, draft.fontSize, draft.color)
+    if (draft.editId) {
+      applyEditOps([
+        { op: 'setFreeText', id: draft.editId, contents: text, rect, ...(image ? { image } : {}) },
+      ])
+      return
+    }
+    applyEditOps([
+      {
+        op: 'addDrawing',
+        drawing: {
+          kind: 'freetext',
+          pageIndex: draft.origIdx,
+          rect,
+          contents: text,
+          fontSize: draft.fontSize,
+          color: draft.color,
+          author: noteAuthor || undefined,
+          createdMs: Date.now(),
+          ...(image ? { image } : {}),
+        },
+      },
+    ])
+  }
+
+  const editTextBox = (origIdx: number, id: string) => {
+    const d = drawings.find((x) => x.id === id)
+    if (!d || d.input.kind !== 'freetext') return
+    setSelected(null)
+    setTextBoxDraft({
+      origIdx,
+      rect: d.input.rect,
+      text: d.input.contents,
+      fontSize: d.input.fontSize,
+      color: d.input.color,
+      editId: id,
+    })
+  }
+
   /** Render stamps in current page order; page numbers depend on visList, so both preview and save compute fresh */
   const renderStamps = useCallback(
     (cfg: StampConfig, pages: number[]): StampInput[] =>
@@ -6053,6 +6140,29 @@ export default function App() {
                       {t(key)}
                     </button>
                   ))}
+                  {(drawTool === 'textbox' || textBoxDraft) && (
+                    <label className="rb-field">
+                      <span>{t('textBoxSize')}</span>
+                      <select
+                        className="pdf-search-mode"
+                        aria-label={t('textBoxSize')}
+                        value={textBoxDraft?.fontSize ?? textBoxSize}
+                        // Keep the open editor's focus: a blur would commit the box
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const size = Number(e.target.value)
+                          setTextBoxSize(size)
+                          setTextBoxDraft((d) => d && { ...d, fontSize: size })
+                        }}
+                      >
+                        {TEXT_BOX_FONT_SIZES.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <button
                     className={`rb-big${drawTool === 'redact' ? ' active' : ''}`}
                     disabled={readOnly}
@@ -7772,7 +7882,10 @@ export default function App() {
                                 scale={scale}
                                 pageWidth={size.width}
                                 pageHeight={size.height}
-                                drawings={drawings.filter((d) => d.input.pageIndex === origIdx)}
+                                drawings={drawings.filter(
+                                  (d) =>
+                                    d.input.pageIndex === origIdx && d.id !== textBoxDraft?.editId,
+                                )}
                                 savedNotes={savedNotePins(origIdx)}
                                 activeNoteKey={
                                   activeNote?.origIdx === origIdx ? activeNote.rootKey : null
@@ -7784,6 +7897,19 @@ export default function App() {
                                 selectTitle={t('removeMarkup')}
                                 noteOpenTitle={t('noteOpen')}
                                 onCommit={(input) => commitDrawing(origIdx, input)}
+                                onTextBox={(rect) =>
+                                  setTextBoxDraft({
+                                    origIdx,
+                                    rect,
+                                    text: '',
+                                    fontSize: textBoxSize,
+                                    color: drawColor,
+                                    editId: null,
+                                  })
+                                }
+                                onTextBoxEdit={
+                                  readOnly ? undefined : (id) => editTextBox(origIdx, id)
+                                }
                                 onNoteAt={(at) => {
                                   setActiveNote(null)
                                   setNoteDraft({ origIdx, at })
@@ -7824,6 +7950,40 @@ export default function App() {
                                   setRedactions((prev) => prev.filter((mark) => mark.id !== id))
                                 }
                               />
+                              {textBoxDraft?.origIdx === origIdx &&
+                                (() => {
+                                  const box = pdfRectToCss(geom, textBoxDraft.rect, scale)
+                                  return (
+                                    <textarea
+                                      className="pdf-textbox-editor"
+                                      aria-label={t('drawTextBox')}
+                                      placeholder={t('textBoxPlaceholder')}
+                                      autoFocus
+                                      value={textBoxDraft.text}
+                                      style={{
+                                        left: box.left,
+                                        top: box.top,
+                                        width: box.width,
+                                        minHeight: box.height,
+                                        fontSize: textBoxDraft.fontSize * scale,
+                                        padding: TEXT_BOX_PAD * scale,
+                                        lineHeight: TEXT_BOX_LEADING,
+                                        color: cssRgb(textBoxDraft.color),
+                                        borderColor: cssRgb(textBoxDraft.color),
+                                      }}
+                                      onChange={(e) =>
+                                        setTextBoxDraft((d) => d && { ...d, text: e.target.value })
+                                      }
+                                      onBlur={commitTextBox}
+                                      onKeyDown={(e) => {
+                                        e.stopPropagation()
+                                        if (e.key === 'Escape') setTextBoxDraft(null)
+                                        else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey))
+                                          commitTextBox()
+                                      }}
+                                    />
+                                  )
+                                })()}
                               {/* Ghost pin for the note being typed into the margin draft card */}
                               {noteDraft?.origIdx === origIdx &&
                                 (() => {

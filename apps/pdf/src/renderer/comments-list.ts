@@ -7,7 +7,11 @@ import type { MarkupType, ShapeAnnotType } from '../shared/ipc'
 export type CommentKind = MarkupType | 'note' | ShapeAnnotType | 'arrow'
 
 /** Pending drawing tools → the kind their saved annotation lists as */
-const DRAWING_KIND: Record<'ink' | 'rect' | 'ellipse' | 'line' | 'arrow', CommentKind> = {
+const DRAWING_KIND: Record<
+  'ink' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'freetext',
+  CommentKind
+> = {
+  freetext: 'freetext',
   ink: 'ink',
   rect: 'square',
   ellipse: 'circle',
@@ -62,6 +66,7 @@ function drawingBox(input: LocalDrawing['input']): Box | null {
     case 'rect':
     case 'ellipse':
     case 'image':
+    case 'freetext':
       return input.rect
     case 'line':
     case 'arrow':
@@ -184,9 +189,9 @@ export function buildCommentList(src: CommentSources): CommentEntry[] {
       kind: DRAWING_KIND[input.kind],
       pageIndex: input.pageIndex,
       at: [box[0], box[3]],
-      author: '',
-      text: '',
-      timeMs: null,
+      author: input.kind === 'freetext' ? (input.author ?? '') : '',
+      text: input.kind === 'freetext' ? input.contents : '',
+      timeMs: input.kind === 'freetext' ? (input.createdMs ?? null) : null,
       replies: 0,
       pending: true,
       target: { type: 'drawing', id: d.id },

@@ -11,6 +11,7 @@ import {
   PDFOptionList,
   PDFRef,
   PDFString,
+  StandardFonts,
   degrees,
   rgb,
 } from 'pdf-lib'
@@ -29,6 +30,13 @@ import type {
   TextInsertFailure,
 } from '../shared/ipc'
 import { writePdfAtomically } from './atomic-write'
+import {
+  TEXT_BOX_ASCENT,
+  TEXT_BOX_LEADING,
+  TEXT_BOX_PAD,
+  isWinAnsi,
+  wrapTextBox,
+} from '../shared/text-box'
 import { redactPdf } from './redaction'
 
 const num = (v: number) => Math.round(v * 100) / 100
@@ -273,6 +281,83 @@ async function addImageStamp(
   appendAnnot(pdfDoc, page, pdfDoc.context.register(annot))
 }
 
+/** Content-stream matrix drawing an upright (viewer-oriented) box of the
+    annotation's visual size into its unrotated BBox [0 0 rw rh] */
+function uprightCm(rot: number, rw: number, rh: number): string {
+  return rot === 90
+    ? `0 1 -1 0 ${num(rw)} 0`
+    : rot === 180
+      ? `-1 0 0 -1 ${num(rw)} ${num(rh)}`
+      : rot === 270
+        ? `0 -1 1 0 0 ${num(rh)}`
+        : '1 0 0 1 0 0'
+}
+
+/** Text-box comment: a FreeText annotation whose appearance is drawn with the
+    standard Helvetica (wrapped like the editor preview), or with the editor's
+    rendered image when the text holds characters Helvetica cannot encode.
+    /DA and /Contents let other viewers regenerate or edit the box. */
+async function addFreeText(
+  pdfDoc: PDFDocument,
+  page: PDFPage,
+  d: Extract<DrawingInput, { kind: 'freetext' }>,
+): Promise<void> {
+  const [x1, y1, x2, y2] = d.rect
+  const rw = x2 - x1
+  const rh = y2 - y1
+  const rot = ((page.getRotation().angle % 360) + 360) % 360
+  const [vw, vh] = rot === 90 || rot === 270 ? [rh, rw] : [rw, rh]
+  const [r, g, b] = d.color.map(num)
+  const ops = [
+    `q ${uprightCm(rot, rw, rh)} cm`,
+    `1 w ${r} ${g} ${b} RG 0.5 0.5 ${num(vw - 1)} ${num(vh - 1)} re S`,
+  ]
+  const resources = pdfDoc.context.obj({})
+  if (d.image) {
+    const png = await pdfDoc.embedPng(d.image)
+    ops.push(`q ${num(vw)} 0 0 ${num(vh)} 0 0 cm /Im0 Do Q`)
+    resources.set(PDFName.of('XObject'), pdfDoc.context.obj({ Im0: png.ref }))
+  } else if (isWinAnsi(d.contents)) {
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const size = d.fontSize
+    const lines = wrapTextBox(d.contents, vw - 2 * TEXT_BOX_PAD, (s) =>
+      font.widthOfTextAtSize(s, size),
+    )
+    ops.push(`BT /Helv ${num(size)} Tf ${r} ${g} ${b} rg`)
+    lines.forEach((line, i) => {
+      const y = vh - TEXT_BOX_PAD - size * TEXT_BOX_ASCENT - i * size * TEXT_BOX_LEADING
+      ops.push(`1 0 0 1 ${num(TEXT_BOX_PAD)} ${num(y)} Tm ${font.encodeText(line).toString()} Tj`)
+    })
+    ops.push('ET')
+    resources.set(PDFName.of('Font'), pdfDoc.context.obj({ Helv: font.ref }))
+  }
+  ops.push('Q')
+  const ap = pdfDoc.context.stream(ops.join('\n'), {
+    Type: 'XObject',
+    Subtype: 'Form',
+    BBox: [0, 0, num(rw), num(rh)],
+    Resources: resources,
+  })
+  const annot = pdfDoc.context.obj({
+    Type: 'Annot',
+    Subtype: 'FreeText',
+    Rect: [num(x1), num(y1), num(x2), num(y2)],
+    C: d.color,
+    F: 4,
+    P: page.ref,
+    BS: { W: 1 },
+    AP: { N: pdfDoc.context.register(ap) },
+  })
+  annot.set(PDFName.of('DA'), PDFString.of(`/Helv ${num(d.fontSize)} Tf ${r} ${g} ${b} rg`))
+  annot.set(PDFName.of('Contents'), PDFHexString.fromText(d.contents))
+  annot.set(PDFName.of('T'), PDFHexString.fromText(d.author || 'Hyper-Files'))
+  const when = pdfDateString(d.createdMs ?? Date.now())
+  annot.set(PDFName.of('CreationDate'), PDFString.of(when))
+  annot.set(PDFName.of('M'), PDFString.of(when))
+  if (rot) annot.set(PDFName.of('Rotate'), PDFNumber.of(rot))
+  appendAnnot(pdfDoc, page, pdfDoc.context.register(annot))
+}
+
 /** Epoch ms → PDF date string, e.g. D:20260812175959+08'00' */
 function pdfDateString(ms: number): string {
   const d = new Date(ms)
@@ -424,7 +509,7 @@ function addDrawing(
   /** localId → registered ref of notes written earlier in this request (reply parenting) */
   noteRefs?: Map<string, PDFRef>,
 ): void {
-  if (d.kind === 'image') return // handled by addImageStamp (needs async embed)
+  if (d.kind === 'image' || d.kind === 'freetext') return // async embeds: addImageStamp / addFreeText
   const [r, g, b] = d.color
 
   if (d.kind === 'note') {
@@ -1082,6 +1167,7 @@ export async function applySaveRequest(
     const page = pages[d.pageIndex]
     if (!page) continue
     if (d.kind === 'image') await addImageStamp(pdfDoc, page, d)
+    else if (d.kind === 'freetext') await addFreeText(pdfDoc, page, d)
     else addDrawing(pdfDoc, page, d, noteRefs)
   }
   // Note content edits go after the drawings: replies added above locate their /IRT

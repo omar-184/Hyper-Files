@@ -145,12 +145,12 @@ register({
   validate(op, ctx) {
     const d = obj<DrawingInput>(op.drawing, 'drawing')
     pageIndex(d.pageIndex, ctx, 'drawing.pageIndex')
-    if (!['ink', 'rect', 'ellipse', 'line', 'arrow', 'image', 'note'].includes(d.kind))
+    if (!['ink', 'rect', 'ellipse', 'line', 'arrow', 'image', 'note', 'freetext'].includes(d.kind))
       throw new GuidedError(
-        'drawing.kind must be ink | rect | ellipse | line | arrow | image | note',
+        'drawing.kind must be ink | rect | ellipse | line | arrow | image | note | freetext',
       )
-    if (d.kind === 'note' && typeof d.contents !== 'string')
-      throw new GuidedError('a note drawing needs string contents')
+    if ((d.kind === 'note' || d.kind === 'freetext') && typeof d.contents !== 'string')
+      throw new GuidedError(`a ${d.kind} drawing needs string contents`)
   },
   apply(op, s) {
     const drawing = op.drawing as DrawingInput
@@ -194,6 +194,35 @@ register({
 })
 
 register({
+  name: 'setFreeText',
+  touches: ['drawings'],
+  validate(op) {
+    id(op)
+    if (typeof op.contents !== 'string') throw new GuidedError('"contents" must be a string')
+    const r = op.rect as unknown
+    if (!Array.isArray(r) || r.length !== 4 || !r.every((v) => Number.isFinite(v)))
+      throw new GuidedError('"rect" must be four numbers (PDF user space)')
+  },
+  apply(op, s) {
+    return {
+      drawings: s.drawings.map((d) => {
+        if (d.id !== op.id || d.input.kind !== 'freetext') return d
+        const { image: _image, ...rest } = d.input
+        return {
+          ...d,
+          input: {
+            ...rest,
+            contents: op.contents as string,
+            rect: op.rect as Rect,
+            ...(typeof op.image === 'string' ? { image: op.image } : {}),
+          },
+        }
+      }),
+    }
+  },
+})
+
+register({
   name: 'moveDrawing',
   touches: ['drawings'],
   validate(op) {
@@ -225,6 +254,7 @@ register({
           case 'rect':
           case 'ellipse':
           case 'image':
+          case 'freetext':
             return {
               ...d,
               input: {

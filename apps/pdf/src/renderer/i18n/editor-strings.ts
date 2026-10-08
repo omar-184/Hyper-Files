@@ -42,6 +42,9 @@ export const editorStrings = {
   commentKindPolyline: 'Polyline',
   commentKindFreetext: 'Text box',
   commentKindStamp: 'Stamp',
+  drawTextBox: 'Text box',
+  textBoxPlaceholder: 'Type a comment',
+  textBoxSize: 'Text size',
 }
 
 export const localizedEditorStrings: Partial<
@@ -83,5 +86,8 @@ export const localizedEditorStrings: Partial<
     commentKindPolyline: '折线',
     commentKindFreetext: '文本框',
     commentKindStamp: '图章',
+    drawTextBox: '文本框',
+    textBoxPlaceholder: '输入注释',
+    textBoxSize: '字号',
   },
 }

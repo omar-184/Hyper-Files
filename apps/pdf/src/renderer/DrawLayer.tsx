@@ -3,8 +3,17 @@ import type { PointerEvent as ReactPointerEvent, ReactElement } from 'react'
 import { pdfToView, viewToPdf } from './annotations'
 import type { PageGeom } from './annotations'
 import type { DrawingInput } from '../shared/ipc'
+import {
+  TEXT_BOX_ASCENT,
+  TEXT_BOX_DEFAULT_SIZE,
+  TEXT_BOX_DEFAULT_WIDTH,
+  TEXT_BOX_LEADING,
+  TEXT_BOX_PAD,
+  textBoxHeight,
+} from '../shared/text-box'
+import { TEXT_BOX_CSS_FONT, textBoxLines } from './text-box-render'
 
-export type DrawTool = 'ink' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'note' | 'redact'
+export type DrawTool = 'ink' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'note' | 'textbox' | 'redact'
 
 /** Displayed-pixel box (scaled) */
 interface Box {
@@ -60,6 +69,43 @@ function drawingShape(
   hit = false,
 ): ReactElement | null {
   if (d.kind === 'note') return null
+  if (d.kind === 'freetext') {
+    const [ax, ay] = toView(geom, scale, d.rect[0], d.rect[1])
+    const [bx, by] = toView(geom, scale, d.rect[2], d.rect[3])
+    const [x, y] = [Math.min(ax, bx), Math.min(ay, by)]
+    const [w, h] = [Math.abs(bx - ax), Math.abs(by - ay)]
+    if (hit) return <rect x={x} y={y} width={w} height={h} fill="transparent" />
+    const size = d.fontSize * scale
+    return (
+      <>
+        <rect
+          x={x + 0.5 * scale}
+          y={y + 0.5 * scale}
+          width={Math.max(0, w - scale)}
+          height={Math.max(0, h - scale)}
+          fill="none"
+          stroke={cssRgb(d.color)}
+          strokeWidth={scale}
+        />
+        <text
+          fill={cssRgb(d.color)}
+          fontFamily={TEXT_BOX_CSS_FONT}
+          fontSize={size}
+          style={{ whiteSpace: 'pre' }}
+        >
+          {textBoxLines(d.contents, w / scale, d.fontSize).map((line, i) => (
+            <tspan
+              key={i}
+              x={x + TEXT_BOX_PAD * scale}
+              y={y + TEXT_BOX_PAD * scale + size * TEXT_BOX_ASCENT + i * size * TEXT_BOX_LEADING}
+            >
+              {line}
+            </tspan>
+          ))}
+        </text>
+      </>
+    )
+  }
   if (d.kind === 'image') {
     if (hit) return null // the image body is already a full-area hit target
     const [ax, ay] = toView(geom, scale, d.rect[0], d.rect[1])
@@ -170,6 +216,8 @@ export function DrawLayer({
   selectTitle,
   noteOpenTitle,
   onCommit,
+  onTextBox,
+  onTextBoxEdit,
   onNoteAt,
   onNoteOpen,
   onSelect,
@@ -192,6 +240,10 @@ export function DrawLayer({
   selectTitle: string
   noteOpenTitle: string
   onCommit: (input: DrawingInput) => void
+  /** The text-box tool marked out a box (PDF space): open the editor on it */
+  onTextBox?: (rect: [number, number, number, number]) => void
+  /** Double-click on a pending text box: reopen its editor */
+  onTextBoxEdit?: (id: string) => void
   onNoteAt: (at: [number, number]) => void
   /** Open the comment-thread popover for a pin ('S<objNum>' saved / 'P<id>' pending) */
   onNoteOpen: (key: string, x: number, y: number) => void
@@ -243,10 +295,10 @@ export function DrawLayer({
     if (tool === 'ink') {
       inkRef.current = [...inkRef.current, at[0], at[1]]
       setLive({ kind: 'ink', pageIndex: 0, color, width: strokeWidth, paths: [inkRef.current] })
-    } else if (tool === 'rect' || tool === 'ellipse') {
+    } else if (tool === 'rect' || tool === 'ellipse' || tool === 'textbox') {
       const [sx, sy] = startRef.current
       setLive({
-        kind: tool,
+        kind: tool === 'textbox' ? 'rect' : tool,
         pageIndex: 0,
         color,
         width: strokeWidth,
@@ -266,7 +318,29 @@ export function DrawLayer({
 
   const onPointerUp = () => {
     const pending = live
+    const start = startRef.current
     startRef.current = null
+    if (tool === 'textbox') {
+      setLive(null)
+      if (!start) return
+      if (pending?.kind === 'rect') {
+        const [x1, y1, x2, y2] = pending.rect
+        if (x2 - x1 >= 12 && y2 - y1 >= 8) {
+          onTextBox?.(pending.rect)
+          return
+        }
+      }
+      // A click: a default-sized box hanging right and down from the point on screen
+      const [vx, vy] = pdfToView(geom, start[0], start[1])
+      const [ax, ay] = viewToPdf(geom, vx, vy)
+      const [bx, by] = viewToPdf(
+        geom,
+        vx + TEXT_BOX_DEFAULT_WIDTH,
+        vy + textBoxHeight(1, TEXT_BOX_DEFAULT_SIZE),
+      )
+      onTextBox?.([Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)])
+      return
+    }
     inkRef.current = []
     setLive(null)
     if (!pending) return
@@ -405,8 +479,15 @@ export function DrawLayer({
               onPointerMove={shapeMove}
               onPointerUp={shapeUp}
               onPointerCancel={() => setDrag(null)}
+              onDoubleClick={
+                d.input.kind === 'freetext' && onTextBoxEdit ? () => onTextBoxEdit(d.id) : undefined
+              }
               style={{
-                pointerEvents: tool ? 'none' : d.input.kind === 'image' ? 'auto' : 'stroke',
+                pointerEvents: tool
+                  ? 'none'
+                  : d.input.kind === 'image' || d.input.kind === 'freetext'
+                    ? 'auto'
+                    : 'stroke',
               }}
             >
               <title>{selectTitle}</title>
