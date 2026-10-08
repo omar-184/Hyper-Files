@@ -83,6 +83,7 @@ import { printPdf } from './print'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
 import { FieldPropsDialog, type FieldProps } from './FieldPropsDialog'
+import { LinkDialog, type LinkTarget } from './LinkDialog'
 import { SignatureDialog, fileToCanvas } from './SignatureDialog'
 import type { SignatureData } from './SignatureDialog'
 import { signatureDrawingForField } from './signature-field'
@@ -236,6 +237,7 @@ import {
   IconNote,
   IconTextBox,
   IconFieldText,
+  IconLink,
   IconFieldCheck,
   IconFieldRadio,
   IconFieldDropdown,
@@ -769,6 +771,12 @@ export default function App() {
   const [fieldType, setFieldType] = useState<NewFieldType>('text')
   /** Pending form field whose properties dialog is open */
   const [fieldDlg, setFieldDlg] = useState<string | null>(null)
+  /** Link area waiting for its target: a new one (editId null) or a pending one reopened */
+  const [linkDraft, setLinkDraft] = useState<{
+    origIdx: number
+    rect: [number, number, number, number]
+    editId: string | null
+  } | null>(null)
   /** In-progress rewrite of an existing comment. Hoisted out of the margin card so a
       save can fold it in before the post-save reload tears the edit box down. */
   const [noteEditDraft, setNoteEditDraft] = useState<{
@@ -3972,10 +3980,38 @@ export default function App() {
     if (fieldType === 'dropdown') setFieldDlg(id)
   }
 
-  // The field tool belongs to the Prepare form tab; leaving the tab puts it down
+  // The field and link tools belong to their tabs; leaving the tab puts them down
   useEffect(() => {
-    if (ribbonTab !== 'prepareForm') setDrawTool((tool) => (tool === 'field' ? null : tool))
+    setDrawTool((tool) =>
+      (tool === 'field' && ribbonTab !== 'prepareForm') || (tool === 'link' && ribbonTab !== 'edit')
+        ? null
+        : tool,
+    )
   }, [ribbonTab])
+
+  const applyLink = (target: LinkTarget) => {
+    const draft = linkDraft
+    setLinkDraft(null)
+    if (!draft) return
+    const dest =
+      'url' in target ? { url: target.url } : { targetPage: visList[target.page - 1] ?? 0 }
+    if (draft.editId) {
+      applyEditOps([{ op: 'setLinkTarget', id: draft.editId, ...dest }])
+      return
+    }
+    applyEditOps([
+      {
+        op: 'addDrawing',
+        drawing: { kind: 'link', pageIndex: draft.origIdx, rect: draft.rect, ...dest },
+      },
+    ])
+  }
+
+  /** Saved links pending deletion, by object number (the link layer hides them) */
+  const deletedLinkObjs = useMemo(
+    () => new Set(annotDeletes.flatMap((d) => (d.annot.type === 'link' ? [d.annot.objNum] : []))),
+    [annotDeletes],
+  )
 
   const applyFieldProps = (id: string, props: FieldProps) => {
     setFieldDlg(null)
@@ -4853,7 +4889,9 @@ export default function App() {
     for (const e of imageEdits) {
       if (e.input.kind !== 'insertImage') jobFor(e.input.pageIndex).rects.push(e.input.oldRect)
     }
-    for (const d of annotDeletes) jobFor(d.annot.pageIndex).annots.push(d.annot)
+    // Links draw nothing on the page; hiding them is the link layer's job
+    for (const d of annotDeletes)
+      if (d.annot.type !== 'link') jobFor(d.annot.pageIndex).annots.push(d.annot)
     // The draft goes first: a reopened edit's run must be claimed by the draft's probe
     if (draftProbe) jobFor(draftProbe.probe.pageIndex).text.push(draftProbe)
     for (const te of textEdits) {
@@ -6515,6 +6553,24 @@ export default function App() {
                       <IconWatermark />
                     </span>
                     {t('watermark')}
+                  </button>
+                  <button
+                    className={`rb-big${drawTool === 'link' ? ' active' : ''}`}
+                    disabled={readOnly}
+                    data-tip={t('linkToolHint')}
+                    onClick={() => {
+                      setEditTextMode(false)
+                      setTextDraft(null)
+                      setPendingTextInsert(null)
+                      setImagePick(null)
+                      setEditImageMode(false)
+                      setDrawTool((tool) => (tool === 'link' ? null : 'link'))
+                    }}
+                  >
+                    <span className="rb-big-icon">
+                      <IconLink />
+                    </span>
+                    {t('linkTool')}
                   </button>
                 </div>
               </div>
@@ -8181,6 +8237,17 @@ export default function App() {
                                 }
                                 fieldSize={FIELD_TOOLS.find((f) => f.type === fieldType)!.size}
                                 onFieldBox={(rect) => placeField(origIdx, rect)}
+                                onLinkBox={(rect) => setLinkDraft({ origIdx, rect, editId: null })}
+                                onLinkEdit={
+                                  readOnly
+                                    ? undefined
+                                    : (id) => {
+                                        const d = drawings.find((x) => x.id === id)
+                                        if (d?.input.kind !== 'link') return
+                                        setSelected(null)
+                                        setLinkDraft({ origIdx, rect: d.input.rect, editId: id })
+                                      }
+                                }
                                 onFieldEdit={
                                   readOnly
                                     ? undefined
@@ -8299,6 +8366,16 @@ export default function App() {
                                 geom={geom}
                                 scale={scale}
                                 onGoToDest={(dest) => void goToDest(dest)}
+                                hidden={deletedLinkObjs}
+                                editing={
+                                  !readOnly && drawTool === 'link'
+                                    ? {
+                                        removeLabel: t('linkRemove'),
+                                        onRemove: (annot) =>
+                                          applyEditOps([{ op: 'deleteSavedAnnot', annot }]),
+                                      }
+                                    : undefined
+                                }
                               />
                               <FormLayer
                                 widgets={formCatalog?.byPage.get(origIdx) ?? []}
@@ -8773,6 +8850,26 @@ export default function App() {
                 }}
               />
             )}
+            {linkDraft &&
+              (() => {
+                const d = linkDraft.editId
+                  ? drawings.find((x) => x.id === linkDraft.editId)?.input
+                  : undefined
+                const initial: LinkTarget =
+                  d?.kind === 'link' && d.url !== undefined
+                    ? { url: d.url }
+                    : d?.kind === 'link' && d.targetPage !== undefined
+                      ? { page: Math.max(1, visList.indexOf(d.targetPage) + 1) }
+                      : { url: '' }
+                return (
+                  <LinkDialog
+                    initial={initial}
+                    pageCount={visList.length}
+                    onApply={applyLink}
+                    onCancel={() => setLinkDraft(null)}
+                  />
+                )
+              })()}
             {fieldDlg &&
               (() => {
                 const d = drawings.find((x) => x.id === fieldDlg)

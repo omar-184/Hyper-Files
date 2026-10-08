@@ -512,7 +512,7 @@ function addDrawing(
   noteRefs?: Map<string, PDFRef>,
 ): void {
   // async embeds (addImageStamp / addFreeText) and form fields (addFormFields) go elsewhere
-  if (d.kind === 'image' || d.kind === 'freetext' || d.kind === 'field') return
+  if (d.kind === 'image' || d.kind === 'freetext' || d.kind === 'field' || d.kind === 'link') return
   const [r, g, b] = d.color
 
   if (d.kind === 'note') {
@@ -631,6 +631,36 @@ function addDrawing(
   }
   annot.set(PDFName.of('T'), PDFHexString.fromText('Hyper-Files'))
   if (d.kind === 'ink') setVisualSignatureMetadata(annot, d.formFieldName)
+  appendAnnot(pdfDoc, page, pdfDoc.context.register(annot))
+}
+
+/** Invisible-border Link annotation to a web address or to the top of a page. A link to a
+    page deleted in the same save is dropped (it would point nowhere). */
+function addLink(
+  pdfDoc: PDFDocument,
+  page: PDFPage,
+  d: Extract<DrawingInput, { kind: 'link' }>,
+  pages: PDFPage[],
+  deletedPages: number[],
+): void {
+  const annot = pdfDoc.context.obj({
+    Type: 'Annot',
+    Subtype: 'Link',
+    Rect: d.rect,
+    Border: [0, 0, 0],
+    F: 4,
+    P: page.ref,
+  })
+  if (d.url) {
+    annot.set(PDFName.of('A'), pdfDoc.context.obj({ S: 'URI', URI: PDFString.of(d.url) }))
+  } else {
+    const target = d.targetPage === undefined ? undefined : pages[d.targetPage]
+    if (!target || deletedPages.includes(d.targetPage!)) return
+    annot.set(
+      PDFName.of('Dest'),
+      pdfDoc.context.obj([target.ref, PDFName.of('XYZ'), null, target.getHeight(), null]),
+    )
+  }
   appendAnnot(pdfDoc, page, pdfDoc.context.register(annot))
 }
 
@@ -1171,6 +1201,7 @@ export async function applySaveRequest(
     if (!page) continue
     if (d.kind === 'image') await addImageStamp(pdfDoc, page, d)
     else if (d.kind === 'freetext') await addFreeText(pdfDoc, page, d)
+    else if (d.kind === 'link') addLink(pdfDoc, page, d, pages, request.deletedPages ?? [])
     else if (d.kind !== 'field') addDrawing(pdfDoc, page, d, noteRefs)
   }
   addFormFields(

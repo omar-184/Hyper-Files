@@ -148,15 +148,26 @@ register({
     const d = obj<DrawingInput>(op.drawing, 'drawing')
     pageIndex(d.pageIndex, ctx, 'drawing.pageIndex')
     if (
-      !['ink', 'rect', 'ellipse', 'line', 'arrow', 'image', 'note', 'freetext', 'field'].includes(
-        d.kind,
-      )
+      ![
+        'ink',
+        'rect',
+        'ellipse',
+        'line',
+        'arrow',
+        'image',
+        'note',
+        'freetext',
+        'field',
+        'link',
+      ].includes(d.kind)
     )
       throw new GuidedError(
-        'drawing.kind must be ink | rect | ellipse | line | arrow | image | note | freetext | field',
+        'drawing.kind must be ink | rect | ellipse | line | arrow | image | note | freetext | field | link',
       )
     if ((d.kind === 'note' || d.kind === 'freetext') && typeof d.contents !== 'string')
       throw new GuidedError(`a ${d.kind} drawing needs string contents`)
+    if (d.kind === 'link' && typeof d.url !== 'string' && typeof d.targetPage !== 'number')
+      throw new GuidedError('a link drawing needs "url" or "targetPage"')
     if (d.kind === 'field') {
       if (!NEW_FIELD_TYPES.includes(d.fieldType))
         throw new GuidedError(`field.fieldType must be ${NEW_FIELD_TYPES.join(' | ')}`)
@@ -268,6 +279,33 @@ register({
 })
 
 register({
+  name: 'setLinkTarget',
+  touches: ['drawings'],
+  validate(op) {
+    id(op)
+    if (typeof op.url !== 'string' && typeof op.targetPage !== 'number')
+      throw new GuidedError('give "url" or "targetPage"')
+  },
+  apply(op, s) {
+    return {
+      drawings: s.drawings.map((d) => {
+        if (d.id !== op.id || d.input.kind !== 'link') return d
+        const { url: _url, targetPage: _page, ...rest } = d.input
+        return {
+          ...d,
+          input: {
+            ...rest,
+            ...(typeof op.url === 'string'
+              ? { url: op.url }
+              : { targetPage: op.targetPage as number }),
+          },
+        }
+      }),
+    }
+  },
+})
+
+register({
   name: 'moveDrawing',
   touches: ['drawings'],
   validate(op) {
@@ -301,6 +339,7 @@ register({
           case 'image':
           case 'freetext':
           case 'field':
+          case 'link':
             return {
               ...d,
               input: {

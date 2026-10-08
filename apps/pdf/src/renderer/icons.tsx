@@ -101,6 +101,12 @@ export const IconTextBox = () => (
     <path d="M8.5 9.25 L15.5 9.25 M12 9.25 L12 15.25" />
   </Icon>
 )
+export const IconLink = () => (
+  <Icon>
+    <path d="M10.5 13.5 a3.2 3.2 0 0 0 4.5 0 l3 -3 a3.2 3.2 0 0 0 -4.5 -4.5 l-1.25 1.25" />
+    <path d="M13.5 10.5 a3.2 3.2 0 0 0 -4.5 0 l-3 3 a3.2 3.2 0 0 0 4.5 4.5 l1.25 -1.25" />
+  </Icon>
+)
 export const IconFieldText = () => (
   <Icon>
     <rect x="3.5" y="8" width="17" height="8" rx="1" />

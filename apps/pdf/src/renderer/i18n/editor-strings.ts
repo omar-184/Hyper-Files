@@ -72,6 +72,12 @@ export const editorStrings = {
   bookmarkIndent: 'Make it a child of the bookmark above',
   bookmarkOutdent: 'Move it out one level',
   bookmarkUntitled: 'Untitled',
+  linkTool: 'Link',
+  linkToolHint: 'Drag over text or an area to make it a link. Saved links show a remove button.',
+  linkTitle: 'Link',
+  linkToWeb: 'Web address',
+  linkToPage: 'Page in this document',
+  linkRemove: 'Remove link',
 }
 
 export const localizedEditorStrings: Partial<
@@ -143,5 +149,11 @@ export const localizedEditorStrings: Partial<
     bookmarkIndent: '降级为上方书签的子项',
     bookmarkOutdent: '升一级',
     bookmarkUntitled: '无标题',
+    linkTool: '链接',
+    linkToolHint: '在文本或区域上拖动以创建链接。已保存的链接会显示删除按钮。',
+    linkTitle: '链接',
+    linkToWeb: '网址',
+    linkToPage: '本文档中的页面',
+    linkRemove: '删除链接',
   },
 }

@@ -67,8 +67,17 @@ export interface SavedShapeAnnot {
   contents: string
 }
 
+/** A link area already saved in the file */
+export interface SavedLinkAnnot {
+  pageIndex: number
+  /** PDF object number (pdf.js id "123R" → 123) */
+  objNum: number
+  type: 'link'
+  rect: [number, number, number, number]
+}
+
 /** Any saved annotation the editor can delete */
-export type SavedAnnot = SavedMarkupAnnot | SavedNoteAnnot | SavedShapeAnnot
+export type SavedAnnot = SavedMarkupAnnot | SavedNoteAnnot | SavedShapeAnnot | SavedLinkAnnot
 
 /** Pending deletion of a saved annotation */
 export interface LocalAnnotDelete {

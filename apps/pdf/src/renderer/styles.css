@@ -2947,6 +2947,50 @@ button {
   box-shadow: 0 0 0 1px var(--pdf-link-hover-ring);
 }
 
+/* Above the active draw layer so the remove buttons stay reachable */
+.pdf-link-layer.is-editing {
+  z-index: 5;
+}
+
+/* Link tool: saved links outlined, each with a remove button; the box itself lets
+   drags through so a new link can be drawn over or next to it */
+.pdf-link-edit {
+  position: absolute;
+  border: 1px dashed var(--accent);
+  border-radius: 2px;
+  background: var(--pdf-link-hover-bg);
+}
+
+.pdf-link-remove {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 15px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.pdf-link-remove:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* Pending link area drawn with the link tool */
+.pdf-link-draft {
+  fill: var(--pdf-link-hover-bg);
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+}
+
 /* ── Print container: hidden on screen, the only thing shown when printing ── */
 
 .pdf-print-root {

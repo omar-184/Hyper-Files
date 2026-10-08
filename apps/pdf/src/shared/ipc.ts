@@ -100,7 +100,7 @@ export interface AnnotDeleteInput {
   pageIndex: number
   /** PDF object number (pdf.js annotation id "123R" → 123) */
   objNum: number
-  subtype: MarkupType | 'note' | ShapeAnnotType
+  subtype: MarkupType | 'note' | ShapeAnnotType | 'link'
   /** Annotation /Rect in PDF user space, for fallback matching */
   rect: [number, number, number, number]
   /** /Contents to match. Required identity for notes: every comment of a thread shares
@@ -205,6 +205,16 @@ export type DrawingInput =
       createdMs?: number
       /** PNG (base64, no data: prefix) appearance for text Helvetica cannot draw */
       image?: string
+    }
+  | {
+      /** Link area written as a Link annotation: to a web address or a page */
+      kind: 'link'
+      pageIndex: number
+      /** PDF user space [x1,y1,x2,y2] */
+      rect: [number, number, number, number]
+      url?: string
+      /** Target page, original index (used when url is absent) */
+      targetPage?: number
     }
   | {
       /** New AcroForm field placed with the form designer */

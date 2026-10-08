@@ -14,7 +14,7 @@ import {
 import { TEXT_BOX_CSS_FONT, textBoxLines } from './text-box-render'
 
 export type DrawTool =
-  'ink' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'note' | 'textbox' | 'field' | 'redact'
+  'ink' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'note' | 'textbox' | 'field' | 'link' | 'redact'
 
 /** Displayed-pixel box (scaled) */
 interface Box {
@@ -106,6 +106,14 @@ function drawingShape(
         </text>
       </>
     )
+  }
+  if (d.kind === 'link') {
+    const [ax, ay] = toView(geom, scale, d.rect[0], d.rect[1])
+    const [bx, by] = toView(geom, scale, d.rect[2], d.rect[3])
+    const [x, y] = [Math.min(ax, bx), Math.min(ay, by)]
+    const [w, h] = [Math.abs(bx - ax), Math.abs(by - ay)]
+    if (hit) return <rect x={x} y={y} width={w} height={h} fill="transparent" />
+    return <rect className="pdf-link-draft" x={x} y={y} width={w} height={h} />
   }
   if (d.kind === 'field') {
     const [ax, ay] = toView(geom, scale, d.rect[0], d.rect[1])
@@ -254,6 +262,8 @@ export function DrawLayer({
   fieldSize,
   onFieldBox,
   onFieldEdit,
+  onLinkBox,
+  onLinkEdit,
   onNoteAt,
   onNoteOpen,
   onSelect,
@@ -286,6 +296,10 @@ export function DrawLayer({
   onFieldBox?: (rect: [number, number, number, number]) => void
   /** Double-click on a pending form field: open its properties */
   onFieldEdit?: (id: string) => void
+  /** The link tool marked out a link area (PDF space) */
+  onLinkBox?: (rect: [number, number, number, number]) => void
+  /** Double-click on a pending link: edit its target */
+  onLinkEdit?: (id: string) => void
   onNoteAt: (at: [number, number]) => void
   /** Open the comment-thread popover for a pin ('S<objNum>' saved / 'P<id>' pending) */
   onNoteOpen: (key: string, x: number, y: number) => void
@@ -337,10 +351,16 @@ export function DrawLayer({
     if (tool === 'ink') {
       inkRef.current = [...inkRef.current, at[0], at[1]]
       setLive({ kind: 'ink', pageIndex: 0, color, width: strokeWidth, paths: [inkRef.current] })
-    } else if (tool === 'rect' || tool === 'ellipse' || tool === 'textbox' || tool === 'field') {
+    } else if (
+      tool === 'rect' ||
+      tool === 'ellipse' ||
+      tool === 'textbox' ||
+      tool === 'field' ||
+      tool === 'link'
+    ) {
       const [sx, sy] = startRef.current
       setLive({
-        kind: tool === 'textbox' || tool === 'field' ? 'rect' : tool,
+        kind: tool === 'textbox' || tool === 'field' || tool === 'link' ? 'rect' : tool,
         pageIndex: 0,
         color,
         width: strokeWidth,
@@ -383,22 +403,23 @@ export function DrawLayer({
       onTextBox?.([Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)])
       return
     }
-    if (tool === 'field') {
+    if (tool === 'field' || tool === 'link') {
       setLive(null)
       if (!start) return
+      const onBox = tool === 'field' ? onFieldBox : onLinkBox
       if (pending?.kind === 'rect') {
         const [x1, y1, x2, y2] = pending.rect
         if (x2 - x1 >= 6 && y2 - y1 >= 6) {
-          onFieldBox?.(pending.rect)
+          onBox?.(pending.rect)
           return
         }
       }
       // A click: a default-sized widget hanging right and down from the point on screen
-      const [fw, fh] = fieldSize ?? [160, 22]
+      const [fw, fh] = tool === 'field' ? (fieldSize ?? [160, 22]) : [120, 18]
       const [vx, vy] = pdfToView(geom, start[0], start[1])
       const [ax, ay] = viewToPdf(geom, vx, vy)
       const [bx, by] = viewToPdf(geom, vx + fw, vy + fh)
-      onFieldBox?.([Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)])
+      onBox?.([Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)])
       return
     }
     inkRef.current = []
@@ -544,14 +565,17 @@ export function DrawLayer({
                   ? () => onTextBoxEdit(d.id)
                   : d.input.kind === 'field' && onFieldEdit
                     ? () => onFieldEdit(d.id)
-                    : undefined
+                    : d.input.kind === 'link' && onLinkEdit
+                      ? () => onLinkEdit(d.id)
+                      : undefined
               }
               style={{
                 pointerEvents: tool
                   ? 'none'
                   : d.input.kind === 'image' ||
                       d.input.kind === 'freetext' ||
-                      d.input.kind === 'field'
+                      d.input.kind === 'field' ||
+                      d.input.kind === 'link'
                     ? 'auto'
                     : 'stroke',
               }}
