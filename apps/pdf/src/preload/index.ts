@@ -17,6 +17,7 @@ const api: PdfApi = {
   listPageImages: (path) => ipcRenderer.invoke(PDF_CHANNELS.listPageImages, path),
   listStaticFormFills: (path) => ipcRenderer.invoke(PDF_CHANNELS.listStaticFormFills, path),
   ocrPage: (png) => ipcRenderer.invoke(PDF_CHANNELS.ocrPage, png),
+  findTextBoxes: (req) => ipcRenderer.invoke(PDF_CHANNELS.findTextBoxes, req),
   pageImagePng: (request) => ipcRenderer.invoke(PDF_CHANNELS.pageImagePng, request),
   pagePreviewPng: (request) => ipcRenderer.invoke(PDF_CHANNELS.pagePreviewPng, request),
   extractPages: (request) => ipcRenderer.invoke(PDF_CHANNELS.extractPages, request),

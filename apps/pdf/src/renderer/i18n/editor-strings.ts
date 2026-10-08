@@ -1,0 +1,87 @@
+/**
+ * Strings for the Hyper-Files editing additions (find and redact, comments list).
+ * English is the base for every locale; a locale listed in
+ * localizedEditorStrings overrides it. Other locales show English until their
+ * translation lands.
+ */
+export const editorStrings = {
+  redactFind: 'Find & redact',
+  redactFindHint:
+    'Find words or sensitive text such as emails and phone numbers, then mark every match for redaction',
+  redactFindWhat: 'What to find',
+  redactFindText: 'Text',
+  redactFindEmail: 'Email addresses',
+  redactFindPhone: 'Phone numbers',
+  redactFindCard: 'Card numbers',
+  redactFindPlaceholder: 'Text to redact',
+  redactMarkAll: 'Mark all',
+  redactMatchesMarked: '{count} marks added. Review them, then click Apply redactions.',
+  redactMatchesOne: '1 mark added. Review it, then click Apply redactions.',
+  redactMatchesNone: 'Every match is already marked.',
+  redactMatchesCapped:
+    '{count} marks added. Some matches were skipped because one apply can hold at most {max} marks.',
+  redactRemoveMark: 'Remove this mark',
+  comments: 'Comments',
+  commentsHint: 'List every comment, highlight and drawing in this PDF',
+  commentsFilter: 'Filter comments',
+  commentsEmpty: 'No comments in this PDF',
+  commentsNoMatch: 'No comments match',
+  commentsLoading: 'Reading comments…',
+  commentsDelete: 'Delete',
+  commentsUnsaved: 'Unsaved',
+  commentsPage: 'Page {page}',
+  commentsReplies: '{count} replies',
+  commentsOneReply: '1 reply',
+  commentKindNote: 'Note',
+  commentKindInk: 'Drawing',
+  commentKindSquare: 'Rectangle',
+  commentKindCircle: 'Ellipse',
+  commentKindLine: 'Line',
+  commentKindArrow: 'Arrow',
+  commentKindPolygon: 'Polygon',
+  commentKindPolyline: 'Polyline',
+  commentKindFreetext: 'Text box',
+  commentKindStamp: 'Stamp',
+}
+
+export const localizedEditorStrings: Partial<
+  Record<string, Partial<Record<keyof typeof editorStrings, string>>>
+> = {
+  zh: {
+    redactFind: '查找并涂黑',
+    redactFindHint: '查找文字或电子邮件、电话号码等敏感内容，并将所有匹配项标记为涂黑',
+    redactFindWhat: '查找内容',
+    redactFindText: '文字',
+    redactFindEmail: '电子邮件地址',
+    redactFindPhone: '电话号码',
+    redactFindCard: '银行卡号',
+    redactFindPlaceholder: '要涂黑的文字',
+    redactMarkAll: '全部标记',
+    redactMatchesMarked: '已添加 {count} 个标记。检查后点击“应用涂黑”。',
+    redactMatchesOne: '已添加 1 个标记。检查后点击“应用涂黑”。',
+    redactMatchesNone: '所有匹配项都已标记。',
+    redactMatchesCapped: '已添加 {count} 个标记。单次应用最多 {max} 个标记，部分匹配项已跳过。',
+    redactRemoveMark: '移除此标记',
+    comments: '注释列表',
+    commentsHint: '列出此 PDF 中的所有注释、高亮和绘图',
+    commentsFilter: '筛选注释',
+    commentsEmpty: '此 PDF 中没有注释',
+    commentsNoMatch: '没有匹配的注释',
+    commentsLoading: '正在读取注释…',
+    commentsDelete: '删除',
+    commentsUnsaved: '未保存',
+    commentsPage: '第 {page} 页',
+    commentsReplies: '{count} 条回复',
+    commentsOneReply: '1 条回复',
+    commentKindNote: '批注',
+    commentKindInk: '绘图',
+    commentKindSquare: '矩形',
+    commentKindCircle: '椭圆',
+    commentKindLine: '直线',
+    commentKindArrow: '箭头',
+    commentKindPolygon: '多边形',
+    commentKindPolyline: '折线',
+    commentKindFreetext: '文本框',
+    commentKindStamp: '图章',
+  },
+}

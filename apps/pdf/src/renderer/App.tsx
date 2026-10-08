@@ -80,8 +80,13 @@ import {
 import { StampDialog } from './StampDialog'
 import { buildStamps } from './stamps'
 import type { HeaderFooterConfig, WatermarkConfig } from './stamps'
-import { createSearchIndexCache, searchInIndex } from './search'
+import { createSearchIndexCache, findInIndex, searchInIndex, textInRects } from './search'
 import type { SearchIndex, SearchMatch } from './search'
+import type { FindTarget, RedactPattern } from '../shared/text-match'
+import { marksFromMatches, padMatchRect } from './redact-marks'
+import { buildCommentList } from './comments-list'
+import type { CommentEntry, CommentKind } from './comments-list'
+import { CommentsPanel } from './CommentsPanel'
 import { mapDocFont, type DocFontStyle } from './doc-font'
 import { groupPageBlocks, reflowOverflows, type TextBlock } from './text-block'
 import {
@@ -108,6 +113,7 @@ import { platformShortcuts } from '@genoffice/i18n'
 import { Dropdown, useDismissablePopover, useRibbonCollapse } from '@genoffice/ui'
 import { useI18n } from './i18n/locale'
 import { useAutosave } from './useAutosave'
+import { MAX_REDACTION_REGIONS } from '../shared/ipc'
 import type {
   AnnotDeleteInput,
   CropPagesRequest,
@@ -183,7 +189,9 @@ import type { Bucket, Op, OpContext, PlanResult } from './edit-ops'
 import { rectsNear } from './edit-state'
 import type {
   StampConfig,
+  SavedAnnot,
   SavedMarkupAnnot,
+  SavedShapeAnnot,
   LocalAnnotDelete,
   LocalNoteEdit,
   EditSnapshot,
@@ -299,7 +307,7 @@ export default function App() {
   const [scale, setScale] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
-  const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | null>('thumbs')
+  const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'comments' | null>('thumbs')
   const [sidebarW, setSidebarW] = useState(loadSidebarW)
   /** raster width for thumbnails — only updated when a drag ends (re-rastering every frame would jank) */
   const [thumbRasterW, setThumbRasterW] = useState(() => loadSidebarW() - SIDEBAR_CHROME)
@@ -361,6 +369,7 @@ export default function App() {
   const [savedMarkups, setSavedMarkups] = useState<Map<number, SavedMarkupAnnot[]>>(new Map())
   /** Saved note (Text) comments per original page index, loaded in the same pass */
   const [savedNotes, setSavedNotes] = useState<Map<number, SavedNoteAnnot[]>>(new Map())
+  const [savedShapes, setSavedShapes] = useState<Map<number, SavedShapeAnnot[]>>(new Map())
   /** Active comment thread: its margin card is expanded and linked to its pin */
   const [activeNote, setActiveNote] = useState<{ origIdx: number; rootKey: string } | null>(null)
   /** OS account name; the default author of new note comments */
@@ -753,6 +762,9 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMatches, setSearchMatches] = useState<SearchMatch[]>([])
   const [searchCur, setSearchCur] = useState(0)
+  /** Find-and-redact mode: the search bar also offers sensitive-text patterns and "mark all" */
+  const [searchRedact, setSearchRedact] = useState(false)
+  const [searchPattern, setSearchPattern] = useState<RedactPattern | null>(null)
   const [printing, setPrinting] = useState(false)
   const [undoStack, setUndoStack] = useState<EditSnapshot[]>([])
   const [redoStack, setRedoStack] = useState<EditSnapshot[]>([])
@@ -1966,6 +1978,7 @@ export default function App() {
   useEffect(() => {
     setSavedMarkups(new Map())
     setSavedNotes(new Map())
+    setSavedShapes(new Map())
     setActiveNote(null)
     setNoteDraft(null)
   }, [doc])
@@ -1973,34 +1986,45 @@ export default function App() {
   /** Load saved markup + note annotations for pages scrolled into view: markups so
       clicking one can select it for deletion, notes so their comment threads show.
       Runs for read-only docs too (comments are viewable). Settles the same way as
-      the paragraph-box effect. */
+      the paragraph-box effect. With the comments list open every page is read, a
+      batch per run: each commit re-runs the effect for the next batch, and a
+      scroll in between only restarts the batch in flight. */
   useEffect(() => {
     if (!doc) return
     const missing: number[] = []
     for (const r of visibleRows)
       for (const i of rows[r] ?? []) if (!savedMarkups.has(i)) missing.push(i)
+    if (sidebar === 'comments') {
+      const queued = new Set(missing)
+      for (let i = 0; i < doc.numPages; i++)
+        if (!savedMarkups.has(i) && !queued.has(i)) missing.push(i)
+    }
     if (missing.length === 0) return
     let stale = false
     void (async () => {
       const markupEntries: [number, SavedMarkupAnnot[]][] = []
       const noteEntries: [number, SavedNoteAnnot[]][] = []
-      for (const origIdx of missing) {
-        const { markups: markupList, notes: noteList } = await loadSavedAnnots(doc, origIdx)
-        markupEntries.push([origIdx, markupList])
-        noteEntries.push([origIdx, noteList])
+      const shapeEntries: [number, SavedShapeAnnot[]][] = []
+      for (const origIdx of missing.slice(0, 16)) {
+        const loaded = await loadSavedAnnots(doc, origIdx)
+        if (stale) return
+        markupEntries.push([origIdx, loaded.markups])
+        noteEntries.push([origIdx, loaded.notes])
+        shapeEntries.push([origIdx, loaded.shapes])
       }
       if (!stale) {
         setSavedMarkups((prev) => new Map([...prev, ...markupEntries]))
         setSavedNotes((prev) => new Map([...prev, ...noteEntries]))
+        setSavedShapes((prev) => new Map([...prev, ...shapeEntries]))
       }
     })()
     return () => {
       stale = true
     }
-  }, [doc, visibleRows, rows, savedMarkups])
+  }, [doc, visibleRows, rows, savedMarkups, sidebar])
 
   useEffect(() => {
-    if (!searchOpen || !searchQuery.trim()) {
+    if (!searchOpen || (!searchPattern && !searchQuery.trim())) {
       setSearchMatches([])
       setSearchCur(0)
       return
@@ -2009,7 +2033,11 @@ export default function App() {
     const timer = setTimeout(() => {
       void getSearchIndex()?.then((idx) => {
         if (cancelled) return
-        setSearchMatches(searchInIndex(idx, searchQuery.trim()))
+        setSearchMatches(
+          searchPattern
+            ? findInIndex(idx, { pattern: searchPattern })
+            : searchInIndex(idx, searchQuery.trim()),
+        )
         setSearchCur(0)
       })
     }, 200)
@@ -2017,7 +2045,7 @@ export default function App() {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [searchOpen, searchQuery, getSearchIndex])
+  }, [searchOpen, searchQuery, searchPattern, getSearchIndex])
 
   /** Pages with unsaved deletion are excluded from match navigation */
   const activeMatches = useMemo(
@@ -2054,7 +2082,9 @@ export default function App() {
     setSearchCur((searchCurClamped + dir + n) % n)
   }
 
-  const openSearch = () => {
+  const openSearch = (redact = false) => {
+    setSearchRedact(redact)
+    if (!redact) setSearchPattern(null)
     setSearchOpen(true)
     requestAnimationFrame(() => {
       searchInputRef.current?.focus()
@@ -2062,7 +2092,64 @@ export default function App() {
     })
   }
 
-  const closeSearch = () => setSearchOpen(false)
+  const closeSearch = () => {
+    setSearchOpen(false)
+    setSearchRedact(false)
+    setSearchPattern(null)
+  }
+
+  /** Text index the comments list reads markup words from; loaded while the list is open */
+  const [commentsIndex, setCommentsIndex] = useState<SearchIndex | null>(null)
+  useEffect(() => {
+    if (sidebar !== 'comments') return
+    let stale = false
+    void getSearchIndex()?.then((idx) => {
+      if (!stale) setCommentsIndex(idx)
+    })
+    return () => {
+      stale = true
+    }
+  }, [sidebar, getSearchIndex])
+
+  const [markingAll, setMarkingAll] = useState(false)
+
+  /** Find and redact: turn every match into a pending redaction mark. Boxes come from
+      the file's exact glyph positions (the search rects are approximate); pages
+      recognized by OCR have no text in the file and use their OCR boxes. */
+  const markMatchesForRedaction = async () => {
+    const target: FindTarget = searchPattern
+      ? { pattern: searchPattern }
+      : { query: searchQuery.trim() }
+    if ('query' in target && !target.query) return
+    setMarkingAll(true)
+    try {
+      const res = await window.pdfApi.findTextBoxes({ path: filePath, target })
+      if (!res.ok) {
+        opFailed(res.error)
+        return
+      }
+      const fromOcr = activeMatches
+        .filter((m) => ocrPages.has(m.pageIndex))
+        .map((m) => ({ ...m, rects: m.rects.map(padMatchRect) }))
+      const fromFile = res.matches.filter(
+        (m) => !deleted.has(m.pageIndex) && !ocrPages.has(m.pageIndex),
+      )
+      const { added, overCap } = marksFromMatches([...fromFile, ...fromOcr], redactions)
+      if (added.length > 0)
+        setRedactions((prev) => [...prev, ...added.map((mark) => ({ ...mark, id: newId() }))])
+      showNotice(
+        overCap > 0
+          ? t('redactMatchesCapped', { count: added.length, max: MAX_REDACTION_REGIONS })
+          : added.length === 0
+            ? t('redactMatchesNone')
+            : added.length === 1
+              ? t('redactMatchesOne')
+              : t('redactMatchesMarked', { count: added.length }),
+      )
+    } finally {
+      setMarkingAll(false)
+    }
+  }
 
   /** Selection quads in PDF space keyed by original page index; null when nothing usable */
   const selectionQuads = (): Map<number, number[][]> | null => {
@@ -4521,7 +4608,7 @@ export default function App() {
       number,
       {
         rects: [number, number, number, number][]
-        annots: (SavedMarkupAnnot | SavedNoteAnnot)[]
+        annots: SavedAnnot[]
         text: { probe: TextEditInput; rect: [number, number, number, number] }[]
       }
     >()
@@ -4847,6 +4934,73 @@ export default function App() {
     setDeletedInsertedText(false)
     setDeleteToast(true)
     toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
+  }
+
+  // ── Comments list (sidebar) ──
+
+  const commentEntries: CommentEntry[] =
+    sidebar === 'comments'
+      ? buildCommentList({
+          pages: visList,
+          savedMarkups,
+          savedShapes,
+          annotDeletes,
+          markups,
+          drawings,
+          noteThreads: noteThreadsOn,
+          textUnder: (pageIndex, boxes) => {
+            const entry = commentsIndex?.[pageIndex]
+            return entry ? textInRects(entry, boxes) : ''
+          },
+        })
+      : []
+  const commentsLoading = sidebar === 'comments' && !!doc && savedMarkups.size < doc.numPages
+
+  /** Scroll the comment's anchor into view; a note also opens its thread */
+  const goToComment = (entry: CommentEntry) => {
+    const el = scrollRef.current
+    const visIdx = visList.indexOf(entry.pageIndex)
+    if (!el || visIdx < 0) return
+    const [x, y] = entry.at
+    const box = pdfRectToCss(pageGeom(entry.pageIndex), [x, y, x, y], scale)
+    el.scrollTop = Math.max(0, pageTop(visIdx) + box.top - el.clientHeight * 0.3)
+    if (entry.target.type === 'note')
+      setActiveNote({ origIdx: entry.pageIndex, rootKey: entry.target.root.key })
+  }
+
+  const deleteComment = (entry: CommentEntry) => {
+    const target = entry.target
+    if (target.type === 'note') {
+      deleteNoteItem(target.root)
+      return
+    }
+    applyEditOps([
+      target.type === 'markup'
+        ? { op: 'removeMarkup', id: target.id }
+        : target.type === 'drawing'
+          ? { op: 'removeDrawing', id: target.id }
+          : { op: 'deleteSavedAnnot', annot: target.annot },
+    ])
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current)
+    setDeletedInsertedText(false)
+    setDeleteToast(true)
+    toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
+  }
+
+  const commentKindLabels: Record<CommentKind, string> = {
+    highlight: t('highlight'),
+    underline: t('underline'),
+    strikeout: t('strikeout'),
+    note: t('commentKindNote'),
+    ink: t('commentKindInk'),
+    square: t('commentKindSquare'),
+    circle: t('commentKindCircle'),
+    line: t('commentKindLine'),
+    arrow: t('commentKindArrow'),
+    polygon: t('commentKindPolygon'),
+    polyline: t('commentKindPolyline'),
+    freetext: t('commentKindFreetext'),
+    stamp: t('commentKindStamp'),
   }
 
   /** Extract/insert work on the file on disk — flush unsaved changes first; undefined = the save failed */
@@ -5559,7 +5713,7 @@ export default function App() {
     <button
       className={`rb-big${searchOpen ? ' active' : ''}`}
       data-tip={`${t('search')} (${platformShortcuts('⌘F')})`}
-      onClick={() => (searchOpen ? closeSearch() : openSearch())}
+      onClick={() => (searchOpen && !searchRedact ? closeSearch() : openSearch())}
     >
       <span className="rb-big-icon">
         <IconSearch />
@@ -5653,6 +5807,19 @@ export default function App() {
     setRibbonTab('home')
   }
 
+  const commentsBtn = (
+    <button
+      className={`rb-big${sidebar === 'comments' ? ' active' : ''}`}
+      data-tip={t('commentsHint')}
+      onClick={() => setSidebar((v) => (v === 'comments' ? null : 'comments'))}
+    >
+      <span className="rb-big-icon">
+        <IconNote />
+      </span>
+      {t('comments')}
+    </button>
+  )
+
   const viewNavGroup = (
     <div className="ribbon-group">
       <div className="ribbon-group-items">
@@ -5675,6 +5842,7 @@ export default function App() {
           </span>
           {t('outline')}
         </button>
+        {commentsBtn}
         {searchBtn}
         <button
           className={`rb-big${spread === 2 ? ' active' : ''}`}
@@ -5900,6 +6068,17 @@ export default function App() {
                       <IconRect />
                     </span>
                     {t('redact')}
+                  </button>
+                  <button
+                    className={`rb-big${searchOpen && searchRedact ? ' active' : ''}`}
+                    disabled={readOnly}
+                    data-tip={t('redactFindHint')}
+                    onClick={() => (searchOpen && searchRedact ? closeSearch() : openSearch(true))}
+                  >
+                    <span className="rb-big-icon">
+                      <IconSearch />
+                    </span>
+                    {t('redactFind')}
                   </button>
                   {redactions.length > 0 && (
                     <>
@@ -6341,6 +6520,56 @@ export default function App() {
       <div className="app-main">
         <div className="app-content">
           <div className="pdf-body">
+            {sidebar === 'comments' && (
+              <div className="pdf-thumbs pdf-outline-pane" style={{ width: sidebarW }}>
+                <div className="pdf-outline-header">
+                  <span>{t('comments')}</span>
+                  <button
+                    type="button"
+                    className="rb-icon"
+                    aria-label={t('collapsePanel')}
+                    data-tip={t('collapsePanel')}
+                    onClick={() => setSidebar(null)}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m14 6-6 6 6 6" />
+                    </svg>
+                  </button>
+                </div>
+                <CommentsPanel
+                  entries={commentEntries}
+                  loading={commentsLoading}
+                  readOnly={readOnly}
+                  labels={{
+                    title: t('comments'),
+                    filter: t('commentsFilter'),
+                    empty: t('commentsEmpty'),
+                    noMatch: t('commentsNoMatch'),
+                    loading: t('commentsLoading'),
+                    remove: t('commentsDelete'),
+                    unsaved: t('commentsUnsaved'),
+                    kind: commentKindLabels,
+                    page: (page) => t('commentsPage', { page }),
+                    replies: (count) =>
+                      count === 1 ? t('commentsOneReply') : t('commentsReplies', { count }),
+                  }}
+                  pageNumber={(pageIndex) => visList.indexOf(pageIndex) + 1}
+                  formatTime={(ms) => new Date(ms).toLocaleString(lang)}
+                  onSelect={goToComment}
+                  onDelete={deleteComment}
+                />
+              </div>
+            )}
             {sidebar === 'outline' && outline && (
               <div className="pdf-thumbs pdf-outline-pane" style={{ width: sidebarW }}>
                 <div className="pdf-outline-header">
@@ -6493,7 +6722,9 @@ export default function App() {
                 })}
               </div>
             )}
-            {(sidebar === 'thumbs' || (sidebar === 'outline' && !!outline)) && (
+            {(sidebar === 'thumbs' ||
+              sidebar === 'comments' ||
+              (sidebar === 'outline' && !!outline)) && (
               <div className="pdf-side-resizer" onPointerDown={startSidebarResize} />
             )}
             <div
@@ -7588,6 +7819,10 @@ export default function App() {
                                   ])
                                 }
                                 onTooSmall={() => showNotice(t('redactHint'))}
+                                removeLabel={t('redactRemoveMark')}
+                                onRemove={(id) =>
+                                  setRedactions((prev) => prev.filter((mark) => mark.id !== id))
+                                }
                               />
                               {/* Ghost pin for the note being typed into the margin draft card */}
                               {noteDraft?.origIdx === origIdx &&
@@ -7699,11 +7934,29 @@ export default function App() {
             </div>
             {searchOpen && (
               <div className="pdf-search-bar">
+                {searchRedact && (
+                  <select
+                    className="pdf-search-mode"
+                    aria-label={t('redactFindWhat')}
+                    value={searchPattern ?? 'text'}
+                    onChange={(e) =>
+                      setSearchPattern(
+                        e.target.value === 'text' ? null : (e.target.value as RedactPattern),
+                      )
+                    }
+                  >
+                    <option value="text">{t('redactFindText')}</option>
+                    <option value="email">{t('redactFindEmail')}</option>
+                    <option value="phone">{t('redactFindPhone')}</option>
+                    <option value="card">{t('redactFindCard')}</option>
+                  </select>
+                )}
                 <input
                   ref={searchInputRef}
                   className="pdf-search-input"
-                  placeholder={t('search')}
-                  value={searchQuery}
+                  placeholder={searchRedact ? t('redactFindPlaceholder') : t('search')}
+                  disabled={!!searchPattern}
+                  value={searchPattern ? '' : searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') searchStep(e.shiftKey ? -1 : 1)
@@ -7711,7 +7964,7 @@ export default function App() {
                   }}
                 />
                 <span className="pdf-search-count">
-                  {searchQuery.trim()
+                  {searchPattern || searchQuery.trim()
                     ? activeMatches.length > 0
                       ? t('searchCount', {
                           current: searchCurClamped + 1,
@@ -7738,6 +7991,17 @@ export default function App() {
                 >
                   ›
                 </button>
+                {searchRedact && (
+                  <button
+                    className="pdf-search-action"
+                    disabled={
+                      readOnly || redactionCopyInFlight || markingAll || activeMatches.length === 0
+                    }
+                    onClick={() => void markMatchesForRedaction()}
+                  >
+                    {t('redactMarkAll')}
+                  </button>
+                )}
                 <button className="rb-icon" onClick={closeSearch}>
                   ×
                 </button>

@@ -1530,6 +1530,58 @@ button {
   pointer-events: none;
 }
 
+.pdf-redaction-remove {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 15px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.pdf-redaction-remove:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.pdf-search-action {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pdf-search-action:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.pdf-search-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pdf-search-mode {
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}
+
 /* With a tool active, take over the pointer and disable text selection so dragging doesn't select text */
 .pdf-draw-active {
   pointer-events: auto;
@@ -3046,4 +3098,130 @@ button {
   flex-direction: column;
   flex: 1;
   min-width: 0;
+}
+
+/* ── Comments list (sidebar) ── */
+.pdf-comments {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 6px;
+}
+
+.pdf-comments-filter {
+  flex-shrink: 0;
+  height: 26px;
+  margin: 0 4px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+.pdf-comments-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 4px 8px;
+}
+
+.pdf-comments-page {
+  padding: 8px 6px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.pdf-comment-row {
+  display: flex;
+  align-items: flex-start;
+  border-radius: 6px;
+}
+
+.pdf-comment-row:hover {
+  background: var(--hover);
+}
+
+.pdf-comment-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pdf-comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.pdf-comment-kind {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pdf-comment-unsaved {
+  color: var(--accent);
+}
+
+.pdf-comment-text {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.35;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+.pdf-comment-replies {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.pdf-comment-delete {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: 4px 4px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 22px;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.pdf-comment-row:hover .pdf-comment-delete,
+.pdf-comment-delete:focus-visible {
+  visibility: visible;
+}
+
+.pdf-comment-delete:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.pdf-comments-empty {
+  padding: 16px 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-align: center;
 }

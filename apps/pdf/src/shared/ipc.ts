@@ -1,3 +1,5 @@
+import type { FindTarget } from './text-match'
+
 import type { Lang } from '@genoffice/i18n'
 
 export const PDF_CHANNELS = {
@@ -13,6 +15,7 @@ export const PDF_CHANNELS = {
   listStaticFormFills: 'pdf:list-static-form-fills',
   pageImagePng: 'pdf:page-image-png',
   ocrPage: 'pdf:ocr-page',
+  findTextBoxes: 'pdf:find-text-boxes',
   pagePreviewPng: 'pdf:page-preview-png',
   extractPages: 'pdf:extract-pages',
   insertPdf: 'pdf:insert-pdf',
@@ -77,6 +80,10 @@ export type UiTheme = 'light' | 'dark' | 'system'
 
 export type MarkupType = 'highlight' | 'underline' | 'strikeout'
 
+/** Saved non-text annotations the editor can list and delete (drawings, text boxes, stamps) */
+export type ShapeAnnotType =
+  'freetext' | 'line' | 'square' | 'circle' | 'polygon' | 'polyline' | 'stamp' | 'ink'
+
 /** A text markup to write; quads are 4-point groups in PDF coords (y up) [x1,yTop,x2,yTop,x1,yBottom,x2,yBottom] */
 export interface MarkupInput {
   pageIndex: number
@@ -93,7 +100,7 @@ export interface AnnotDeleteInput {
   pageIndex: number
   /** PDF object number (pdf.js annotation id "123R" → 123) */
   objNum: number
-  subtype: MarkupType | 'note'
+  subtype: MarkupType | 'note' | ShapeAnnotType
   /** Annotation /Rect in PDF user space, for fallback matching */
   rect: [number, number, number, number]
   /** /Contents to match. Required identity for notes: every comment of a thread shares
@@ -393,6 +400,23 @@ export interface StaticFormFillRecord {
 }
 
 /** A pending area selected for permanent native PDF redaction. PDF user space, y up. */
+/** One find-and-redact hit from the file: exact glyph boxes, one rect per line (PDF user space) */
+export interface FindTextMatch {
+  pageIndex: number
+  rects: [number, number, number, number][]
+}
+
+export interface FindTextBoxesRequest {
+  path: string
+  target: FindTarget
+}
+
+export type FindTextBoxesResult =
+  { ok: true; matches: FindTextMatch[] } | { ok: false; error: string }
+
+/** Max redaction rects per request: prevents 100k-rect DoS on native redact. */
+export const MAX_REDACTION_REGIONS = 500
+
 export interface RedactionInput {
   pageIndex: number
   rect: [number, number, number, number]
@@ -674,6 +698,8 @@ export interface PdfApi {
   /** System-OCR one rendered page image (PNG, base64); null when no engine is
       available on this platform, [] when recognition failed for this image */
   ocrPage(png: string): Promise<PdfOcrLine[] | null>
+  /** Exact glyph boxes of every occurrence of a phrase or pattern in the file on disk */
+  findTextBoxes(req: FindTextBoxesRequest): Promise<FindTextBoxesResult>
   /** Render one existing image object to PNG (base64) for move/resize ghost previews; null if it can't be matched */
   pageImagePng(request: {
     path: string

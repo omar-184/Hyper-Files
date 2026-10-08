@@ -58,7 +58,7 @@ import type {
   TextEditValidation,
   ValidateTextEditsRequest,
 } from '../shared/ipc'
-import type { SavedSignature } from '../shared/ipc'
+import type { FindTextBoxesRequest, FindTextBoxesResult, SavedSignature } from '../shared/ipc'
 import { writePdfAtomically } from './atomic-write'
 import {
   cropPagesBytes,
@@ -1061,6 +1061,32 @@ function registerPdfIpc(): void {
     }
     return readStaticFormFills(new Uint8Array(await readFile(path)))
   })
+
+  ipcMain.handle(
+    PDF_CHANNELS.findTextBoxes,
+    async (e, req: unknown): Promise<FindTextBoxesResult> => {
+      const { path, target } = (req ?? {}) as Partial<FindTextBoxesRequest>
+      if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
+        throw new Error('pdf: path not granted to this view')
+      }
+      const valid =
+        !!target &&
+        typeof target === 'object' &&
+        ('query' in target
+          ? typeof target.query === 'string' && target.query.length <= 1000
+          : 'pattern' in target && ['email', 'phone', 'card'].includes(target.pattern))
+      if (!valid) return { ok: false, error: 'invalid find target' }
+      try {
+        const { findTextBoxes } = await import('./find-text')
+        return {
+          ok: true,
+          matches: await findTextBoxes(new Uint8Array(await readFile(path)), target),
+        }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
 
   ipcMain.handle(PDF_CHANNELS.ocrPage, async (_e, png: unknown) => {
     // bad payload = failed page ([]), never "no engine" (null) — null stops the caller's pass

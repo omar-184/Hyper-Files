@@ -1,3 +1,5 @@
+import { editorStrings, localizedEditorStrings } from './editor-strings'
+
 const fillFormStrings = {
   ribbonTabFillForm: 'Fill Form',
   formPreviousField: 'Previous field',
@@ -194,6 +196,8 @@ const localizedFillFormStrings = {
 const fillFormStringsFor = (lang: string) => ({
   ...fillFormStrings,
   ...(localizedFillFormStrings[lang as keyof typeof localizedFillFormStrings] ?? {}),
+  ...editorStrings,
+  ...localizedEditorStrings[lang],
 })
 
 export const strings = {
