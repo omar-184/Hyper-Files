@@ -15,9 +15,11 @@ import {
   Menu,
   app,
   dialog,
+  Notification,
   ipcMain,
   nativeImage,
   nativeTheme,
+  net,
   shell,
   webContents,
 } from 'electron'
@@ -68,6 +70,7 @@ import {
   writeAppSettingThen,
 } from './app-settings'
 import { createDefaultAppService, execFileRunner } from './default-app'
+import { createUpdateChecker, safeReleaseUrl } from './update-check'
 import { handleDroppedFiles } from './dropped-files'
 import { collectLaunchPaths } from './launch-paths'
 import {
@@ -171,6 +174,8 @@ import {
 } from '../../../html/src/main/html-main'
 import type {
   AutoSaveDefault,
+  UpdateCheckResult,
+  UpdateCheckStatus,
   FolderListing,
   FolderRoot,
   MoveConflictPolicy,
@@ -367,7 +372,9 @@ function currentLang(): Lang {
   }
   const saved = readAppSettings(APP_SETTINGS_PATH()).language
   if (isLang(saved)) uiLang = saved
-  uiLang ??= normalizeLang(app.getLocale())
+  // English until the user picks another language in Settings: the first
+  // releases are English-first, so the OS locale no longer chooses for them
+  uiLang ??= 'en'
   setUiLang(uiLang)
   return uiLang
 }
@@ -415,6 +422,8 @@ function currentAutoSaveDefault(): AutoSaveDefault {
 const tMain = createI18n({
   zh: {
     dlgAddFolderRoot: '添加文件夹到首页',
+    updateNoticeTitle: 'Hyper-Files {version} 已发布',
+    updateNoticeBody: '点击打开下载页面。',
     watchdogTitle: '文档占用资源过高',
     watchdogBody:
       '“{title}” 已持续数分钟占用大量内存或 CPU（内存 {memory} MB，CPU {cpu}%）。可以继续等待，或关闭这个文档（有未保存的改动会先询问是否保存）。诊断信息已记录。', // public-hygiene: allow
@@ -508,6 +517,8 @@ const tMain = createI18n({
   },
   en: {
     dlgAddFolderRoot: 'Add Folder to Home',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Document is using too many resources',
     watchdogBody:
       '"{title}" has been using a lot of memory or CPU for several minutes ({memory} MB, {cpu}% CPU). You can keep waiting, or close the document (you will be asked to save unsaved changes first). Diagnostics have been recorded.',
@@ -609,6 +620,8 @@ const tMain = createI18n({
   },
   vi: {
     dlgAddFolderRoot: 'Thêm thư mục vào Trang chủ',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Tài liệu đang dùng quá nhiều tài nguyên',
     watchdogBody:
       '"{title}" đã dùng nhiều bộ nhớ hoặc CPU trong vài phút ({memory} MB, {cpu}% CPU). Bạn có thể tiếp tục chờ hoặc đóng tài liệu này (sẽ hỏi lưu các thay đổi chưa lưu trước). Thông tin chẩn đoán đã được ghi lại.',
@@ -710,6 +723,8 @@ const tMain = createI18n({
   },
   ja: {
     dlgAddFolderRoot: 'フォルダーをホームに追加',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'ドキュメントのリソース使用量が過大です',
     watchdogBody:
       '「{title}」が数分間にわたり大量のメモリまたは CPU を使用しています（メモリ {memory} MB、CPU {cpu}%）。そのまま待つか、このドキュメントを閉じることができます（未保存の変更がある場合は保存を確認します）。診断情報を記録しました。',
@@ -811,6 +826,8 @@ const tMain = createI18n({
   },
   ko: {
     dlgAddFolderRoot: '홈에 폴더 추가',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: '문서가 리소스를 과도하게 사용하고 있습니다',
     watchdogBody:
       '"{title}"이(가) 몇 분 동안 많은 메모리 또는 CPU를 사용하고 있습니다(메모리 {memory} MB, CPU {cpu}%). 계속 기다리거나 이 문서를 닫을 수 있습니다(저장되지 않은 변경 사항이 있으면 먼저 저장 여부를 묻습니다). 진단 정보가 기록되었습니다.',
@@ -911,6 +928,8 @@ const tMain = createI18n({
   },
   fr: {
     dlgAddFolderRoot: "Ajouter un dossier à l'accueil",
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Le document consomme trop de ressources',
     watchdogBody:
       '« {title} » utilise beaucoup de mémoire ou de processeur depuis plusieurs minutes ({memory} Mo, {cpu} % CPU). Vous pouvez continuer à attendre ou fermer ce document (il vous sera d’abord demandé d’enregistrer les modifications non sauvegardées). Les diagnostics ont été enregistrés.',
@@ -1013,6 +1032,8 @@ const tMain = createI18n({
   },
   de: {
     dlgAddFolderRoot: 'Ordner zur Startseite hinzufügen',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokument beansprucht zu viele Ressourcen',
     watchdogBody:
       '„{title}“ belegt seit mehreren Minuten viel Arbeitsspeicher oder CPU ({memory} MB, {cpu} % CPU). Sie können weiter warten oder das Dokument schließen (bei ungespeicherten Änderungen werden Sie zuerst zum Speichern gefragt). Diagnosedaten wurden aufgezeichnet.',
@@ -1116,6 +1137,8 @@ const tMain = createI18n({
   },
   es: {
     dlgAddFolderRoot: 'Añadir carpeta al inicio',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'El documento consume demasiados recursos',
     watchdogBody:
       '«{title}» lleva varios minutos usando mucha memoria o CPU ({memory} MB, {cpu} % de CPU). Puedes seguir esperando o cerrar el documento (antes se te pedirá guardar los cambios sin guardar). Se ha registrado el diagnóstico.',
@@ -1218,6 +1241,8 @@ const tMain = createI18n({
   },
   th: {
     dlgAddFolderRoot: 'เพิ่มโฟลเดอร์ไปยังหน้าแรก',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'เอกสารใช้ทรัพยากรมากเกินไป',
     watchdogBody:
       '"{title}" ใช้หน่วยความจำหรือ CPU จำนวนมากติดต่อกันหลายนาที (หน่วยความจำ {memory} MB, CPU {cpu}%) คุณสามารถรอต่อไปหรือปิดเอกสารนี้ได้ (หากมีการเปลี่ยนแปลงที่ยังไม่บันทึกจะถามให้บันทึกก่อน) บันทึกข้อมูลวินิจฉัยแล้ว',
@@ -1316,6 +1341,8 @@ const tMain = createI18n({
   },
   id: {
     dlgAddFolderRoot: 'Tambahkan Folder ke Beranda',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokumen menggunakan terlalu banyak sumber daya',
     watchdogBody:
       '"{title}" telah menggunakan banyak memori atau CPU selama beberapa menit ({memory} MB, CPU {cpu}%). Anda dapat terus menunggu atau menutup dokumen ini (perubahan yang belum disimpan akan ditanyakan lebih dulu). Diagnostik telah dicatat.',
@@ -1418,6 +1445,8 @@ const tMain = createI18n({
   },
   ru: {
     dlgAddFolderRoot: 'Добавить папку на главную',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Документ потребляет слишком много ресурсов',
     watchdogBody:
       '«{title}» уже несколько минут использует много памяти или процессора ({memory} МБ, {cpu}% CPU). Можно подождать ещё или закрыть документ (при несохранённых изменениях сначала будет предложено сохранить). Диагностика записана.',
@@ -1520,6 +1549,8 @@ const tMain = createI18n({
   },
   ar: {
     dlgAddFolderRoot: 'إضافة مجلد إلى الصفحة الرئيسية',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'المستند يستهلك موارد كثيرة جدًا',
     watchdogBody:
       'يستهلك "{title}" قدرًا كبيرًا من الذاكرة أو المعالج منذ عدة دقائق (الذاكرة {memory} م.ب، المعالج {cpu}%). يمكنك مواصلة الانتظار أو إغلاق هذا المستند (سيُطلب حفظ التغييرات غير المحفوظة أولًا). تم تسجيل بيانات التشخيص.',
@@ -1618,6 +1649,8 @@ const tMain = createI18n({
   },
   pt: {
     dlgAddFolderRoot: 'Adicionar pasta à página inicial',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'O documento está a consumir demasiados recursos',
     watchdogBody:
       '"{title}" está a usar muita memória ou CPU há vários minutos ({memory} MB, {cpu}% de CPU). Pode continuar a aguardar ou fechar o documento (será pedido para guardar alterações não guardadas primeiro). O diagnóstico foi registado.',
@@ -1720,6 +1753,8 @@ const tMain = createI18n({
   },
   it: {
     dlgAddFolderRoot: 'Aggiungi cartella alla Home',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Il documento sta usando troppe risorse',
     watchdogBody:
       '"{title}" sta usando molta memoria o CPU da diversi minuti ({memory} MB, {cpu}% CPU). Puoi continuare ad attendere o chiudere il documento (ti verrà chiesto prima di salvare le modifiche non salvate). La diagnostica è stata registrata.',
@@ -1822,6 +1857,8 @@ const tMain = createI18n({
   },
   pl: {
     dlgAddFolderRoot: 'Dodaj folder do strony głównej',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokument zużywa zbyt dużo zasobów',
     watchdogBody:
       '„{title}” od kilku minut zużywa dużo pamięci lub procesora ({memory} MB, {cpu}% CPU). Możesz dalej czekać albo zamknąć dokument (najpierw pojawi się pytanie o zapisanie niezapisanych zmian). Dane diagnostyczne zostały zapisane.',
@@ -1924,6 +1961,8 @@ const tMain = createI18n({
   },
   cs: {
     dlgAddFolderRoot: 'Přidat složku na domovskou stránku',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokument spotřebovává příliš mnoho prostředků',
     watchdogBody:
       '„{title}“ už několik minut využívá hodně paměti nebo procesoru ({memory} MB, {cpu} % CPU). Můžete dál čekat, nebo dokument zavřít (u neuložených změn se nejdřív zeptáme na uložení). Diagnostika byla zaznamenána.',
@@ -2024,6 +2063,8 @@ const tMain = createI18n({
   },
   nl: {
     dlgAddFolderRoot: 'Map toevoegen aan startpagina',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Document gebruikt te veel systeembronnen',
     watchdogBody:
       '"{title}" gebruikt al enkele minuten veel geheugen of CPU ({memory} MB, {cpu}% CPU). U kunt blijven wachten of het document sluiten (bij niet-opgeslagen wijzigingen wordt eerst gevraagd of u wilt opslaan). Diagnostische gegevens zijn vastgelegd.',
@@ -2126,6 +2167,8 @@ const tMain = createI18n({
   },
   ms: {
     dlgAddFolderRoot: 'Tambah Folder ke Laman Utama',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokumen menggunakan terlalu banyak sumber',
     watchdogBody:
       '"{title}" telah menggunakan banyak memori atau CPU selama beberapa minit ({memory} MB, CPU {cpu}%). Anda boleh terus menunggu atau menutup dokumen ini (perubahan yang belum disimpan akan ditanya dahulu). Diagnostik telah direkodkan.',
@@ -2227,6 +2270,8 @@ const tMain = createI18n({
   },
   he: {
     dlgAddFolderRoot: 'הוספת תיקייה לדף הבית',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'המסמך צורך יותר מדי משאבים',
     watchdogBody:
       '"{title}" משתמש בהרבה זיכרון או מעבד כבר כמה דקות (זיכרון {memory} MB, מעבד {cpu}%). אפשר להמשיך לחכות או לסגור את המסמך (אם יש שינויים שלא נשמרו, תתבקשו לשמור קודם). נתוני האבחון נרשמו.',
@@ -2326,6 +2371,8 @@ const tMain = createI18n({
   },
   hi: {
     dlgAddFolderRoot: 'होम में फ़ोल्डर जोड़ें',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'दस्तावेज़ बहुत अधिक संसाधन ले रहा है',
     watchdogBody:
       '"{title}" कई मिनटों से बहुत अधिक मेमोरी या CPU इस्तेमाल कर रहा है (मेमोरी {memory} MB, CPU {cpu}%)। आप इंतज़ार जारी रख सकते हैं या यह दस्तावेज़ बंद कर सकते हैं (बिना सहेजे बदलाव होने पर पहले सहेजने के लिए पूछा जाएगा)। निदान जानकारी दर्ज कर ली गई है।',
@@ -2428,6 +2475,8 @@ const tMain = createI18n({
   },
   'zh-TW': {
     dlgAddFolderRoot: '將資料夾加入首頁',
+    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: '文件佔用資源過高',
     watchdogBody:
       '「{title}」已持續數分鐘佔用大量記憶體或 CPU（記憶體 {memory} MB，CPU {cpu}%）。可以繼續等待，或關閉這個文件（有未儲存的變更會先詢問是否儲存）。診斷資訊已記錄。', // public-hygiene: allow
@@ -3742,7 +3791,51 @@ function registerHomeIpc(): void {
       // no browser handler available; nothing actionable for the user here
     })
   })
+
+  ipcMain.handle(HOME_CHANNELS.getUpdateCheck, (): UpdateCheckStatus => ({
+    enabled: updateChecker.enabled(),
+    last: updateChecker.last(),
+  }))
+  ipcMain.handle(HOME_CHANNELS.setUpdateCheck, (_event, on: unknown) => {
+    if (typeof on !== 'boolean') return
+    updateChecker.setEnabled(on)
+  })
+  ipcMain.handle(HOME_CHANNELS.checkForUpdates, async (): Promise<UpdateCheckResult> => {
+    // the toggle is the only consent: no request while it is off
+    if (!updateChecker.enabled()) return { state: 'failed', checkedAt: Date.now() }
+    return updateChecker.checkNow()
+  })
+  ipcMain.handle(HOME_CHANNELS.openUpdatePage, () => {
+    shell.openExternal(safeReleaseUrl(updateChecker.last()?.url)).catch(() => {
+      // no browser handler available; nothing actionable for the user here
+    })
+  })
 }
+
+// ---- opt-in update check (off by default; see update-check.ts) ----
+const updateChecker = createUpdateChecker({
+  currentVersion: app.getVersion(),
+  fetchJson: async (url) => {
+    const res = await net.fetch(url, {
+      headers: { Accept: 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(15_000),
+    })
+    return { status: res.status, body: res.ok ? await res.json() : null }
+  },
+  readSettings: () => readAppSettings(APP_SETTINGS_PATH()),
+  writeSettings: (updates) => writeAppSettings(APP_SETTINGS_PATH(), updates),
+  notify: (version, url) => {
+    if (!Notification.isSupported()) return
+    const notice = new Notification({
+      title: tm('updateNoticeTitle', { version }),
+      body: tm('updateNoticeBody'),
+    })
+    notice.on('click', () => {
+      shell.openExternal(safeReleaseUrl(url)).catch(() => {})
+    })
+    notice.show()
+  },
+})
 
 function stringPaths(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((p): p is string => typeof p === 'string') : []
@@ -4944,6 +5037,10 @@ app.whenReady().then(async () => {
   }
 
   app.setAccessibilitySupportEnabled(true)
+  // matches the AppUserModelID electron-builder writes on the NSIS shortcuts
+  // (appId in electron-builder.cjs): taskbar grouping and toast notifications
+  // key off it
+  if (process.platform === 'win32') app.setAppUserModelId('io.github.omar184.hyperfiles')
   // Settle the shared uiLang from saved settings BEFORE any tab renderer can
   // ask 'app:get-language': the editor handlers return the i18n module's
   // mutable lang, whose 'zh' default otherwise wins the race for whichever
@@ -4953,6 +5050,8 @@ app.whenReady().then(async () => {
   nativeTheme.themeSource = currentTheme()
   startSheetsCaptureServer()
   createShellWindow()
+  // opt-in update check: the schedule is a no-op until the user turns it on
+  updateChecker.start()
   // deferred to ready: labels need currentLang(), which reads app.getLocale()
   installBackToHomeItems()
   installDockMenu()

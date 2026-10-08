@@ -1,7 +1,7 @@
 {
   "name": "@genoffice/shell",
   "productName": "Hyper-Files",
-  "version": "0.11.0",
+  "version": "0.1.0",
   "license": "AGPL-3.0-only",
   "homepage": "https://github.com/omar-184/Hyper-Files",
   "private": true,
@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "start": "electron-vite build && electron .",
     "dist:mac": "npm run notices && electron-vite build && electron-builder --mac",
-    "dist:win": "npm run notices && electron-vite build && electron-builder --win"
+    "dist:win": "npm run notices && electron-vite build && electron-builder --win --publish never"
   },
   "devDependencies": {
     "@genoffice/docs": "*",

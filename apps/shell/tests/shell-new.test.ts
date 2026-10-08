@@ -57,7 +57,8 @@ describe('Windows Explorer New templates', () => {
       const association = config.fileAssociations.find(
         (entry: { ext: string }) => entry.ext === ext,
       )
-      expect(association.description).toBe(association.name)
+      expect(association.description).toMatch(/\S/)
+      expect(association.name).toBe(`HyperFiles.${ext}`)
     }
   })
 })

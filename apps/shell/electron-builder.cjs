@@ -32,7 +32,12 @@ if (winArm64 && !process.env.ELECTRON_BUILDER_7Z_FILTER) {
   process.env.ELECTRON_BUILDER_7Z_FILTER = 'BCJ'
 }
 const winArch = winArm64 ? 'arm64' : 'x64'
-const winSidecarTarget = winArm64 ? 'aarch64-pc-windows-msvc' : 'x86_64-pc-windows-gnu'
+// GENOFFICE_WIN_SIDECAR_TARGET overrides the x64 sidecar's cargo target: the
+// Windows release workflow builds natively with the MSVC toolchain
+// (x86_64-pc-windows-msvc) instead of cross-compiling with mingw.
+const winSidecarTarget =
+  process.env.GENOFFICE_WIN_SIDECAR_TARGET ||
+  (winArm64 ? 'aarch64-pc-windows-msvc' : 'x86_64-pc-windows-gnu')
 const WIN_SIDECAR = `../sheets/native/xlsx-engine/target/${winSidecarTarget}/release/xlsx-sidecar.exe`
 
 function assertExtraResourceSources() {
@@ -176,6 +181,11 @@ function assertModuleTreesPresent() {
   }
 }
 
+/** Windows ProgID per extension, shared by fileAssociations and installer.nsh */
+function progId(ext) {
+  return `HyperFiles.${ext}`
+}
+
 const NOTICE_PATH = join(__dirname, 'build/THIRD-PARTY-NOTICES.txt')
 const PDFIUM_NOTICE_TERMS = ['@embedpdf/pdfium', 'Copyright 2014 PDFium Authors', 'Apache License']
 
@@ -213,6 +223,20 @@ const config = {
   },
   files: ['out/**'],
   extraResources: [
+    // AGPL-3.0 text and the attribution notice ship beside the app, next to
+    // the generated third-party notices
+    {
+      from: '../../LICENSE',
+      to: 'LICENSE.txt',
+    },
+    {
+      from: '../../NOTICE',
+      to: 'NOTICE.txt',
+    },
+    {
+      from: '../../LICENSE-APACHE-2.0',
+      to: 'LICENSE-APACHE-2.0.txt',
+    },
     {
       from: 'build/THIRD-PARTY-NOTICES.txt',
       to: 'THIRD-PARTY-NOTICES.txt',
@@ -283,6 +307,12 @@ const config = {
       to: 'ocr/win-ocr.exe',
     },
   ],
+  // `name` is the Windows ProgID the NSIS installer registers (and the
+  // default-app check in src/main/default-app.ts compares against): our own
+  // `HyperFiles.<ext>` namespace, so installing never rewrites another app's
+  // generic "Word Document" class. `description` is the friendly type name
+  // Explorer shows (Type column, New menu).
+  //
   // `mimeType` is read only by the Linux target, where it becomes the
   // desktop entry's MimeType= list; associations without it are dropped
   // there. macOS and Windows ignore the field and key off `ext`.
@@ -297,7 +327,7 @@ const config = {
   fileAssociations: [
     {
       ext: 'docx',
-      name: 'Word Document',
+      name: progId('docx'),
       description: 'Word Document',
       role: 'Editor',
       icon: 'docx',
@@ -305,7 +335,7 @@ const config = {
     },
     {
       ext: 'xlsx',
-      name: 'Excel Workbook',
+      name: progId('xlsx'),
       description: 'Excel Workbook',
       role: 'Editor',
       icon: 'xlsx',
@@ -313,14 +343,15 @@ const config = {
     },
     {
       ext: 'xlsm',
-      name: 'Excel Macro-Enabled Workbook',
+      name: progId('xlsm'),
+      description: 'Excel Macro-Enabled Workbook',
       role: 'Editor',
       icon: 'xlsx',
       mimeType: 'application/vnd.ms-excel.sheet.macroEnabled.12',
     },
     {
       ext: 'pptx',
-      name: 'PowerPoint Presentation',
+      name: progId('pptx'),
       description: 'PowerPoint Presentation',
       role: 'Editor',
       icon: 'pptx',
@@ -328,57 +359,65 @@ const config = {
     },
     {
       ext: 'xls',
-      name: 'Excel 97-2003 Workbook',
+      name: progId('xls'),
+      description: 'Excel 97-2003 Workbook',
       role: 'Editor',
       icon: 'xlsx',
       mimeType: 'application/vnd.ms-excel',
     },
     {
       ext: 'csv',
-      name: 'CSV Document',
+      name: progId('csv'),
+      description: 'CSV Document',
       role: 'Editor',
       icon: 'xlsx',
       mimeType: 'text/csv',
     },
+    // opens as a converted copy and saves as .xlsx (genoffice#1146)
     {
-      // opens as a converted copy and saves as .xlsx (genoffice#1146)
       ext: 'tsv',
-      name: 'TSV Document',
+      name: progId('tsv'),
+      description: 'TSV Document',
       role: 'Editor',
       icon: 'xlsx',
       mimeType: 'text/tab-separated-values',
     },
     {
       ext: 'pdf',
-      name: 'PDF Document',
+      name: progId('pdf'),
+      description: 'PDF Document',
       role: 'Editor',
       icon: 'pdf',
       mimeType: 'application/pdf',
     },
     {
       ext: 'md',
-      name: 'Markdown Document',
+      name: progId('md'),
+      description: 'Markdown Document',
       role: 'Editor',
       icon: 'md',
       mimeType: 'text/markdown',
     },
     {
       ext: 'markdown',
-      name: 'Markdown Document',
+      name: progId('markdown'),
+      description: 'Markdown Document',
       role: 'Editor',
       icon: 'md',
       mimeType: 'text/markdown',
     },
     {
       ext: 'html',
-      name: 'HTML Document',
+      name: progId('html'),
+      description: 'HTML Document',
       role: 'Editor',
       icon: 'html',
       mimeType: 'text/html',
     },
     {
       ext: 'htm',
-      name: 'HTML Document',
+      name: progId('htm'),
+      description: 'HTML Document',
       role: 'Editor',
       icon: 'html',
       mimeType: 'text/html',
@@ -431,7 +470,16 @@ const config = {
   },
   nsis: {
     oneClick: false,
+    // per-user by default (no admin prompt); the install-mode page still
+    // offers "for all users"
+    perMachine: false,
     allowToChangeInstallationDirectory: true,
+    // the AGPL-3.0 text is the installer's license page
+    license: '../../LICENSE',
+    artifactName: '${productName}-Setup-${version}-${arch}.${ext}',
+    shortcutName: 'Hyper-Files',
+    uninstallDisplayName: 'Hyper-Files',
+    deleteAppDataOnUninstall: false,
   },
   beforePack: async (context) => {
     ensurePlatformHelpers()

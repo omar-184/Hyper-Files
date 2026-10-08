@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Dropdown } from '@genoffice/ui'
-import type { DefaultAppStatus, DocTheme, UiTheme } from '../../shared/home-api'
+import type { DefaultAppStatus, DocTheme, UiTheme, UpdateCheckResult } from '../../shared/home-api'
 import { useI18n } from './locale'
 import type { StringKey } from './locale'
 import './settings.css'
@@ -122,6 +122,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const [defaultAppBusy, setDefaultAppBusy] = useState(false)
   const [defaultAppFailed, setDefaultAppFailed] = useState(false)
   const [appVersion, setAppVersion] = useState('')
+  const [updatesOn, setUpdatesOn] = useState(false)
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null)
+  const [updateBusy, setUpdateBusy] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -142,6 +145,11 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     })
     void window.hyperFiles.getAppVersion?.().then((v) => {
       if (alive && v) setAppVersion(v)
+    })
+    void window.hyperFiles.getUpdateCheck?.().then((st) => {
+      if (!alive) return
+      setUpdatesOn(st.enabled)
+      setUpdateResult(st.last)
     })
     return () => {
       alive = false
@@ -196,6 +204,35 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       .catch(() => setDefaultAppFailed(true))
       .finally(() => setDefaultAppBusy(false))
   }
+
+  const checkUpdates = () => {
+    setUpdateBusy(true)
+    void window.hyperFiles
+      .checkForUpdates()
+      .then(setUpdateResult)
+      .catch(() => setUpdateResult({ state: 'failed', checkedAt: Date.now() }))
+      .finally(() => setUpdateBusy(false))
+  }
+
+  const toggleUpdates = () => {
+    const next = !updatesOn
+    void window.hyperFiles
+      .setUpdateCheck(next)
+      .then(() => {
+        setUpdatesOn(next)
+        if (!next) setUpdateResult(null)
+      })
+      .catch(() => {})
+  }
+
+  const updateDesc = (() => {
+    if (updateBusy) return t('setUpdatesChecking')
+    if (!updatesOn || !updateResult) return t('setUpdatesDesc')
+    if (updateResult.state === 'available')
+      return t('setUpdatesAvailable', { version: updateResult.version ?? '' })
+    if (updateResult.state === 'latest') return t('setUpdatesLatest')
+    return t('setUpdatesFailed')
+  })()
 
   const defaultAppDesc = (() => {
     if (!defaultApp) return ''
@@ -341,6 +378,35 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               <>
                 <h3 className="set-pane-title">{t('setSecAbout')}</h3>
                 <Field label={t('versionLabel')} value={appVersion || '—'} />
+                <div className="set-field">
+                  <div className="set-field-text">
+                    <div className="set-field-stack">
+                      <div className="set-field-label">{t('setUpdates')}</div>
+                      <div className="set-field-desc">{updateDesc}</div>
+                    </div>
+                  </div>
+                  {updatesOn && updateResult?.state === 'available' ? (
+                    <button
+                      className="set-btn"
+                      onClick={() => void window.hyperFiles.openUpdatePage?.()}
+                    >
+                      {t('setUpdatesDownload')}
+                    </button>
+                  ) : (
+                    updatesOn && (
+                      <button className="set-btn" disabled={updateBusy} onClick={checkUpdates}>
+                        {t('setUpdatesCheckNow')}
+                      </button>
+                    )
+                  )}
+                  <button
+                    className="set-switch"
+                    role="switch"
+                    aria-checked={updatesOn}
+                    aria-label={t('setUpdates')}
+                    onClick={toggleUpdates}
+                  />
+                </div>
                 <Field
                   label={t('setGithub')}
                   value="github.com/omar-184/Hyper-Files"

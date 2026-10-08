@@ -3,6 +3,7 @@ import type { IpcRendererEvent } from 'electron'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
 import type {
   DefaultAppStatus,
+  UpdateCheckResult,
   FolderListing,
   FolderRoot,
   MoveResult,
@@ -67,6 +68,17 @@ function asSearchPage(result: unknown): FileSearchPage {
     return result as FileSearchPage
   }
   return EMPTY_SEARCH
+}
+
+function normalizeUpdateResult(result: unknown): UpdateCheckResult {
+  const r = (result ?? {}) as Partial<UpdateCheckResult>
+  const state = r.state === 'latest' || r.state === 'available' ? r.state : 'failed'
+  return {
+    state,
+    version: typeof r.version === 'string' ? r.version : undefined,
+    url: typeof r.url === 'string' ? r.url : undefined,
+    checkedAt: typeof r.checkedAt === 'number' ? r.checkedAt : 0,
+  }
 }
 
 function normalizeDefaultAppStatus(result: unknown): DefaultAppStatus {
@@ -258,6 +270,26 @@ const homeApi: HomeApi = {
   },
   async openGitHubRepo() {
     await ipcRenderer.invoke(HOME_CHANNELS.openGitHubRepo)
+  },
+  async getUpdateCheck() {
+    const r = (await ipcRenderer.invoke(HOME_CHANNELS.getUpdateCheck)) as {
+      enabled?: unknown
+      last?: unknown
+    } | null
+    return {
+      enabled: r?.enabled === true,
+      last: r?.last ? normalizeUpdateResult(r.last) : null,
+    }
+  },
+  async setUpdateCheck(enabled) {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid update check setting.')
+    await ipcRenderer.invoke(HOME_CHANNELS.setUpdateCheck, enabled)
+  },
+  async checkForUpdates() {
+    return normalizeUpdateResult(await ipcRenderer.invoke(HOME_CHANNELS.checkForUpdates))
+  },
+  async openUpdatePage() {
+    await ipcRenderer.invoke(HOME_CHANNELS.openUpdatePage)
   },
 }
 
