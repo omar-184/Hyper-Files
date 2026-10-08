@@ -34,7 +34,7 @@ exactly and that the files contain no CJK text.
   payload (bytes, clipboard data, part paths) only the app's own UI produces;
   `(pending)` hides its usage line until the registering branch lands.
   Combine as `(internal, pending)`.
-- ```json fenced blocks are examples. Use the placeholder ids below.
+- Fenced `json` code blocks are examples. Use the placeholder ids below.
 
   ```
 
