@@ -35,8 +35,6 @@ export {
   type RibbonCollapseLabels,
   type RibbonDensity,
 } from './ribbon-collapse'
-export { IconSend, IconStop, type IconProps } from './icons'
-export { Markdown, type MarkdownNav } from './Markdown'
 export { isSymbolFontFamily } from './symbol-fonts'
 export {
   BUILTIN_FONT_FAMILIES,

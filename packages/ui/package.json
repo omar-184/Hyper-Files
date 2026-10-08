@@ -13,7 +13,6 @@
     "./fonts/*": "./src/fonts/*",
     "./image-dialogs.css": "./src/image-dialogs.css",
     "./image-viewer.css": "./src/image-viewer.css",
-    "./markdown.css": "./src/markdown.css",
     "./ribbon-collapse.css": "./src/ribbon-collapse.css",
     "./screentip.css": "./src/screentip.css",
     "./tokens.css": "./src/tokens.css"

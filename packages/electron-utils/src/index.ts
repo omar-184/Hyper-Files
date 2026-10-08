@@ -63,7 +63,6 @@ export {
   readBodyCapped,
   remoteImageHeaders,
 } from './remote-image'
-export { GENERATED_IMAGE_DIR, readGeneratedImage, storeGeneratedImage } from './generated-images'
 export {
   buildPrintableHtml,
   printHtmlToPdf,
