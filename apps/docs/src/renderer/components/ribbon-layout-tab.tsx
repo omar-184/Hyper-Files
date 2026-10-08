@@ -4,6 +4,12 @@ import { WRAP_OPTIONS } from './ContextMenu'
 import { MarginDialog, marginsFitPage, type PageMargins } from './MarginDialog'
 import { LengthInput } from './LengthInput'
 import { PaperSizeDialog } from './PaperSizeDialog'
+import {
+  LINE_NUMBER_MODES,
+  LineNumbersDialog,
+  lineNumberModeOf,
+  lineNumbersFor,
+} from './LineNumbersDialog'
 import { insertColumnBreak, insertTextWrappingBreak } from '../editor/page-break'
 import { setFloatingWrap, shapeWrapOf } from '../editor/floating-z-order'
 import { useI18n, type StringKey } from '../i18n/locale'
@@ -11,6 +17,7 @@ import { useMeasurement } from '../use-measurement'
 import {
   IconCaret,
   IconColumns,
+  IconLineNumbers,
   IconMargins,
   IconOrientation,
   IconPageBreak,
@@ -170,6 +177,7 @@ export function LayoutTab({
   const enabled = hasDoc && !!section
   const [marginDialog, setMarginDialog] = useState(false)
   const [paperDialog, setPaperDialog] = useState(false)
+  const [lineNumberDialog, setLineNumberDialog] = useState(false)
   // Word's gallery captions; a mirrored preset reads inside/outside instead of left/right
   const marginCaption = (m: PageMargins & { mirror?: true }) =>
     `${t('ribbonMarginTop')} ${format(m.top)} · ${t('ribbonMarginBottom')} ${format(m.bottom)} · ${t(m.mirror ? 'ribbonMarginInside' : 'ribbonMarginLeft')} ${format(m.left)} · ${t(m.mirror ? 'ribbonMarginOutside' : 'ribbonMarginRight')} ${format(m.right)}`
@@ -592,6 +600,55 @@ export function LayoutTab({
               </div>
             )}
           </div>
+          <div className="rb-split-wrap">
+            <button
+              className={`rb-big ${section?.lineNumbers ? 'active' : ''}`}
+              disabled={!enabled}
+              data-tip={t('ribbonLineNumbersTip')}
+              onClick={() => toggleDropdown(setDropdown, 'lineNumbers')}
+            >
+              <span className="rb-big-icon">
+                <IconLineNumbers size={BIG} />
+                <IconCaret />
+              </span>
+              <span>{t('ribbonLineNumbers')}</span>
+            </button>
+            {dropdown === 'lineNumbers' && section && (
+              <div data-rb-panel="" className="layout-menu">
+                {LINE_NUMBER_MODES.map(([mode, labelKey]) => (
+                  <button
+                    key={mode}
+                    className={lineNumberModeOf(section) === mode ? 'active' : ''}
+                    onClick={() => {
+                      onSection({ ...section, lineNumbers: lineNumbersFor(section, mode) })
+                      setDropdown(() => null)
+                    }}
+                  >
+                    {t(labelKey)}
+                  </button>
+                ))}
+                <div className="layout-menu-sep" />
+                <button
+                  className={paraAttrs.suppressLineNumbers ? 'active' : ''}
+                  disabled={!section.lineNumbers}
+                  onClick={() => {
+                    setParaAttrs(editor, { suppressLineNumbers: !paraAttrs.suppressLineNumbers })
+                    setDropdown(() => null)
+                  }}
+                >
+                  {t('ribbonLineNumbersSuppress')}
+                </button>
+                <button
+                  onClick={() => {
+                    setLineNumberDialog(true)
+                    setDropdown(() => null)
+                  }}
+                >
+                  {t('ribbonLineNumbersOptions')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="ribbon-group-label">{t('ribbonGroupPageSetup')}</div>
       </div>
@@ -688,6 +745,13 @@ export function LayoutTab({
         <div className="ribbon-group-label">{t('ribbonGroupArrange')}</div>
       </div>
 
+      {lineNumberDialog && section && (
+        <LineNumbersDialog
+          section={section}
+          onApply={(lineNumbers) => onSection({ ...section, lineNumbers })}
+          onClose={() => setLineNumberDialog(false)}
+        />
+      )}
       {marginDialog && section && (
         <MarginDialog
           margins={{

@@ -10858,3 +10858,34 @@ tr > .page-gap-cut {
   height: 24px;
   text-align: center;
 }
+
+.layout-menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.line-numbers-fields {
+  border: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+.line-numbers-fields[disabled] {
+  opacity: 0.55;
+}
+
+.line-numbers-fields .table-dialog-radios {
+  margin-top: 12px;
+}
+
+/* outranks the generic block .modal label rule */
+.modal label.table-dialog-check {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.modal .table-dialog-check input {
+  display: inline-block;
+  height: auto;
+}
