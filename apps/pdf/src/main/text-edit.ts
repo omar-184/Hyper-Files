@@ -1,5 +1,15 @@
 import { readFileSync } from 'node:fs'
-import { PDFDict, PDFDocument, PDFName, PDFRawStream, decodePDFRawStream } from 'pdf-lib'
+import {
+  PDFArray,
+  PDFDict,
+  PDFDocument,
+  PDFName,
+  PDFRawStream,
+  PDFRef,
+  PDFStream,
+  decodePDFRawStream,
+} from 'pdf-lib'
+import type { PDFObject } from 'pdf-lib'
 import { fontCoversText } from './font-cmap'
 import { findFontCovering, findSystemFont, isTruetype } from './font-locate'
 import { identityCffCharset, subsetTtf } from './font-subset'
@@ -16,6 +26,9 @@ import { foldRadicals } from '../shared/radicals'
 import { chainLayers } from '../shared/x-layers'
 
 export const FPDF_PAGEOBJ_TEXT = 1
+const FPDF_PAGEOBJ_FORM = 5
+/** Nesting cap for Form XObjects scanned for text (guards pathological files) */
+const MAX_FORM_DEPTH = 8
 const FPDF_FONT_TYPE1 = 1
 const FPDF_FONT_TRUETYPE = 2
 const FPDF_TEXTRENDERMODE_FILL_STROKE = 2
@@ -61,6 +74,7 @@ export interface Pdfium {
   _FPDFPageObj_GetType(obj: number): number
   _FPDFFormObj_CountObjects(form: number): number
   _FPDFFormObj_GetObject(form: number, index: number): number
+  _FPDFFormObj_RemoveObject(form: number, obj: number): number
   _FPDFPageObj_Destroy(obj: number): void
   _FPDFPageObj_GetBounds(obj: number, l: number, b: number, r: number, t: number): number
   _FPDFImageObj_GetImageDataRaw(obj: number, buffer: number, buflen: number): number
@@ -87,6 +101,15 @@ export interface Pdfium {
   _FPDFFont_GetBaseFontName(font: number, buffer: number, buflen: number): number
   _FPDFFont_GetFamilyName(font: number, buffer: number, buflen: number): number
   _FPDFPageObj_Transform(
+    obj: number,
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ): void
+  _FPDFPageObj_TransformClipPath(
     obj: number,
     a: number,
     b: number,
@@ -603,47 +626,165 @@ export function mergeEngineCodepoints(engineRaw: string, oldText: string, newTex
   return out
 }
 
+/** Affine matrix [a, b, c, d, e, f]: x' = a·x + c·y + e, y' = b·x + d·y + f */
+type Matrix = readonly [number, number, number, number, number, number]
+
+const IDENTITY: Matrix = [1, 0, 0, 1, 0, 0]
+
+/** `inner` applied first, then `outer` */
+function concat(inner: Matrix, outer: Matrix): Matrix {
+  const [a, b, c, d, e, f] = inner
+  const [A, B, C, D, E, F] = outer
+  return [
+    a * A + b * C,
+    a * B + b * D,
+    c * A + d * C,
+    c * B + d * D,
+    e * A + f * C + E,
+    e * B + f * D + F,
+  ]
+}
+
+function transformBounds(r: Rect, t: Matrix): [number, number, number, number] {
+  const xs: number[] = []
+  const ys: number[] = []
+  for (const [x, y] of [
+    [r[0], r[1]],
+    [r[2], r[1]],
+    [r[0], r[3]],
+    [r[2], r[3]],
+  ] as const) {
+    xs.push(t[0] * x + t[2] * y + t[4])
+    ys.push(t[1] * x + t[3] * y + t[5])
+  }
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]
+}
+
 interface PageTextObj {
   obj: number
+  /** Content-stream position on the page (for a run inside a form: its outermost form's) */
   index: number
   text: string
   font: number
-  /** [x1, y1, x2, y2] */
+  /** [x1, y1, x2, y2] in page space */
   bounds: [number, number, number, number]
+  /** Set when the run is drawn inside a Form XObject: the form objects from the page
+      down to the run's direct parent, and the form-space → page-space matrix. Such a
+      run must be lifted onto the page (liftFromForms) before it can be rewritten.
+      `topMatrix` is the page-level form's own matrix. */
+  form?: { chain: number[]; matrix: Matrix; topMatrix: Matrix }
 }
 
+/**
+ * Every text object the page draws, including the ones nested inside Form XObjects
+ * (pages wrapped whole into a form by printers, imposition and merge tools, stamped
+ * letterheads). Without the descent those runs were invisible to the matcher and every
+ * edit on such a page failed with "could not be located". Bounds are page space.
+ */
 function collectTextObjects(m: Pdfium, page: number, textPage: number): PageTextObj[] {
   const out: PageTextObj[] = []
   const bl = m._malloc(4)
   const bb = m._malloc(4)
   const br = m._malloc(4)
   const bt = m._malloc(4)
-  const count = m._FPDFPage_CountObjects(page)
-  for (let i = 0; i < count; i++) {
-    const obj = m._FPDFPage_GetObject(page, i)
-    if (m._FPDFPageObj_GetType(obj) !== FPDF_PAGEOBJ_TEXT) continue
-    // Two-pass read: FPDFTextObj_GetText's length argument and return value are BYTES
-    // including the 2-byte NUL terminator, and a too-small buffer is left untouched
-    // (not truncated) — a fixed buffer would silently yield garbage for long runs
-    const len = m._FPDFTextObj_GetText(obj, textPage, 0, 0)
-    let text = ''
-    if (len > 2) {
-      const buf = m._malloc(len)
-      m._FPDFTextObj_GetText(obj, textPage, buf, len)
-      text = Buffer.from(m.HEAPU8.buffer, buf, len - 2).toString('utf16le')
-      m._free(buf)
+  const mat = m._malloc(24)
+  const visit = (
+    count: number,
+    get: (i: number) => number,
+    form: { chain: number[]; matrix: Matrix; topMatrix: Matrix; index: number } | null,
+  ) => {
+    for (let i = 0; i < count; i++) {
+      const obj = get(i)
+      const type = m._FPDFPageObj_GetType(obj)
+      if (type === FPDF_PAGEOBJ_FORM) {
+        const depth = form ? form.chain.length : 0
+        if (depth >= MAX_FORM_DEPTH || !m._FPDFPageObj_GetMatrix(obj, mat)) continue
+        const own = Array.from(m.HEAPF32.subarray(mat >> 2, (mat >> 2) + 6)) as unknown as Matrix
+        visit(m._FPDFFormObj_CountObjects(obj), (k) => m._FPDFFormObj_GetObject(obj, k), {
+          chain: [...(form?.chain ?? []), obj],
+          matrix: concat(own, form?.matrix ?? IDENTITY),
+          topMatrix: form?.topMatrix ?? own,
+          index: form?.index ?? i,
+        })
+        continue
+      }
+      if (type !== FPDF_PAGEOBJ_TEXT) continue
+      // Two-pass read: FPDFTextObj_GetText's length argument and return value are BYTES
+      // including the 2-byte NUL terminator, and a too-small buffer is left untouched
+      // (not truncated) — a fixed buffer would silently yield garbage for long runs
+      const len = m._FPDFTextObj_GetText(obj, textPage, 0, 0)
+      let text = ''
+      if (len > 2) {
+        const buf = m._malloc(len)
+        m._FPDFTextObj_GetText(obj, textPage, buf, len)
+        text = Buffer.from(m.HEAPU8.buffer, buf, len - 2).toString('utf16le')
+        m._free(buf)
+      }
+      if (!m._FPDFPageObj_GetBounds(obj, bl, bb, br, bt)) continue
+      // Bounds of an object inside a form are in the form's own space
+      const own: Rect = [
+        m.HEAPF32[bl >> 2]!,
+        m.HEAPF32[bb >> 2]!,
+        m.HEAPF32[br >> 2]!,
+        m.HEAPF32[bt >> 2]!,
+      ]
+      out.push({
+        obj,
+        index: form ? form.index : i,
+        text,
+        font: m._FPDFTextObj_GetFont(obj),
+        bounds: form ? transformBounds(own, form.matrix) : [own[0], own[1], own[2], own[3]],
+        form: form
+          ? { chain: form.chain, matrix: form.matrix, topMatrix: form.topMatrix }
+          : undefined,
+      })
     }
-    if (!m._FPDFPageObj_GetBounds(obj, bl, bb, br, bt)) continue
-    out.push({
-      obj,
-      index: i,
-      text,
-      font: m._FPDFTextObj_GetFont(obj),
-      bounds: [m.HEAPF32[bl >> 2]!, m.HEAPF32[bb >> 2]!, m.HEAPF32[br >> 2]!, m.HEAPF32[bt >> 2]!],
-    })
   }
-  for (const p of [bl, bb, br, bt]) m._free(p)
+  try {
+    visit(m._FPDFPage_CountObjects(page), (i) => m._FPDFPage_GetObject(page, i), null)
+  } finally {
+    for (const p of [bl, bb, br, bt, mat]) m._free(p)
+  }
   return out
+}
+
+/**
+ * Bring text runs one Form XObject level closer to the page: a run whose form sits on
+ * the page moves onto the page itself; a run in a nested form moves its outer form's
+ * child form (the next link of the chain) onto the page instead. Callers repeat until
+ * no matched run is left inside a form. pdfium only rewrites a form stream that sits
+ * directly on the page, so a nested form must reach the page before its runs can
+ * leave it. Each lifted object is re-expressed in page space (matrix and clip path)
+ * so it renders where it did, and lands right after the form that drew it.
+ *
+ * Removing an object rewrites the form XObject itself, so every page drawing that same
+ * XObject would lose it too: callers that save must first give the edited pages
+ * private copies of their forms (privatizeForms).
+ */
+function liftFromForms(m: Pdfium, page: number, runs: PageTextObj[]): void {
+  // Per page-level form: the objects to move out of it, in content order, deduplicated
+  // (several runs of one nested form lift that form once)
+  const byTop = new Map<number, { form: number; matrix: Matrix; objs: number[] }>()
+  for (const t of runs) {
+    if (!t.form) continue
+    const { chain, topMatrix } = t.form
+    const obj = chain.length > 1 ? chain[1]! : t.obj
+    const entry = byTop.get(t.index) ?? { form: chain[0]!, matrix: topMatrix, objs: [] }
+    if (!entry.objs.includes(obj)) entry.objs.push(obj)
+    byTop.set(t.index, entry)
+  }
+  // Highest page position first: inserting after one form never shifts a later target
+  for (const top of [...byTop.keys()].sort((a, b) => b - a)) {
+    const { form, matrix, objs } = byTop.get(top)!
+    let at = top + 1
+    for (const obj of objs) {
+      if (!m._FPDFFormObj_RemoveObject(form, obj)) continue
+      m._FPDFPageObj_Transform(obj, ...matrix)
+      m._FPDFPageObj_TransformClipPath(obj, ...matrix)
+      if (m._FPDFPage_InsertObjectAtIndex) m._FPDFPage_InsertObjectAtIndex(page, obj, at++)
+      else m._FPDFPage_InsertObject(page, obj)
+    }
+  }
 }
 
 type Rect = readonly [number, number, number, number]
@@ -2242,9 +2383,22 @@ async function applyPageEdits(
   textPage: number,
   pageEdits: TextEditInput[],
   skip: (edit: TextEditInput, reason: string) => void,
+  liftForms = true,
 ): Promise<{ applied: number; embeddedCff: boolean }> {
   let embeddedCff = false
-  const objects = collectTextObjects(m, page, textPage)
+  let objects = collectTextObjects(m, page, textPage)
+  // Runs drawn inside Form XObjects move onto the page first (one nesting level per
+  // pass); the plan below then treats them like any other page-level run
+  for (let pass = 0; liftForms && pass < MAX_FORM_DEPTH; pass++) {
+    const inForms = new Set<PageTextObj>()
+    for (const edit of pageEdits) {
+      const res = matchEdit(objects, edit)
+      if (!('reason' in res)) for (const t of res.matches) if (t.form) inForms.add(t)
+    }
+    if (inForms.size === 0) break
+    liftFromForms(m, page, [...inForms])
+    objects = collectTextObjects(m, page, textPage)
+  }
   // Two edits resolving to the same object would double-remove it; first claim wins
   const claimed = new Set<number>()
   const planned: {
@@ -2257,6 +2411,9 @@ async function applyPageEdits(
     const res = matchEdit(objects, edit)
     if ('reason' in res) {
       skip(edit, res.reason)
+    } else if (res.matches.some((t) => t.form)) {
+      // Not lifted (shared form the caller could not make private, or pdfium refused)
+      skip(edit, 'the text sits inside a form object that cannot be edited')
     } else if (res.matches.some((t) => claimed.has(t.obj))) {
       skip(edit, 'overlaps another pending text edit')
     } else {
@@ -2340,17 +2497,131 @@ export async function eraseTextRuns(
   }
 }
 
+/**
+ * Give the listed pages private copies of every Form XObject they draw (directly or
+ * nested) that something else in the file also references. Lifting a run out of a
+ * form rewrites that form's stream, so without this an edit on one page would also
+ * erase the text from every other page sharing the form (a letterhead, an n-up sheet).
+ * Returns the input untouched when nothing is shared, and null when pdf-lib cannot
+ * rewrite the file (encrypted) — the caller must not lift then.
+ */
+export async function privatizeForms(
+  bytes: Uint8Array,
+  pageIndices: number[],
+): Promise<Uint8Array | null> {
+  let doc: PDFDocument
+  try {
+    doc = await PDFDocument.load(bytes, { updateMetadata: false })
+  } catch {
+    return null
+  }
+  if (doc.isEncrypted) return null
+  const { context } = doc
+  const refCount = new Map<string, number>()
+  const walk = (o: PDFObject | undefined) => {
+    if (o instanceof PDFRef) refCount.set(o.tag, (refCount.get(o.tag) ?? 0) + 1)
+    else if (o instanceof PDFDict) for (const [, v] of o.entries()) walk(v)
+    else if (o instanceof PDFArray) for (const v of o.asArray()) walk(v)
+    else if (o instanceof PDFStream) walk(o.dict)
+  }
+  for (const [, o] of context.enumerateIndirectObjects()) walk(o)
+  walk(context.trailerInfo.Root)
+
+  const Resources = PDFName.of('Resources')
+  const XObject = PDFName.of('XObject')
+  const Form = PDFName.of('Form')
+  let changed = false
+  const seen = new Set<string>()
+  const sharedRef = (o: PDFObject | undefined) =>
+    o instanceof PDFRef && (refCount.get(o.tag) ?? 0) > 1
+  /** `res` is the owner's resources (already looked up); `forceClone` marks forms that
+      are reachable from elsewhere even though their own reference is not repeated: the
+      parent was just copied (the copy shares its children with the original), or the
+      resource dicts holding them are themselves shared or inherited */
+  const privatize = (
+    owner: PDFDict,
+    res: PDFDict | undefined,
+    depth: number,
+    forceClone: boolean,
+  ) => {
+    const xo = res?.lookupMaybe(XObject, PDFDict)
+    if (!res || !xo || depth >= MAX_FORM_DEPTH) return
+    forceClone ||=
+      owner.get(Resources) === undefined ||
+      sharedRef(owner.get(Resources)) ||
+      sharedRef(res.get(XObject))
+    // Fresh resource dicts for this owner before any entry changes: the originals may be
+    // shared with other pages or with the form this one was copied from
+    let ownXo: PDFDict | null = null
+    for (const [name, value] of xo.entries()) {
+      if (!(value instanceof PDFRef)) continue
+      const target = context.lookup(value)
+      if (!(target instanceof PDFRawStream) || target.dict.get(PDFName.of('Subtype')) !== Form)
+        continue
+      let ref = value
+      let form = target
+      if (forceClone || sharedRef(value)) {
+        if (!ownXo) {
+          const ownRes = res.clone(context)
+          ownXo = xo.clone(context)
+          ownRes.set(XObject, ownXo)
+          owner.set(Resources, ownRes)
+        }
+        form = target.clone(context)
+        ref = context.register(form)
+        ownXo.set(name, ref)
+        changed = true
+      } else if (seen.has(value.tag)) {
+        continue
+      }
+      seen.add(ref.tag)
+      privatize(form.dict, form.dict.lookupMaybe(Resources, PDFDict), depth + 1, ref !== value)
+    }
+  }
+  const pages = doc.getPages()
+  for (const i of new Set(pageIndices)) {
+    const leaf = pages[i]?.node
+    if (leaf) privatize(leaf, leaf.Resources(), 0, false)
+  }
+  return changed ? doc.save({ updateFieldAppearances: false }) : bytes
+}
+
 async function applyTextEditsInner(
   bytes: Uint8Array,
   edits: TextEditInput[],
+  /** false: not checked yet; true: shared forms on edited pages are private copies;
+      'locked': they could not be copied, so runs inside forms stay unedited */
+  formsPrivate: boolean | 'locked' = false,
 ): Promise<TextEditsResult> {
   const m = await loadPdfium()
   const skipped: TextEditFailure[] = []
   const skip = (edit: TextEditInput, reason: string) =>
     skipped.push({ pageIndex: edit.pageIndex, oldText: edit.oldText, reason })
 
-  return withDocument(m, bytes, async (doc) => {
+  // Pages whose edits resolve inside a Form XObject: their shared forms get private
+  // copies (privatizeForms) and the whole pass reruns on those bytes
+  const formPages: number[] = []
+  const result = await withDocument(m, bytes, async (doc) => {
     const byPage = groupByPage(m, doc, edits, (e) => skip(e, 'page does not exist'))
+    if (!formsPrivate) {
+      for (const [pageIndex, pageEdits] of byPage) {
+        const page = m._FPDF_LoadPage(doc, pageIndex)
+        if (!page) continue
+        const textPage = m._FPDFText_LoadPage(page)
+        try {
+          const objects = collectTextObjects(m, page, textPage)
+          const inForm = pageEdits.some((e) => {
+            const res = matchEdit(objects, e)
+            return !('reason' in res) && res.matches.some((t) => t.form)
+          })
+          if (inForm) formPages.push(pageIndex)
+        } finally {
+          m._FPDFText_ClosePage(textPage)
+          m._FPDF_ClosePage(page)
+        }
+      }
+      if (formPages.length > 0) return null
+    }
     let appliedTotal = 0
     let embeddedCff = false
     for (const [pageIndex, pageEdits] of byPage) {
@@ -2358,7 +2629,15 @@ async function applyTextEditsInner(
       if (!page) throw new Error(`could not load page ${pageIndex + 1}`)
       const textPage = m._FPDFText_LoadPage(page)
       try {
-        const res = await applyPageEdits(m, doc, page, textPage, pageEdits, skip)
+        const res = await applyPageEdits(
+          m,
+          doc,
+          page,
+          textPage,
+          pageEdits,
+          skip,
+          formsPrivate !== 'locked',
+        )
         embeddedCff = res.embeddedCff || embeddedCff
         if (res.applied > 0 && !m._FPDFPage_GenerateContent(page)) {
           throw new Error(`could not regenerate page ${pageIndex + 1}`)
@@ -2374,6 +2653,9 @@ async function applyTextEditsInner(
     const saved = saveDoc(m, doc)
     return { bytes: embeddedCff ? await relabelOpenTypeFontFiles(saved) : saved, skipped }
   })
+  if (result) return result
+  const own = await privatizeForms(bytes, formPages)
+  return applyTextEditsInner(own ?? bytes, edits, own ? true : 'locked')
 }
 
 /** Union of the matched objects' ink bounds */
