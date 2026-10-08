@@ -287,6 +287,8 @@ interface RibbonProps {
   ) => void
   mirrorMargins: boolean
   onMirrorMargins: (on: boolean) => void
+  autoHyphenation: boolean
+  onAutoHyphenation: (on: boolean) => void
   pageColor: string | null
   onPageColor: (hex: string | null) => void
   /** Design → Watermark / Themes */
@@ -728,6 +730,8 @@ function RibbonInner({
   onPaperSizeAll,
   mirrorMargins,
   onMirrorMargins,
+  autoHyphenation,
+  onAutoHyphenation,
   pageColor,
   onPageColor,
   watermark,
@@ -4015,6 +4019,8 @@ function RibbonInner({
             onPaperSizeAll={onPaperSizeAll}
             mirrorMargins={mirrorMargins}
             onMirrorMargins={onMirrorMargins}
+            autoHyphenation={autoHyphenation}
+            onAutoHyphenation={onAutoHyphenation}
           />
         ) : tab === 'references' ? (
           <ReferencesTab

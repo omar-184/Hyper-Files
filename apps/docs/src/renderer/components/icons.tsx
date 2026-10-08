@@ -1050,6 +1050,15 @@ export function IconLineNumbers(props: IconProps) {
   )
 }
 
+export function IconHyphenation(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M 2.4 4 h 8.4 M 2.4 7.6 h 7.2 M 2.4 11.2 h 11.2 M 2.4 14.4 h 6" />
+      <path d="M 11.6 7.6 h 2" strokeWidth="1.4" />
+    </Svg>
+  )
+}
+
 /* ---------- References ---------- */
 
 export function IconToc(props: IconProps) {

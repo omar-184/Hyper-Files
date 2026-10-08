@@ -13,6 +13,10 @@ const en = {
   ribbonLineNumbersFromText: 'From text',
   ribbonLineNumbersCountBy: 'Count by',
   ribbonLineNumbersNumbering: 'Numbering',
+  ribbonHyphenation: 'Hyphenation',
+  ribbonHyphenationTip: 'Break words at the ends of lines with a hyphen',
+  ribbonHyphenationNone: 'None',
+  ribbonHyphenationAutomatic: 'Automatic',
 }
 
 /**

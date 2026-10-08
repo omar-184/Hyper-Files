@@ -20,6 +20,8 @@ export function ribbonProps(editor: Editor, formatState: RibbonFormatState) {
     onPaperSizeAll: noop,
     mirrorMargins: false,
     onMirrorMargins: noop,
+    autoHyphenation: false,
+    onAutoHyphenation: noop,
     pageColor: null,
     onPageColor: noop,
     watermark: null,
