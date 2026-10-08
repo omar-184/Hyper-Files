@@ -3193,8 +3193,8 @@ async function newSheetTab(recoverAs?: string): Promise<void> {
 /**
  * A throw anywhere in the create-tab path (view creation, sidecar resolution,
  * renderer load) used to be swallowed by `void`-ed promises and ipc-invoke
- * rejections, so the click looked like a pure no-op — the exact "AI Sheets /
- * AI Slides do nothing" alpha report. Surface the failure instead.
+ * rejections, so the click looked like a pure no-op — the exact "Sheets /
+ * Slides do nothing" alpha report. Surface the failure instead.
  */
 function surfaceNewTabError(err: unknown): void {
   console.error('[shell] new tab failed:', err)

@@ -60,7 +60,7 @@ describe('showErrorDialog', () => {
     let dismiss!: (v: unknown) => void
     showMessageBox.mockImplementation(() => new Promise((resolve) => (dismiss = resolve)))
     const win = fakeWindow()
-    // row-51 sequence: AI Sheets, File > New > AI Sheets, AI Slides, AI Docs
+    // row-51 sequence: Sheets, File > New > Sheets, Slides, Docs
     showErrorDialog(win, 'fail', new Error('1'))
     showErrorDialog(win, 'fail', new Error('2'))
     showErrorDialog(win, 'fail', new Error('3'))
