@@ -1,6 +1,6 @@
 name: Windows installer
 
-# Builds the Windows 10/11 x64 NSIS installer (Hyper-Files-Setup-<version>-x64.exe)
+# Builds the Windows 10/11 x64 NSIS installer (Hypercube-Office-Setup-<version>-x64.exe)
 # from a clean checkout and uploads it as a workflow artifact, with its SHA-256.
 # The installer is smoke-tested on the runner: silent per-user install, check the
 # files and the Default Programs registration, silent uninstall.
@@ -93,7 +93,7 @@ jobs:
         id: collect
         shell: pwsh
         run: |
-          $exe = Get-ChildItem apps/shell/release -Filter 'Hyper-Files-Setup-*-x64.exe' | Select-Object -First 1
+          $exe = Get-ChildItem apps/shell/release -Filter 'Hypercube-Office-Setup-*-x64.exe' | Select-Object -First 1
           if (-not $exe) { throw 'installer not found in apps/shell/release' }
           $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
           "$hash  $($exe.Name)" | Out-File -Encoding ascii "$($exe.FullName).sha256"
@@ -108,9 +108,9 @@ jobs:
           $installer = '${{ steps.collect.outputs.path }}'
           $p = Start-Process -FilePath $installer -ArgumentList '/S', '/currentuser' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
-          $dir = Join-Path $env:LOCALAPPDATA 'Programs\Hyper-Files'
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\Hypercube Office'
           foreach ($f in @(
-            'Hyper-Files.exe',
+            'Hypercube Office.exe',
             'resources\LICENSE.txt',
             'resources\NOTICE.txt',
             'resources\THIRD-PARTY-NOTICES.txt',
@@ -119,31 +119,31 @@ jobs:
           )) {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "missing after install: $f" }
           }
-          $reg = Get-ItemProperty 'HKCU:\Software\RegisteredApplications' -Name 'Hyper-Files'
-          if ($reg.'Hyper-Files' -ne 'Software\Hyper-Files\Capabilities') { throw 'RegisteredApplications entry missing' }
-          $caps = Get-ItemProperty 'HKCU:\Software\Hyper-Files\Capabilities\FileAssociations'
+          $reg = Get-ItemProperty 'HKCU:\Software\RegisteredApplications' -Name 'HypercubeOffice'
+          if ($reg.'HypercubeOffice' -ne 'Software\Hypercube Office\Capabilities') { throw 'RegisteredApplications entry missing' }
+          $caps = Get-ItemProperty 'HKCU:\Software\Hypercube Office\Capabilities\FileAssociations'
           foreach ($ext in '.pdf', '.docx', '.xlsx', '.pptx') {
             if ($caps.$ext -ne "HyperFiles$ext") { throw "capability for $ext missing" }
           }
           if (-not (Test-Path 'HKCU:\Software\Classes\HyperFiles.pdf\shell\open\command')) { throw 'PDF ProgID missing' }
           Write-Host 'install OK'
 
-          $uninstaller = Join-Path $dir 'Uninstall Hyper-Files.exe'
+          $uninstaller = Join-Path $dir 'Uninstall Hypercube Office.exe'
           $u = Start-Process -FilePath $uninstaller -ArgumentList '/S', '/currentuser' -Wait -PassThru
           if ($u.ExitCode -ne 0) { throw "uninstaller exited with $($u.ExitCode)" }
           # the NSIS uninstaller re-launches itself from %TEMP% and returns early
-          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $dir 'Hyper-Files.exe')); $i++) { Start-Sleep 1 }
-          if (Test-Path (Join-Path $dir 'Hyper-Files.exe')) { throw 'app still present after uninstall' }
-          if (Test-Path 'HKCU:\Software\Hyper-Files\Capabilities') { throw 'capabilities left after uninstall' }
+          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $dir 'Hypercube Office.exe')); $i++) { Start-Sleep 1 }
+          if (Test-Path (Join-Path $dir 'Hypercube Office.exe')) { throw 'app still present after uninstall' }
+          if (Test-Path 'HKCU:\Software\Hypercube Office\Capabilities') { throw 'capabilities left after uninstall' }
           Write-Host 'uninstall OK'
 
       - name: Upload installer
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: hyper-files-windows-x64
+          name: hypercube-office-windows-x64
           path: |
-            apps/shell/release/Hyper-Files-Setup-*-x64.exe
-            apps/shell/release/Hyper-Files-Setup-*-x64.exe.sha256
+            apps/shell/release/Hypercube-Office-Setup-*-x64.exe
+            apps/shell/release/Hypercube-Office-Setup-*-x64.exe.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -160,7 +160,7 @@ jobs:
       - name: Download installer
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: hyper-files-windows-x64
+          name: hypercube-office-windows-x64
           path: dist
 
       - name: Create GitHub Release
@@ -177,20 +177,20 @@ jobs:
             echo "release $tag already exists; bump the version first" >&2
             exit 1
           fi
-          exe=$(ls dist/Hyper-Files-Setup-*-x64.exe)
+          exe=$(ls dist/Hypercube-Office-Setup-*-x64.exe)
           sha=$(cut -d' ' -f1 "$exe.sha256")
           cat > notes.md <<NOTES
-          Hyper-Files $version for Windows 10 and 11 (x64).
+          Hypercube Office $version for Windows 10 and 11 (x64).
 
-          Download **$(basename "$exe")** below and run it. It installs for your user account (no admin needed); "for all users" is offered on the first page. The last page offers to make Hyper-Files the default app for PDF and Office files.
+          Download **$(basename "$exe")** below and run it. It installs for your user account (no admin needed); "for all users" is offered on the first page. The last page offers to make Hypercube Office the default app for PDF and Office files.
 
           - Fully offline: no accounts, no telemetry. The update check is off until you turn it on in Settings > About.
           - The installer is not code-signed yet. Windows SmartScreen may say "Windows protected your PC": choose **More info** > **Run anyway**.
           - SHA-256: \`$sha\`
 
-          Hyper-Files is free software under the GNU AGPL-3.0. Source code: this repository at tag $tag.
+          Hypercube Office is free software under the GNU AGPL-3.0. Source code: this repository at tag $tag.
           NOTES
           gh release create "$tag" "$exe" "$exe.sha256" \
             --target "$GITHUB_SHA" \
-            --title "Hyper-Files $version" \
+            --title "Hypercube Office $version" \
             --notes-file notes.md

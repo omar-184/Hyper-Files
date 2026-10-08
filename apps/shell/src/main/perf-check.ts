@@ -108,7 +108,7 @@ export async function runPerfCheck(deps: PerfCheckDeps): Promise<PerfReport> {
     diskFreeMB: deps.diskFreeMB(deps.dataDir),
   }
 
-  const work = await mkdtemp(join(deps.tempRoot, 'hyper-files-perf-'))
+  const work = await mkdtemp(join(deps.tempRoot, 'hypercube-office-perf-'))
   try {
     step('cpu')
     let cpu: PerfTiming

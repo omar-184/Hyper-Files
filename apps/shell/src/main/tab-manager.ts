@@ -76,7 +76,7 @@ const HOME_ID = 'home'
  */
 export class TabManager {
   private readonly tabs: TabRecord[] = [
-    { id: HOME_ID, kind: 'home', view: null, title: 'Hyper-Files' },
+    { id: HOME_ID, kind: 'home', view: null, title: 'Hypercube Office' },
   ]
   private activeId: string = HOME_ID
   private nextId = 1
@@ -239,7 +239,7 @@ export class TabManager {
       id,
       kind: 'docs',
       view,
-      title: openPath ? basename(openPath) : this.untitled('docs', 'Hyper-Files Docs'),
+      title: openPath ? basename(openPath) : this.untitled('docs', 'Hypercube Office Docs'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -267,7 +267,7 @@ export class TabManager {
       id,
       kind: 'sheets',
       view,
-      title: openPath ? basename(openPath) : this.untitled('sheets', 'Hyper-Files Sheets'),
+      title: openPath ? basename(openPath) : this.untitled('sheets', 'Hypercube Office Sheets'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -284,7 +284,7 @@ export class TabManager {
       id,
       kind: 'slides',
       view,
-      title: openPath ? basename(openPath) : this.untitled('slides', 'Hyper-Files Slides'),
+      title: openPath ? basename(openPath) : this.untitled('slides', 'Hypercube Office Slides'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -321,7 +321,7 @@ export class TabManager {
       id,
       kind: 'markdown',
       view,
-      title: openPath ? basename(openPath) : this.untitled('markdown', 'Hyper-Files Markdown'),
+      title: openPath ? basename(openPath) : this.untitled('markdown', 'Hypercube Office Markdown'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -338,7 +338,7 @@ export class TabManager {
       id,
       kind: 'html',
       view,
-      title: openPath ? basename(openPath) : this.untitled('html', 'Hyper-Files HTML'),
+      title: openPath ? basename(openPath) : this.untitled('html', 'Hypercube Office HTML'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -356,7 +356,7 @@ export class TabManager {
       id,
       kind: 'html',
       view,
-      title: title || this.untitled('html', 'Hyper-Files HTML'),
+      title: title || this.untitled('html', 'Hypercube Office HTML'),
       present: true,
     })
     this.activateTab(id)

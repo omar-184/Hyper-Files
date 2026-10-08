@@ -269,9 +269,10 @@ import {
   setDockHost,
   takeTornTab,
 } from './detached-windows'
+import { resolveUserDataDir } from './legacy-user-data'
 
 /**
- * Hyper-Files unified shell: ONE Electron app, ONE BrowserWindow, hosting the
+ * Hypercube Office unified shell: ONE Electron app, ONE BrowserWindow, hosting the
  * docs and sheets modules as WebContentsView tabs behind a WPS-style tab
  * strip. The shell owns the lifecycle — single-instance lock, file-
  * association routing by extension, and per-active-tab menu switching.
@@ -281,14 +282,19 @@ import {
 
 // ANY unpacked run (`npm run shell`, `npm run dev`, `npx electron .`) must not
 // share the installed app's userData or single-instance lock — otherwise a dev
-// run silently quits and forwards its argv to the running installed Hyper-Files.
+// run silently quits and forwards its argv to the running installed Hypercube Office.
 // GENOFFICE_USER_DATA: test drivers point this at a scratch dir so an
 // automated instance can run alongside the dev instance (separate lock).
-if (!app.isPackaged)
+// Packaged runs carry the pre-rename Hyper-Files userData over (legacy-user-data.ts).
+if (!app.isPackaged) {
   app.setPath(
     'userData',
-    process.env.GENOFFICE_USER_DATA ?? join(app.getPath('appData'), 'Hyper-Files Dev'),
+    process.env.GENOFFICE_USER_DATA ?? join(app.getPath('appData'), 'Hypercube Office Dev'),
   )
+} else {
+  const userData = resolveUserDataDir(app.getPath('appData'), app.getPath('userData'))
+  if (userData !== app.getPath('userData')) app.setPath('userData', userData)
+}
 
 /**
  * `--headless-export <file> --to <format> --out <path> [--json]`: one document, no
@@ -434,7 +440,7 @@ function currentAutoSaveDefault(): AutoSaveDefault {
 const tMain = createI18n({
   zh: {
     dlgAddFolderRoot: '添加文件夹到首页',
-    updateNoticeTitle: 'Hyper-Files {version} 已发布',
+    updateNoticeTitle: 'Hypercube Office {version} 已发布',
     updateNoticeBody: '点击打开下载页面。',
     watchdogTitle: '文档占用资源过高',
     watchdogBody:
@@ -529,7 +535,7 @@ const tMain = createI18n({
   },
   en: {
     dlgAddFolderRoot: 'Add Folder to Home',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Document is using too many resources',
     watchdogBody:
@@ -632,7 +638,7 @@ const tMain = createI18n({
   },
   vi: {
     dlgAddFolderRoot: 'Thêm thư mục vào Trang chủ',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Tài liệu đang dùng quá nhiều tài nguyên',
     watchdogBody:
@@ -735,7 +741,7 @@ const tMain = createI18n({
   },
   ja: {
     dlgAddFolderRoot: 'フォルダーをホームに追加',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'ドキュメントのリソース使用量が過大です',
     watchdogBody:
@@ -838,7 +844,7 @@ const tMain = createI18n({
   },
   ko: {
     dlgAddFolderRoot: '홈에 폴더 추가',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: '문서가 리소스를 과도하게 사용하고 있습니다',
     watchdogBody:
@@ -940,7 +946,7 @@ const tMain = createI18n({
   },
   fr: {
     dlgAddFolderRoot: "Ajouter un dossier à l'accueil",
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Le document consomme trop de ressources',
     watchdogBody:
@@ -1044,7 +1050,7 @@ const tMain = createI18n({
   },
   de: {
     dlgAddFolderRoot: 'Ordner zur Startseite hinzufügen',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokument beansprucht zu viele Ressourcen',
     watchdogBody:
@@ -1149,7 +1155,7 @@ const tMain = createI18n({
   },
   es: {
     dlgAddFolderRoot: 'Añadir carpeta al inicio',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'El documento consume demasiados recursos',
     watchdogBody:
@@ -1253,7 +1259,7 @@ const tMain = createI18n({
   },
   th: {
     dlgAddFolderRoot: 'เพิ่มโฟลเดอร์ไปยังหน้าแรก',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'เอกสารใช้ทรัพยากรมากเกินไป',
     watchdogBody:
@@ -1353,7 +1359,7 @@ const tMain = createI18n({
   },
   id: {
     dlgAddFolderRoot: 'Tambahkan Folder ke Beranda',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokumen menggunakan terlalu banyak sumber daya',
     watchdogBody:
@@ -1457,7 +1463,7 @@ const tMain = createI18n({
   },
   ru: {
     dlgAddFolderRoot: 'Добавить папку на главную',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Документ потребляет слишком много ресурсов',
     watchdogBody:
@@ -1561,7 +1567,7 @@ const tMain = createI18n({
   },
   ar: {
     dlgAddFolderRoot: 'إضافة مجلد إلى الصفحة الرئيسية',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'المستند يستهلك موارد كثيرة جدًا',
     watchdogBody:
@@ -1661,7 +1667,7 @@ const tMain = createI18n({
   },
   pt: {
     dlgAddFolderRoot: 'Adicionar pasta à página inicial',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'O documento está a consumir demasiados recursos',
     watchdogBody:
@@ -1765,7 +1771,7 @@ const tMain = createI18n({
   },
   it: {
     dlgAddFolderRoot: 'Aggiungi cartella alla Home',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Il documento sta usando troppe risorse',
     watchdogBody:
@@ -1869,7 +1875,7 @@ const tMain = createI18n({
   },
   pl: {
     dlgAddFolderRoot: 'Dodaj folder do strony głównej',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokument zużywa zbyt dużo zasobów',
     watchdogBody:
@@ -1973,7 +1979,7 @@ const tMain = createI18n({
   },
   cs: {
     dlgAddFolderRoot: 'Přidat složku na domovskou stránku',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokument spotřebovává příliš mnoho prostředků',
     watchdogBody:
@@ -2075,7 +2081,7 @@ const tMain = createI18n({
   },
   nl: {
     dlgAddFolderRoot: 'Map toevoegen aan startpagina',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Document gebruikt te veel systeembronnen',
     watchdogBody:
@@ -2179,7 +2185,7 @@ const tMain = createI18n({
   },
   ms: {
     dlgAddFolderRoot: 'Tambah Folder ke Laman Utama',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'Dokumen menggunakan terlalu banyak sumber',
     watchdogBody:
@@ -2282,7 +2288,7 @@ const tMain = createI18n({
   },
   he: {
     dlgAddFolderRoot: 'הוספת תיקייה לדף הבית',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'המסמך צורך יותר מדי משאבים',
     watchdogBody:
@@ -2383,7 +2389,7 @@ const tMain = createI18n({
   },
   hi: {
     dlgAddFolderRoot: 'होम में फ़ोल्डर जोड़ें',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: 'दस्तावेज़ बहुत अधिक संसाधन ले रहा है',
     watchdogBody:
@@ -2487,7 +2493,7 @@ const tMain = createI18n({
   },
   'zh-TW': {
     dlgAddFolderRoot: '將資料夾加入首頁',
-    updateNoticeTitle: 'Hyper-Files {version} is available',
+    updateNoticeTitle: 'Hypercube Office {version} is available',
     updateNoticeBody: 'Click to open the download page.',
     watchdogTitle: '文件佔用資源過高',
     watchdogBody:
@@ -2839,7 +2845,7 @@ function createShellWindow(): void {
     height: 900,
     minWidth: 720,
     minHeight: 550,
-    title: 'Hyper-Files',
+    title: 'Hypercube Office',
     // vibrancy: editor modules punch translucent regions (e.g. the slides
     // thumbnail pane) through to the desktop
     ...(process.platform === 'darwin'

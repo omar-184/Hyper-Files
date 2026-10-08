@@ -3,7 +3,7 @@
 /// the regular editors can open them.
 ///
 /// The converter is LibreOffice (MPL-2.0), run as a separate headless
-/// process. It is never bundled with Hyper-Files: the add-on is "a
+/// process. It is never bundled with Hypercube Office: the add-on is "a
 /// LibreOffice install (or portable copy) the app can find". Nothing here
 /// touches the network, and the process only lives for one conversion, so a
 /// 4 GB machine pays for it only while a file is being converted.
@@ -49,7 +49,7 @@ const SOFFICE_EXE = process.platform === 'win32' ? 'soffice.exe' : 'soffice'
 /**
  * Where a LibreOffice install usually lives. `addonDir` is the app-owned
  * folder a portable LibreOffice can be unpacked into; it is checked first so
- * a copy made for Hyper-Files wins over a system install.
+ * a copy made for Hypercube Office wins over a system install.
  */
 export function defaultSofficeCandidates(
   env: NodeJS.ProcessEnv,

@@ -1,8 +1,9 @@
-# Hyper-Files
+# Hypercube Office
 
 A light, fully offline office and PDF app for Windows. No AI features, no accounts, no cloud.
+Formerly named Hyper-Files (0.1.x); upgrading keeps your settings and save folder.
 
-Hyper-Files opens and edits PDF, Word, Excel and PowerPoint files, and includes a PDF toolbox
+Hypercube Office opens and edits PDF, Word, Excel and PowerPoint files, and includes a PDF toolbox
 (merge, split, compress, convert, protect, sign) plus Acrobat-style PDF editing.
 
 > **Status:** Phase 0. The GenOffice code base is imported with its AI features, sign-in,
@@ -24,9 +25,9 @@ Windows 10 and 11 (x64). Other platforms may follow later.
 
 ## Built on
 
-Hyper-Files is built from [GenOffice](https://github.com/genspark-ai/genoffice) (Apache-2.0)
+Hypercube Office is built from [GenOffice](https://github.com/genspark-ai/genoffice) (Apache-2.0)
 with its AI features and sign-in removed; [MuPDF](https://mupdf.com/) (AGPL-3.0) is planned for
-the core of the PDF side. Hyper-Files is not affiliated with or endorsed by Genspark, Mainfunc, Inc. or
+the core of the PDF side. Hypercube Office is not affiliated with or endorsed by Genspark, Mainfunc, Inc. or
 Artifex Software. See [NOTICE](NOTICE) for attributions.
 
 ## Repository layout
@@ -47,7 +48,7 @@ Requires Node 22+, npm 10+ and a Rust toolchain (for the sheets engine). See
 ```bash
 npm ci
 npm run dev        # all editors + shell against Vite dev servers
-npm run dist:win   # Windows installer (apps/shell/release/Hyper-Files-Setup-<version>-x64.exe)
+npm run dist:win   # Windows installer (apps/shell/release/Hypercube-Office-Setup-<version>-x64.exe)
 ```
 
 ## Installing
@@ -60,12 +61,12 @@ artifacts. The installer:
 - installs per user by default (no admin prompt); "for all users" is offered on the first page;
 - shows the AGPL-3.0 license and ships `LICENSE.txt`, `NOTICE.txt` and
   `THIRD-PARTY-NOTICES.txt` in the install folder;
-- registers Hyper-Files for PDF, Word, Excel, PowerPoint, CSV, Markdown and HTML files, and its
-  last page offers to make Hyper-Files the default app (Windows asks you to confirm in Settings);
+- registers Hypercube Office for PDF, Word, Excel, PowerPoint, CSV, Markdown and HTML files, and its
+  last page offers to make Hypercube Office the default app (Windows asks you to confirm in Settings);
 - is not code-signed yet, so Windows SmartScreen shows "Unknown publisher" until you choose
   "More info" > "Run anyway".
 
 ## License
 
-Hyper-Files is free software under the [GNU Affero General Public License v3.0](LICENSE).
+Hypercube Office is free software under the [GNU Affero General Public License v3.0](LICENSE).
 Third-party components keep their own licenses; see [NOTICE](NOTICE).

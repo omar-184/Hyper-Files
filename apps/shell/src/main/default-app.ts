@@ -57,7 +57,7 @@ export const OFFICE_TYPES: readonly OfficeType[] = [
 const LINUX_DESKTOP_ID = 'genoffice.desktop'
 const WINDOWS_DEFAULT_APPS_URL = 'ms-settings:defaultapps'
 /** RegisteredApplications value name written by build/installer.nsh */
-const WINDOWS_REGISTERED_APP = 'Hyper-Files'
+const WINDOWS_REGISTERED_APP = 'HypercubeOffice'
 
 /**
  * Windows 11 deep-links to the app's own Default apps page when the
@@ -102,7 +102,7 @@ export function execFileRunner(cmd: string, args: string[]): Promise<string> {
   })
 }
 
-/** /Applications/Hyper-Files.app/Contents/MacOS/Hyper-Files → /Applications/Hyper-Files.app */
+/** /Applications/Hypercube Office.app/Contents/MacOS/Hypercube Office → /Applications/Hypercube Office.app */
 export function macAppBundlePath(exePath: string): string | null {
   let dir = exePath
   for (let i = 0; i < 6; i++) {

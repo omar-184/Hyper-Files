@@ -1,5 +1,5 @@
 /**
- * Generates the Hyper-Files app icon set from apps/shell/brand/app-icon.svg:
+ * Generates the Hypercube Office app icon set from apps/shell/brand/app-icon.svg:
  * build/icon.png, build/icon-mac.png, build/icons/<n>x<n>.png, build/icon.ico
  * and build/icon.icns for the shell, plus the docs app's standalone copies.
  *

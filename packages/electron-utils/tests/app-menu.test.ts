@@ -205,6 +205,6 @@ describe('aboutMenuItem', () => {
   it('About dialog copy button still copies name + version', async () => {
     electronMock.showMessageBox.mockResolvedValue({ response: 1 })
     await (aboutMenuItem(en) as { click: () => Promise<void> }).click()
-    expect(electronMock.writeText).toHaveBeenCalledWith('Hyper-Files 1.2.3')
+    expect(electronMock.writeText).toHaveBeenCalledWith('Hypercube Office 1.2.3')
   })
 })

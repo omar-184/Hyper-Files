@@ -1,5 +1,5 @@
 /**
- * Strings for the Hyper-Files editing additions (find and redact, comments list).
+ * Strings for the Hypercube Office editing additions (find and redact, comments list).
  * English is the base for every locale; a locale listed in
  * localizedEditorStrings overrides it. Other locales show English until their
  * translation lands.
