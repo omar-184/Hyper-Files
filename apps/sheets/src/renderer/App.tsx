@@ -164,6 +164,7 @@ import {
   SET_FROZEN_MUTATION,
   SET_NUMFMT_MUTATION,
   TOGGLE_GRIDLINES_MUTATION,
+  SET_TAB_COLOR_MUTATION,
   SET_ZOOM_OPERATION,
   SET_ZOOM_COMMAND,
   OPEN_FILTER_PANEL_OPERATION,
@@ -317,6 +318,7 @@ import {
   journalSize,
   recordCfChange,
   recordPageSetup,
+  tabColorToArgb,
   recordDefinedNamesChange,
   recordDvChange,
   recordNoteChange,
@@ -1363,6 +1365,7 @@ export function App({
           event.id !== MOVE_ROWS_MUTATION &&
           event.id !== SET_FROZEN_MUTATION &&
           event.id !== TOGGLE_GRIDLINES_MUTATION &&
+          event.id !== SET_TAB_COLOR_MUTATION &&
           event.id !== SET_ZOOM_OPERATION &&
           event.id !== SET_ZOOM_COMMAND
         ) {
@@ -1614,6 +1617,18 @@ export function App({
           ) {
             recordPageSetup(state.editJournal, gridlines.subUnitId, {
               showGridlines: gridlines.showGridlines === 1,
+            })
+            setPendingEdits(journalSize(state.editJournal))
+          }
+          return
+        }
+        if (event.id === SET_TAB_COLOR_MUTATION) {
+          // Sheet tab ▸ Change Color; journaled from the mutation so undo/redo
+          // re-records the restored color.
+          const tab = event.params as { subUnitId?: string; color?: unknown } | undefined
+          if (tab?.subUnitId && !isSheetRemoved(state.editJournal, tab.subUnitId)) {
+            recordPageSetup(state.editJournal, tab.subUnitId, {
+              tabColor: tabColorToArgb(tab.color),
             })
             setPendingEdits(journalSize(state.editJournal))
           }

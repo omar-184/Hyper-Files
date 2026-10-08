@@ -14,6 +14,7 @@ import {
   journalEntriesInRange,
   journalSize,
   recordPageSetup,
+  tabColorToArgb,
   recordProtectedRangesChange,
   recordSetNumfmt,
   recordSetRangeValues,
@@ -1238,5 +1239,26 @@ describe('recordStructuralOp page-break remapping', () => {
     recordStructuralOp(journal, 'sheet-1', { kind: 'remove-rows', index: 0, count: 4 })
     expect(journal.structuralOps.get('sheet-1')).toBeUndefined()
     expect(journal.pageSetup.get('sheet-1')?.rowBreaks).toEqual([6])
+  })
+})
+
+describe('tabColorToArgb', () => {
+  it('turns Univer tab colors into ARGB hex', () => {
+    expect(tabColorToArgb('#ff0000')).toBe('FFFF0000')
+    expect(tabColorToArgb('#0a8')).toBe('FF00AA88')
+    expect(tabColorToArgb('rgb(0, 112, 192)')).toBe('FF0070C0')
+    expect(tabColorToArgb('rgba(255,192,0,1)')).toBe('FFFFC000')
+  })
+
+  it('maps No Color and unreadable values to null', () => {
+    expect(tabColorToArgb('')).toBeNull()
+    expect(tabColorToArgb(undefined)).toBeNull()
+    expect(tabColorToArgb('red')).toBeNull()
+  })
+
+  it('journals as a page-setup state so the save patches sheetPr', () => {
+    const journal = createEditJournal()
+    recordPageSetup(journal, 's1', { tabColor: tabColorToArgb('#00b050') })
+    expect(journal.pageSetup.get('s1')).toEqual({ tabColor: 'FF00B050' })
   })
 })

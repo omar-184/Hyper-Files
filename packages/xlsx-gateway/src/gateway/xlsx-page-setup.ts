@@ -29,6 +29,8 @@ export interface SheetPageSetupState {
   readonly printGridlines?: boolean | undefined
   readonly printHeadings?: boolean | undefined
   readonly showGridlines?: boolean | undefined
+  /** sheet tab color as ARGB hex ("FFRRGGBB"), or null to clear it */
+  readonly tabColor?: string | null | undefined
   /// Normal-view zoom percent (10-400); 100 drops the attributes.
   readonly zoomScale?: number | undefined
   readonly showFormulas?: boolean | undefined
@@ -145,6 +147,32 @@ function setFitToPage(xml: string, enabled: boolean): string {
   if (!worksheetOpen) throw new PageSetupError('Worksheet has no root element.')
   const at = worksheetOpen.index + worksheetOpen[0].length
   return `${xml.slice(0, at)}<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>${xml.slice(at)}`
+}
+
+/// Tab color is `<sheetPr><tabColor rgb="AARRGGBB"/></sheetPr>`; tabColor is
+/// the first child of CT_SheetPr. The rest of sheetPr stays verbatim.
+export function setTabColor(xml: string, argb: string | null): string {
+  const existing = /<tabColor\b[^>]*\/>|<tabColor\b[^>]*>\s*<\/tabColor>/.exec(xml)
+  if (argb === null) {
+    if (!existing) return xml
+    const stripped = xml.replace(existing[0], '')
+    // An attribute-less sheetPr left empty is dropped, as Excel writes it.
+    return stripped.replace(/<sheetPr>\s*<\/sheetPr>/, '')
+  }
+  const element = `<tabColor rgb="${argb}"/>`
+  if (existing) return xml.replace(existing[0], element)
+  const sheetPr = /<sheetPr\b[^>]*?(\/?)>/.exec(xml)
+  if (sheetPr) {
+    if (sheetPr[1] === '/') {
+      return xml.replace(sheetPr[0], `${sheetPr[0].slice(0, -2).trimEnd()}>${element}</sheetPr>`)
+    }
+    const at = sheetPr.index + sheetPr[0].length
+    return `${xml.slice(0, at)}${element}${xml.slice(at)}`
+  }
+  const worksheetOpen = /<worksheet\b[^>]*>/.exec(xml)
+  if (!worksheetOpen) throw new PageSetupError('Worksheet has no root element.')
+  const at = worksheetOpen.index + worksheetOpen[0].length
+  return `${xml.slice(0, at)}<sheetPr>${element}</sheetPr>${xml.slice(at)}`
 }
 
 function setSheetViewAttr(xml: string, name: string, value: string | null): string {
@@ -341,6 +369,10 @@ export function applyPageSetupState(worksheetXml: string, state: SheetPageSetupS
 
   if (state.frozenRows !== undefined || state.frozenColumns !== undefined) {
     xml = setFrozenPane(xml, state.frozenRows ?? 0, state.frozenColumns ?? 0)
+  }
+
+  if (state.tabColor !== undefined) {
+    xml = setTabColor(xml, state.tabColor)
   }
 
   if (state.showGridlines !== undefined) {

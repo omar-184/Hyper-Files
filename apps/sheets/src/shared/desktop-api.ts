@@ -1283,6 +1283,8 @@ export const workbookPageSetupStateSchema = z
     printGridlines: z.boolean().optional(),
     printHeadings: z.boolean().optional(),
     showGridlines: z.boolean().optional(),
+    /// sheetPr/tabColor as ARGB hex, or null to clear the tab color.
+    tabColor: z.union([z.string().regex(/^[0-9A-F]{8}$/), z.null()]).optional(),
     /// sheetView/@zoomScale, normal-view zoom percent.
     zoomScale: z.number().int().min(10).max(400).optional(),
     showFormulas: z.boolean().optional(),

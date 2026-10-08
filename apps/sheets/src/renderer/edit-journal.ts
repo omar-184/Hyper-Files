@@ -225,6 +225,8 @@ export interface PageSetupJournalState {
   printGridlines?: boolean
   printHeadings?: boolean
   showGridlines?: boolean
+  /// sheetPr/tabColor as ARGB hex ("FFRRGGBB"); null clears the tab color.
+  tabColor?: string | null
   /// sheetView/@zoomScale (10-400): normal-view zoom percent. Excel persists
   /// zoom in the file; unjournaled, the post-save session reload snapped the
   /// view back to the file's stored zoom.
@@ -322,6 +324,28 @@ export function recordPageSetup(
 ): void {
   const state = journal.pageSetup.get(sheetId) ?? {}
   journal.pageSetup.set(sheetId, { ...state, ...patch })
+}
+
+/// Univer's tab color (CSS hex or rgb()) as the ARGB hex OOXML stores in
+/// sheetPr/tabColor; an empty or unreadable color means "No Color".
+export function tabColorToArgb(color: unknown): string | null {
+  if (typeof color !== 'string') return null
+  const value = color.trim()
+  let hex = /^#?([0-9a-f]{6})$/i.exec(value)?.[1]
+  if (hex === undefined) {
+    const short = /^#?([0-9a-f]{3})$/i.exec(value)?.[1]
+    if (short !== undefined) hex = [...short].map((digit) => digit + digit).join('')
+  }
+  if (hex === undefined) {
+    const rgb = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/i.exec(value)
+    if (rgb) {
+      hex = rgb
+        .slice(1, 4)
+        .map((channel) => Math.min(255, Number(channel)).toString(16).padStart(2, '0'))
+        .join('')
+    }
+  }
+  return hex === undefined ? null : `FF${hex.toUpperCase()}`
 }
 
 export function toSavePageSetupStates(
