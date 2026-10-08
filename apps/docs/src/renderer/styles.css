@@ -10789,3 +10789,103 @@ tr > .page-gap-cut {
     outline-offset: -1px;
   }
 }
+
+.table-sort-dialog {
+  width: min(460px, calc(100vw - 48px));
+}
+
+.table-sort-key,
+.table-separator-picker {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px 10px;
+  margin: 0 0 10px;
+}
+
+.table-sort-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-sort-key legend,
+.table-separator-picker legend {
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.table-sort-key select {
+  width: auto;
+  min-width: 96px;
+}
+
+.table-sort-key select:first-of-type {
+  flex: 1;
+}
+
+.table-sort-key[disabled] {
+  opacity: 0.55;
+}
+
+.table-sort-order {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.table-sort-order label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+}
+
+.table-sort-order input {
+  width: auto;
+  margin: 0;
+}
+
+.table-separator-picker .table-dialog-radios {
+  grid-template-columns: 1fr 1fr;
+  margin: 4px 0 0;
+}
+
+.table-dialog-radios input.table-separator-other {
+  width: 36px;
+  height: 24px;
+  text-align: center;
+}
+
+.layout-menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.line-numbers-fields {
+  border: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+.line-numbers-fields[disabled] {
+  opacity: 0.55;
+}
+
+.line-numbers-fields .table-dialog-radios {
+  margin-top: 12px;
+}
+
+/* outranks the generic block .modal label rule */
+.modal label.table-dialog-check {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.modal .table-dialog-check input {
+  display: inline-block;
+  height: auto;
+}

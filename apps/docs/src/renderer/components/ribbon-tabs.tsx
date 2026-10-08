@@ -749,6 +749,8 @@ export interface InsertTabProps extends TabProps {
   commentsAllowed: boolean
   /** a new table activates Table Design (Word); an existing one only shows the tabs */
   onTableInserted: () => void
+  /** Table ▾ Convert Text to Table… */
+  onTextToTable?: () => void
 }
 
 export type { RevisionDisplayMode }

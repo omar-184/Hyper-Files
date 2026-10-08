@@ -1026,6 +1026,30 @@ describe('sectPr w:lnNumType', () => {
     expect(out).toContain('<w:lnNumType w:countBy="1" w:restart="continuous"/>')
   })
 
+  it('settings write, change and remove the element in schema order', async () => {
+    const { sectionSettingsFromXml, applySectionSettings, lineNumberingOf } =
+      await import('../src/section')
+    const xml =
+      '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1800" w:bottom="1440" w:left="1800" w:header="851" w:footer="992" w:gutter="0"/>' +
+      '<w:pgNumType w:start="3"/><w:cols w:space="425"/></w:sectPr>'
+    const s = sectionSettingsFromXml(xml)
+    const on = applySectionSettings(xml, {
+      ...s,
+      lineNumbers: { countBy: 1, start: 1, restart: 'continuous' },
+    })
+    expect(on).toContain('<w:lnNumType w:countBy="1" w:restart="continuous"/><w:pgNumType')
+    expect(lineNumberingOf(on)).toEqual({ countBy: 1, start: 1, restart: 'continuous' })
+    const perPage = applySectionSettings(on, {
+      ...s,
+      lineNumbers: { countBy: 5, start: 3, distance: 400, restart: 'newPage' },
+    })
+    expect(perPage.match(/<w:lnNumType/g)).toHaveLength(1)
+    expect(perPage).toContain('<w:lnNumType w:countBy="5" w:start="2" w:distance="400"/>')
+    const off = applySectionSettings(perPage, { ...s, lineNumbers: undefined })
+    expect(off).not.toContain('lnNumType')
+    expect(off).toBe(xml)
+  })
+
   it('paragraph w:suppressLineNumbers is parsed tri-state', async () => {
     const { parseDocx } = await import('../src/index')
     const bytes = await buildDocx({

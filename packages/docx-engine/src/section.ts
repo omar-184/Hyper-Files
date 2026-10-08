@@ -375,6 +375,36 @@ export function injectIntoSectPr(xml: string, tag: string): string {
   return xml.replace(m[0], () => `${open}${tag}${m![0].endsWith('/>') ? '</w:sectPr>' : ''}`)
 }
 
+/** CT_SectPr children that follow lnNumType, in schema order */
+const LN_NUM_TYPE_FOLLOWERS =
+  /<w:(?:pgNumType|cols|formProt|vAlign|noEndnote|titlePg|textDirection|bidi|rtlGutter|docGrid|printerSettings)[\s/>]/
+
+const sameLineNumbering = (a: LineNumbering | undefined, b: LineNumbering | undefined): boolean =>
+  a === b ||
+  (a !== undefined &&
+    b !== undefined &&
+    a.countBy === b.countBy &&
+    a.start === b.start &&
+    a.restart === b.restart &&
+    (a.distance ?? -1) === (b.distance ?? -1))
+
+/**
+ * Set, change or remove w:lnNumType (Layout ▸ Line Numbers). A sectPr whose
+ * numbering already reads the same is returned byte-identical.
+ */
+export function applyLineNumbering(sectPrXml: string, ln: LineNumbering | undefined): string {
+  if (sameLineNumbering(lineNumberingOf(sectPrXml), ln)) return sectPrXml
+  const xml = stripElement(sectPrXml, 'w:lnNumType')
+  if (!ln) return xml
+  const attrs = [
+    ln.countBy > 1 ? ` w:countBy="${ln.countBy}"` : ' w:countBy="1"',
+    ln.start > 1 ? ` w:start="${ln.start - 1}"` : '',
+    ln.distance !== undefined ? ` w:distance="${ln.distance}"` : '',
+    ln.restart !== 'newPage' ? ` w:restart="${ln.restart}"` : '',
+  ].join('')
+  return insertBefore(xml, `<w:lnNumType${attrs}/>`, LN_NUM_TYPE_FOLLOWERS)
+}
+
 /** CT_SectPr children that follow pgNumType / titlePg, in schema order */
 const PG_NUM_TYPE_FOLLOWERS =
   /<w:(?:cols|formProt|vAlign|noEndnote|titlePg|textDirection|bidi|rtlGutter|docGrid|printerSettings)[\s/>]/
@@ -526,6 +556,8 @@ export function applySectionSettings(sectPrXml: string, settings: SectionSetting
   } else if (numAttr) {
     xml = colsAnchor(`<w:cols${numAttr} w:space="${settings.colSpace ?? 425}"/>`)
   }
+
+  xml = applyLineNumbering(xml, settings.lineNumbers)
 
   // section direction (w:bidi, after cols in CT_SectPr): undefined = keep the
   // document's tag untouched; true/false = ensure present/absent

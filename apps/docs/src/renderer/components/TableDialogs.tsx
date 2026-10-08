@@ -16,7 +16,14 @@ import { TWIPS_PER_CM } from '../list-presets'
 import { applyTableValue, tableValueOf, type TableValue } from './TablePropertiesDialog'
 
 export type TableDialogKind =
-  'properties' | 'splitCells' | 'insertCells' | 'deleteCells' | 'cellMargins'
+  | 'properties'
+  | 'splitCells'
+  | 'insertCells'
+  | 'deleteCells'
+  | 'cellMargins'
+  | 'sort'
+  | 'toText'
+  | 'textToTable'
 
 /** Word's small table dialogs: Split Cells… / Insert Cells… / Delete Cells… */
 
@@ -25,7 +32,7 @@ interface DialogProps {
   onClose: () => void
 }
 
-function runAndClose(editor: Editor, command: Command, onClose: () => void) {
+export function runAndClose(editor: Editor, command: Command, onClose: () => void) {
   if (editableOrToast(editor)) {
     editor.view.focus()
     command(editor.state, editor.view.dispatch)
@@ -33,7 +40,7 @@ function runAndClose(editor: Editor, command: Command, onClose: () => void) {
   onClose()
 }
 
-function Frame({
+export function Frame({
   title,
   onClose,
   onOk,

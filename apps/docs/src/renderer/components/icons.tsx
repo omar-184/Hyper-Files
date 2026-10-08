@@ -1037,6 +1037,19 @@ export function IconColumns(props: IconProps) {
   )
 }
 
+/** numbered lines in the margin (Layout ▸ Line Numbers) */
+export function IconLineNumbers(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path
+        d="M 2.4 3.6 l 1 -0.6 v 3.2 M 2.2 9.2 a 0.9 0.9 0 1 1 1.4 0.8 l -1.4 1.3 h 1.7"
+        strokeWidth="0.9"
+      />
+      <path d="M 6.6 4.6 h 7 M 6.6 7.6 h 7 M 6.6 10.6 h 7 M 6.6 13.2 h 4.6" />
+    </Svg>
+  )
+}
+
 /* ---------- References ---------- */
 
 export function IconToc(props: IconProps) {
