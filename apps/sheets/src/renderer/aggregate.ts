@@ -23,7 +23,7 @@ export interface RangeAggregate {
   readonly topValues: readonly { value: string; count: number }[]
 }
 
-export interface RangeAggregator {
+interface RangeAggregator {
   add(value: CellScalar): void
   addRepeated(value: CellScalar, count: number): void
   addEmpty(count: number): void

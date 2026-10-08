@@ -3,8 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   applyRangeInLoadedChunks,
   ensureLazyRangeLoaded,
-  lazyCellEditable,
-  lazyRangeEditable,
   loadWorkbookSkeleton,
   nextIndexWaitStall,
   normalizeVisibleRange,
@@ -280,60 +278,6 @@ function streamedState(options: {
   } as unknown as LazyWorkbookState
 }
 
-const LOADED_TOP: Range = { startRow: 0, endRow: 4, startColumn: 0, endColumn: 4 }
-
-describe('lazyCellEditable', () => {
-  it('allows loaded cells and truly-beyond-data cells, blocks unstreamed ones', () => {
-    const state = streamedState({ loaded: LOADED_TOP })
-    expect(lazyCellEditable(state, 'sheet-1', 2, 2)).toBe(true)
-    expect(lazyCellEditable(state, 'sheet-1', 7, 0)).toBe(false)
-    expect(lazyCellEditable(state, 'sheet-1', 12, 0)).toBe(true)
-  })
-
-  it('blocks the shifted unstreamed tail after insert_rows', () => {
-    const state = streamedState({
-      loaded: LOADED_TOP,
-      ops: [{ kind: 'insert-rows', index: 2, count: 3 }],
-    })
-    // Screen rows 10-12 now hold file rows 7-9, which never streamed in.
-    expect(lazyCellEditable(state, 'sheet-1', 10, 0)).toBe(false)
-    expect(lazyCellEditable(state, 'sheet-1', 12, 0)).toBe(false)
-    expect(lazyCellEditable(state, 'sheet-1', 13, 0)).toBe(true)
-  })
-
-  it('allows rows inserted this session (journal-owned, nothing streams in)', () => {
-    const state = streamedState({ ops: [{ kind: 'insert-rows', index: 6, count: 3 }] })
-    expect(lazyCellEditable(state, 'sheet-1', 6, 0)).toBe(true)
-    expect(lazyCellEditable(state, 'sheet-1', 8, 0)).toBe(true)
-    expect(lazyCellEditable(state, 'sheet-1', 9, 0)).toBe(false)
-  })
-
-  it('shrinks the editable-beyond-data bound after delete_rows', () => {
-    const state = streamedState({
-      loaded: LOADED_TOP,
-      ops: [{ kind: 'remove-rows', index: 0, count: 3 }],
-    })
-    expect(lazyCellEditable(state, 'sheet-1', 7, 0)).toBe(true)
-    expect(lazyCellEditable(state, 'sheet-1', 5, 0)).toBe(false)
-    expect(lazyCellEditable(state, 'sheet-1', 3, 0)).toBe(true)
-  })
-
-  it('handles column inserts the same way', () => {
-    const state = streamedState({
-      loaded: LOADED_TOP,
-      ops: [{ kind: 'insert-cols', index: 1, count: 2 }],
-    })
-    expect(lazyCellEditable(state, 'sheet-1', 0, 5)).toBe(false)
-    expect(lazyCellEditable(state, 'sheet-1', 0, 7)).toBe(true)
-    expect(lazyCellEditable(state, 'sheet-1', 0, 1)).toBe(true)
-  })
-
-  it('always allows edits once the workbook is fully loaded', () => {
-    const state = streamedState({ preloadComplete: true })
-    expect(lazyCellEditable(state, 'sheet-1', 7, 0)).toBe(true)
-  })
-})
-
 describe('ensureLazyRangeLoaded', () => {
   const worksheet = { getSheetId: () => 'sheet-1' }
 
@@ -436,89 +380,6 @@ describe('ensureLazyRangeLoaded', () => {
       { row: 0, column: 5, data: { v: 'Owner' } },
       { row: 1, column: 5, data: { v: 'merrick' } },
     ])
-  })
-})
-
-describe('lazyRangeEditable', () => {
-  it('requires the loaded window for file-backed ranges', () => {
-    const state = streamedState({ loaded: LOADED_TOP })
-    expect(
-      lazyRangeEditable(state, 'sheet-1', {
-        startRow: 0,
-        endRow: 4,
-        startColumn: 0,
-        endColumn: 4,
-      }),
-    ).toBe(true)
-    expect(
-      lazyRangeEditable(state, 'sheet-1', {
-        startRow: 0,
-        endRow: 7,
-        startColumn: 0,
-        endColumn: 4,
-      }),
-    ).toBe(false)
-  })
-
-  it('allows a range fully inside a column inserted this session', () => {
-    // The fill-source case: CT2 lives in a freshly inserted column while the
-    // streaming window sits somewhere else entirely.
-    const state = streamedState({
-      loaded: { startRow: 100, endRow: 180, startColumn: 0, endColumn: 4 },
-      ops: [{ kind: 'insert-cols', index: 3, count: 1 }],
-    })
-    expect(
-      lazyRangeEditable(state, 'sheet-1', {
-        startRow: 0,
-        endRow: 1,
-        startColumn: 3,
-        endColumn: 3,
-      }),
-    ).toBe(true)
-  })
-
-  it('allows a range fully inside rows inserted this session', () => {
-    const state = streamedState({ ops: [{ kind: 'insert-rows', index: 2, count: 3 }] })
-    expect(
-      lazyRangeEditable(state, 'sheet-1', {
-        startRow: 2,
-        endRow: 4,
-        startColumn: 0,
-        endColumn: 4,
-      }),
-    ).toBe(true)
-  })
-
-  it('still requires the window for the file-backed part of a mixed range', () => {
-    const ops = [{ kind: 'insert-cols', index: 2, count: 1 }]
-    const bounds = { startRow: 0, endRow: 1, startColumn: 1, endColumn: 3 }
-    // Screen columns 1 and 3 are file-backed; column 2 is journal-owned.
-    expect(
-      lazyRangeEditable(
-        streamedState({ loaded: { startRow: 0, endRow: 4, startColumn: 0, endColumn: 3 }, ops }),
-        'sheet-1',
-        bounds,
-      ),
-    ).toBe(true)
-    expect(
-      lazyRangeEditable(
-        streamedState({ loaded: { startRow: 0, endRow: 4, startColumn: 0, endColumn: 2 }, ops }),
-        'sheet-1',
-        bounds,
-      ),
-    ).toBe(false)
-  })
-
-  it('allows ranges entirely beyond the screen extent', () => {
-    const state = streamedState({})
-    expect(
-      lazyRangeEditable(state, 'sheet-1', {
-        startRow: 20,
-        endRow: 25,
-        startColumn: 0,
-        endColumn: 4,
-      }),
-    ).toBe(true)
   })
 })
 

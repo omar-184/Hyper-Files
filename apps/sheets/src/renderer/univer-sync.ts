@@ -65,7 +65,6 @@ import { normalizeStyleColor, resolveStyleColor } from '@genoffice/xlsx-gateway/
 import { WORST_FIRST_ICON_SETS } from '@genoffice/xlsx-gateway/gateway/xlsx-cf'
 import type {
   CellFormatState,
-  CellScalar,
   CellState,
   WorkbookSnapshot,
 } from '@genoffice/xlsx-gateway/domain/workbook.types'
@@ -137,7 +136,6 @@ import {
   mapRangeResultToScreen,
   netAxisDelta,
   screenRangeToFileRange,
-  screenToFile,
 } from './view-transform'
 import {
   buildCustomFilters,
@@ -187,22 +185,6 @@ function clearUnitUndoHistory(runtime: UniverRuntime, unitId: string): void {
     .clearUndoRedo(unitId)
 }
 export const MINIMUM_SHEET_COLUMN_COUNT = 26
-
-export function syncUniver(runtime: UniverRuntime | null, snapshot: WorkbookSnapshot): void {
-  const workbook = runtime?.univerAPI.getActiveWorkbook()
-  if (!workbook) return
-  for (const sheet of snapshot.sheets) {
-    const worksheet = workbook.getSheetBySheetId(sheet.id)
-    if (!worksheet) continue
-    worksheet.setName(sheet.name)
-    for (const [address, cell] of Object.entries(sheet.cells)) {
-      const range = worksheet.getRange(address)
-      if (cell.formula) range.setFormula(cell.formula)
-      else if (cell.value === null) range.clearContent()
-      else range.setValue(cell.value)
-    }
-  }
-}
 
 export function loadSnapshotIntoUniver(
   runtime: UniverRuntime | null,
@@ -3987,7 +3969,7 @@ export function applyJournalOverlay(
 /// text still reaches the formula bar via formulaText).
 /// #ERROR! is not Excel's: it is IronCalc's parse/evaluation failure, and a
 /// file that carries it was polluted by an earlier save of that failure.
-export const EXCEL_ERROR_LITERALS = new Set([
+const EXCEL_ERROR_LITERALS = new Set([
   '#NULL!',
   '#DIV/0!',
   '#VALUE!',
@@ -7471,43 +7453,6 @@ export function clearLazyState(state: LazyWorkbookState | null): void {
   state.loadedRanges.clear()
 }
 
-/**
- * A cell's stored value, as opposed to the text its number format renders.
- *
- * `lazyCellReader` reports both: `value` is the view model's display text and
- * `rawValue` the model value behind it. Display text is right for on-screen
- * readouts (a date shows as a date) but wrong for anything that reports or
- * re-saves the data: General re-renders a number to fit the column width
- * (numfmt-fix.ts formatGeneral), so `=1/3` in a narrow column reads back as
- * "0.333333", and a consumer that treats that text as the value turns a
- * computed number into a string. Prefer the model value wherever the engine
- * has one.
- *
- * The exception is the cached-value fallback (formula-cached-fallback.ts):
- * when the engine's result is an error but the file carries a usable cached
- * value, the display deliberately shows the cache, and that visible value is
- * the better answer than the error literal behind it.
- */
-export function modelCellValue(cell: {
-  readonly value: CellScalar
-  readonly rawValue?: CellScalar | undefined
-}): CellScalar {
-  const raw = cell.rawValue
-  if (raw === undefined || raw === null) return cell.value
-  if (typeof raw === 'string' && EXCEL_ERROR_LITERALS.has(raw)) {
-    const display = cell.value
-    // `null` is the engine not having written a result yet, not a fallback.
-    if (
-      display !== null &&
-      display !== undefined &&
-      !(typeof display === 'string' && EXCEL_ERROR_LITERALS.has(display))
-    ) {
-      return display
-    }
-  }
-  return raw
-}
-
 /// Reads a cell's current content (display value, formula, raw value).
 export function lazyCellReader(worksheet: UniverWorksheet): (address: string) => CellState {
   return (address) => {
@@ -7549,79 +7494,4 @@ export function lazyWorkbookCellReader(
     }
     return reader(address)
   }
-}
-
-/// Range-level variant of lazyCellEditable for bulk ops (fill_range / large
-/// clear_range): checking the four corners is not enough because a range can
-/// straddle the loaded region and the beyond-extent area with unloaded rows
-/// in between — clamp to the file extent first, then require containment.
-export function lazyRangeEditable(
-  state: LazyWorkbookState,
-  sheetId: string,
-  bounds: { startRow: number; endRow: number; startColumn: number; endColumn: number },
-): boolean {
-  if (state.flags.preloadComplete) return true
-  const extent = lazySheetScreenExtent(state, sheetId)
-  if (!extent) return true
-  const inExtentEndRow = Math.min(bounds.endRow, extent.rows - 1)
-  const inExtentEndColumn = Math.min(bounds.endColumn, extent.columns - 1)
-  // Entirely beyond the data extent: nothing left to stream in.
-  if (inExtentEndRow < bounds.startRow || inExtentEndColumn < bounds.startColumn) return true
-  // Rows/columns inserted this session are journal-owned — nothing streams
-  // into them, so only the file-backed remainder needs the loaded window.
-  // (A range fully inside an inserted column, like a fill source written
-  // this session, is editable regardless of where the window sits.)
-  const ops = state.editJournal.structuralOps.get(sheetId) ?? []
-  const fileBackedSpan = (
-    axis: 'row' | 'column',
-    start: number,
-    end: number,
-  ): { start: number; end: number } | null => {
-    if (ops.length === 0) return { start, end }
-    let first = -1
-    let last = -1
-    for (let position = start; position <= end; position += 1) {
-      if (screenToFile(ops, axis, position) === null) continue
-      if (first === -1) first = position
-      last = position
-    }
-    return first === -1 ? null : { start: first, end: last }
-  }
-  const rows = fileBackedSpan('row', bounds.startRow, inExtentEndRow)
-  const columns = fileBackedSpan('column', bounds.startColumn, inExtentEndColumn)
-  if (rows === null || columns === null) return true
-  const loaded = state.loadedRanges.get(sheetId)
-  return (
-    loaded !== undefined &&
-    rows.start >= loaded.startRow &&
-    rows.end <= loaded.endRow &&
-    columns.start >= loaded.startColumn &&
-    columns.end <= loaded.endColumn
-  )
-}
-
-/// Mirrors the BeforeSheetEditStart streaming guard for DSL-planned cells.
-export function lazyCellEditable(
-  state: LazyWorkbookState,
-  sheetId: string,
-  row: number,
-  column: number,
-): boolean {
-  if (state.flags.preloadComplete) return true
-  const extent = lazySheetScreenExtent(state, sheetId)
-  if (!extent) return true
-  if (row >= extent.rows || column >= extent.columns) return true
-  const ops = state.editJournal.structuralOps.get(sheetId) ?? []
-  const journalOwned =
-    ops.length > 0 &&
-    (screenToFile(ops, 'row', row) === null || screenToFile(ops, 'column', column) === null)
-  if (journalOwned) return true
-  const loaded = state.loadedRanges.get(sheetId)
-  return (
-    loaded !== undefined &&
-    row >= loaded.startRow &&
-    row <= loaded.endRow &&
-    column >= loaded.startColumn &&
-    column <= loaded.endColumn
-  )
 }

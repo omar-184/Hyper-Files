@@ -148,14 +148,10 @@ export const pt = {
   appRefresh: 'Atualizar',
   appRefreshHintIn: 'Recalcular a Tabela Dinâmica atual',
   appRefreshHintOut: 'Selecione a área da Tabela Dinâmica e atualize',
-  appAttachmentReadFailed: '{name}: falha na leitura',
-  appTooManyImages: 'No máximo {max} imagens por mensagem; as extras foram ignoradas',
-  appAppliedRevision: 'Aplicado (revisão {revision}) — desfaça com ⌘Z, salve no arquivo com ⌘S.',
   appCannotReadImage: 'Não foi possível ler o arquivo de imagem.',
   appTableNotDeletable:
     'A tabela "{name}" não existe ou não foi criada nesta sessão — tabelas já existentes no arquivo ainda não podem ser excluídas.',
   appImageNotLoaded: 'A imagem não foi carregada: {path}',
-  appApplyFailed: '⚠️ Falha ao aplicar: {reason}',
   appPivotChartNeedsFile:
     'Abra primeiro um arquivo XLSX — o Gráfico Dinâmico é gravado no arquivo.',
   appCursorNotInPivot:
@@ -294,17 +290,7 @@ export const pt = {
   appSavedTwoPhase: 'Salvo.',
   appSaveSecondFailed:
     'A estrutura foi salva, mas a segunda fase (Tabelas Dinâmicas/tabelas/nomes definidos) falhou: {reason}',
-  appReadyInitial: 'Pronto para um comando de IA local e determinístico.',
-  appAiThinking: 'A IA está pensando…',
-  appAiDone: 'A IA terminou',
-  appAiTurnLimit:
-    '(Limite de chamadas de ferramentas atingido para esta solicitação; a resposta acima se baseia no que foi lido até agora e pode estar incompleta.)',
-  appAiTruncatedNote:
-    '(A resposta foi cortada pelo limite de comprimento e pode estar incompleta.)',
-  appAiStopped: '(interrompido)',
-  appAiNoSummary: 'A IA terminou sem gerar um resumo.',
-  appAiNoAction: 'A IA não realizou nenhuma ação nem deu resposta. Tente novamente ou reformule.',
-  appNewConversation: 'Nova conversa iniciada.',
+  appReadyInitial: 'Pronto',
   appPivotCellNoEdit:
     'Esta célula faz parte de uma Tabela Dinâmica — a edição ainda não é suportada.',
   appAreaStreaming:
@@ -350,17 +336,8 @@ export const pt = {
   appDvListOptions: 'Lista: {items}',
   appDvListFromRange: 'Lista (do intervalo {range})',
   appRuleBrokenRef: 'Referência quebrada (#REF!) — esta regra nunca será aplicada',
-  appCellStreaming:
-    'Essa célula ainda está sendo carregada por streaming — tente novamente em instantes.',
-  appPreviewCreated: 'Visualização criada — nada muda até você aplicar.',
-  appPreviewCreatedDemo: 'Visualização criada. O estado da pasta de trabalho não mudou.',
-  appPreviewFailed: 'Não foi possível criar a visualização.',
   appApplyTxFailed: 'Não foi possível aplicar a transação.',
   appTxCommitted: 'Transação confirmada na revisão {revision}.',
-  appPreviewOtherWorkbook: 'A visualização pertencia a outra pasta de trabalho — crie uma nova.',
-  appPreviewSheetGone: 'A planilha visualizada não existe mais — crie uma nova visualização.',
-  appWorkbookChangedSincePreview:
-    'A pasta de trabalho mudou desde a visualização — crie uma nova visualização.',
   appAppliedJournaled: 'Aplicado — as alterações foram registradas; salve com ⌘S.',
   appUndoCommitted: 'Desfazer confirmado como revisão {revision}.',
   appUndoFailed: 'Não foi possível desfazer.',
@@ -625,7 +602,6 @@ export const pt = {
   appShowCommentsTitle: 'Fixar/desafixar o balão de comentário da célula selecionada',
   appStructuralShiftBlocked:
     'Um gráfico ou tabela nesta planilha está ancorado às linhas/colunas afetadas; não é possível deslocá-las e a alteração estrutural não foi salva. Desfaça (⌘Z) e salve novamente.',
-  appAiChangesNotSaved: 'Alterações de IA aplicadas (não salvas). Desfaça com ⌘Z; salve com ⌘S.',
   appChartUpdated: 'Gráfico atualizado.',
   appChartNotEditable: 'Este gráfico não é editável.',
   appChartEditRecorded: 'Edição do gráfico registrada — salve com ⌘S.',
@@ -700,7 +676,6 @@ export const pt = {
   appRibbonCollapse: 'Recolher a Faixa de Opções',
   appRibbonExpand: 'Expandir a Faixa de Opções',
   appTabView: 'Exibir',
-  appTabAi: 'IA',
   appTabChartDesign: 'Design do Gráfico',
   appAutoSave: 'Salvamento Automático',
   appAutoSaveTitle: 'O Salvamento Automático está disponível apenas para arquivos na nuvem',
@@ -717,8 +692,6 @@ export const pt = {
   appRevisionChip: 'Revisão {revision}',
   appOpenWorkbookTitle: 'Abrir Pasta de Trabalho (⌘O)',
   appOpenXlsx: 'Abrir XLSX',
-  appHideAi: 'Ocultar IA',
-  appShowAi: 'Mostrar IA',
   appCategoryAxisTitle: 'Título do Eixo de Categorias',
   appValueAxisTitle: 'Título do Eixo de Valores',
   appTitleText: 'Texto do título',
@@ -789,10 +762,6 @@ export const pt = {
   appFormatPaneDetail: 'Eixos, espaçamento, separação',
   appGroupChartActions: 'Ações do gráfico',
   appRemoveFromSheet: 'Remover da planilha',
-  appGroupAiAssistant: 'Assistente de IA',
-  appAiOpenPanelDetail: 'Barra lateral de chat',
-  appGroupAiStarters: 'Início rápido',
-  appAiStarterDetail: 'Enviar ao painel de IA',
   appGroupTables: 'Tabelas',
   appFromSelection: 'Da seleção',
   appEditPivotTable: 'Editar Tabela Dinâmica',
@@ -1260,11 +1229,6 @@ export const pt = {
   appGroupProofing: 'Revisão de Texto',
   appWorkbookStatsLabel: 'Estatísticas da Pasta de Trabalho',
   appSheetsCellsFormulas: 'Planilhas, células, fórmulas',
-  appTranslate: 'Traduzir',
-  appGroupLanguage: 'Idioma',
-  appTranslateTitle: 'Traduzir a seleção com IA',
-  appTranslatePrompt:
-    'Traduza o texto do intervalo selecionado para {language} e escreva as traduções nas mesmas células.',
   appNewCommentDetail: 'Adicionar ou editar',
   appDeleteLabel: 'Excluir',
   appNoteAtSelection: 'Anotação na seleção',

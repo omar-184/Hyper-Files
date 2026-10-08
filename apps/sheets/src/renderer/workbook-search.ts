@@ -16,7 +16,7 @@ export const MAX_SCAN_CELLS = 400_000
 /** Row batches sized to stay under the sidecar's per-read cell budget. */
 export const FILE_READ_BATCH_CELLS = 18_000
 
-export interface SelectRangeOutcome {
+interface SelectRangeOutcome {
   readonly ok: boolean
   readonly sheetName?: string
   readonly error?: string

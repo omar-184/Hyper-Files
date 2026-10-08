@@ -21,7 +21,6 @@ import {
   RECALC_MAX_FAILURES,
   queueVisualInstall,
   sheetOutline,
-  syncUniver,
   univerDefinedNames,
   installFindRevealFix,
   installInjectorResolutionGuard,
@@ -2330,7 +2329,7 @@ export function App({
     try {
       const receipt = adapterRef.current.undo()
       // Rebuild instead of patching: undo can remove cells and reverse
-      // structural changes, neither of which syncUniver can express.
+      // structural changes, which a cell-by-cell patch cannot express.
       loadSnapshotIntoUniver(
         univerRef.current,
         adapterRef.current.getSnapshot(),

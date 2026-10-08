@@ -236,7 +236,7 @@ function filledAreaInRange(bands: readonly FillBand[], bounds: RangeBounds): num
   return area
 }
 
-export interface AggregateRangeOptions {
+interface AggregateRangeOptions {
   /**
    * Leave out rows the file marks hidden (manual hide or a saved AutoFilter),
    * read from the per-batch row properties so never-loaded windows count too.

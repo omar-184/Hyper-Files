@@ -7,7 +7,6 @@ import {
 } from '@genoffice/xlsx-gateway/domain/workbook-dsl'
 import { InMemoryWorkbookAdapter } from '@genoffice/xlsx-gateway/domain/in-memory-workbook'
 import { buildLazyChangePlan } from '../src/renderer/lazy-plan'
-import { fillFormulaCostError } from '../src/renderer/formula-cost'
 
 describe('offsetFormulaRefs (fill/copy reference semantics)', () => {
   it('shifts relative references by the copy offset', () => {
@@ -222,33 +221,5 @@ describe('buildLazyChangePlan range-level entries', () => {
       'Fill A2 → A2:A88588',
       'Clear B2:B88588',
     ])
-  })
-})
-
-describe('fillFormulaCostError', () => {
-  const sheets = [{ name: 'Sheet1', rows: 88588, columns: 8 }]
-
-  it('allows row-local relative formulas across a whole column', () => {
-    expect(fillFormulaCostError('=B2+1', 88587, 88586, 0, 'Sheet1', sheets)).toBeNull()
-    expect(fillFormulaCostError('=DATE(2026,8,18)', 88587, 88586, 0, 'Sheet1', sheets)).toBeNull()
-  })
-
-  it('rejects formulas that re-scan a large absolute range per copy', () => {
-    expect(fillFormulaCostError('=SUM(B$2:B$88588)', 88587, 88586, 0, 'Sheet1', sheets)).toMatch(
-      /element operations/,
-    )
-    expect(
-      fillFormulaCostError('=VLOOKUP(A2,D$2:E$88588,2,0)', 88587, 88586, 0, 'Sheet1', sheets),
-    ).toMatch(/element operations/)
-  })
-
-  it('rejects anchored-start ranges that expand as the fill grows', () => {
-    // Running total =SUM(B$2:B2): the source copy scans one cell, but the
-    // last copy scans the whole column — quadratic in total.
-    expect(fillFormulaCostError('=SUM(B$2:B2)', 88587, 88586, 0, 'Sheet1', sheets)).toMatch(
-      /element operations/,
-    )
-    // Small fills of the same shape stay fine (1000 rows ≈ 1e6/2 ops).
-    expect(fillFormulaCostError('=SUM(B$2:B2)', 1000, 999, 0, 'Sheet1', sheets)).toBeNull()
   })
 })

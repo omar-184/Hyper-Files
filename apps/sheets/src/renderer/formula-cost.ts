@@ -4,9 +4,8 @@
 /// their criteria/lookup-value argument is itself a range — the classic
 /// distinct-count idiom SUMPRODUCT(1/COUNTIF(D2:D88588,D2:D88588)) does
 /// |range|×|criteria| ≈ 7.8e9 comparisons and freezes the app for minutes.
-/// Such formulas are rejected at propose/edit time instead.
+/// Such formulas are rejected at edit/apply time instead.
 
-import { offsetFormulaRefs } from '@genoffice/xlsx-gateway/domain/formula-shift'
 import {
   FORMULA_REFERENCE_PATTERN,
   qualifierMatches,
@@ -219,7 +218,7 @@ export function degradeQuadraticFormulaCells<
   return degraded ?? cells
 }
 
-/// Model/user-facing guard: null when the formula is fine, otherwise an
+/// User-facing guard: null when the formula is fine, otherwise an
 /// explanation of why it is rejected.
 export function quadraticFormulaError(
   formula: string,
@@ -231,44 +230,6 @@ export function quadraticFormulaError(
   return (
     `This formula would perform about ${cost.toLocaleString('en-US')} element comparisons ` +
     '(a criteria/lookup function receives a large range as its per-element argument) and would freeze the app. ' +
-    'Do not write distinct-count/array-criteria formulas over large ranges. ' +
-    'For statistics questions (distinct counts, frequencies, sums), use the aggregate_range tool and answer in text instead.'
-  )
-}
-
-/// Fill guard: a filled formula evaluates once per copy, so its
-/// per-evaluation cost (largest referenced range plus any quadratic criteria
-/// cost) multiplies by the copy count. Relative references that only touch a
-/// cell's own row (=B2+1) cost ~1 per copy and pass; absolute ranges over
-/// the whole column (=SUM(B$2:B$88588)) or lookups against large tables
-/// re-scan everything per row and are rejected. Anchored-start/relative-end
-/// ranges (running totals like =SUM(B$2:B2)) expand as they fill, so the
-/// copy at the fill's far corner is costed too — the source copy alone
-/// would look like one cell per copy and slip through.
-export function fillFormulaCostError(
-  formula: string,
-  copies: number,
-  rowDelta: number,
-  columnDelta: number,
-  hostSheet: string,
-  sheets: readonly FormulaCostSheet[],
-): string | null {
-  const lastCopy = offsetFormulaRefs(formula, rowDelta, columnDelta)
-  const candidates = lastCopy === formula ? [formula] : [formula, lastCopy]
-  const perEvaluation = Math.max(
-    ...candidates.map(
-      (candidate) =>
-        Math.max(1, largestReferenceCells(candidate, hostSheet, sheets)) +
-        estimateQuadraticCost(candidate, hostSheet, sheets),
-    ),
-  )
-  const total = perEvaluation * copies
-  if (total <= MAX_QUADRATIC_COST) return null
-  return (
-    `Filling this formula across ${copies.toLocaleString('en-US')} cells would perform about ` +
-    `${total.toLocaleString('en-US')} element operations and freeze the app ` +
-    '(each copy re-scans the large range it references). ' +
-    'Rewrite it with relative references so each row only touches its own cells, ' +
-    'or narrow the referenced range before filling.'
+    'Avoid distinct-count/array-criteria formulas over large ranges.'
   )
 }

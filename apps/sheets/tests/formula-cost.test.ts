@@ -94,14 +94,13 @@ describe('estimateQuadraticCost', () => {
 })
 
 describe('quadraticFormulaError', () => {
-  it('returns a model-facing error pointing at aggregate_range', () => {
+  it('returns an error explaining the freeze', () => {
     const error = quadraticFormulaError(
       '=SUMPRODUCT(1/COUNTIF(明细!D2:D88588,明细!D2:D88588))',
       'Summary',
       SHEETS,
     )
     expect(error).toContain('freeze')
-    expect(error).toContain('aggregate_range')
   })
 
   it('returns null for safe formulas', () => {

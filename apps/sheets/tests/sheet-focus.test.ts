@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { focusWorksheet, keepActiveSheet } from '../src/renderer/sheet-focus'
+import { keepActiveSheet } from '../src/renderer/sheet-focus'
 
 afterEach(() => vi.useRealTimers())
 
@@ -30,21 +30,12 @@ describe('background sheet restoration', () => {
 
   it('keeps new background loads from stealing focus after explicit navigation', async () => {
     vi.useFakeTimers()
-    const { summary, data, workbook, target } = fixture()
-    focusWorksheet(target, () => workbook.setActiveSheet(data))
+    const { summary, data, workbook } = fixture()
+    workbook.setActiveSheet(data)
     const background = { ...summary, getWorkbook: () => workbook }
     keepActiveSheet(background, () => {
       queueMicrotask(() => workbook.setActiveSheet(summary))
     })
-    await vi.runAllTimersAsync()
-    expect(workbook.getActiveSheet()).toBe(data)
-  })
-
-  it('does not undo an explicit focus on the sheet being loaded', async () => {
-    vi.useFakeTimers()
-    const { data, workbook, target } = fixture()
-    keepActiveSheet(target, () => workbook.setActiveSheet(data))
-    focusWorksheet(target, () => workbook.setActiveSheet(data))
     await vi.runAllTimersAsync()
     expect(workbook.getActiveSheet()).toBe(data)
   })

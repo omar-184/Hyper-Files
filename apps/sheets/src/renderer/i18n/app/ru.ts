@@ -142,15 +142,10 @@ export const ru = {
   appRefresh: 'Обновить',
   appRefreshHintIn: 'Пересчитать текущую сводную таблицу',
   appRefreshHintOut: 'Сначала выделите область сводной таблицы, затем обновите',
-  appAttachmentReadFailed: '{name}: не удалось прочитать',
-  appTooManyImages: 'Не более {max} изображений на сообщение; лишние были проигнорированы',
-  appAppliedRevision:
-    'Применено (версия {revision}) — отмените с помощью ⌘Z, сохраните в файл с помощью ⌘S.',
   appCannotReadImage: 'Не удаётся прочитать файл изображения.',
   appTableNotDeletable:
     'Таблица «{name}» не существует или не была создана в этом сеансе — таблицы, уже имеющиеся в файле, пока нельзя удалить.',
   appImageNotLoaded: 'Не удалось загрузить изображение: {path}',
-  appApplyFailed: '⚠️ Не удалось применить: {reason}',
   appPivotChartNeedsFile: 'Сначала откройте файл XLSX — сводная диаграмма записывается в файл.',
   appCursorNotInPivot:
     'Курсор находится вне сводной таблицы — сначала выделите ячейку в области её вывода.',
@@ -282,17 +277,7 @@ export const ru = {
   appSavedTwoPhase: 'Сохранено.',
   appSaveSecondFailed:
     'Структура сохранена, но вторая фаза (сводные таблицы/таблицы/определённые имена) не удалась: {reason}',
-  appReadyInitial: 'Готов к локальной детерминированной команде ИИ.',
-  appAiThinking: 'ИИ думает…',
-  appAiDone: 'ИИ завершил работу',
-  appAiTurnLimit:
-    '(Достигнут лимит раундов вызова инструментов для этого запроса; ответ выше основан на прочитанном и может быть неполным.)',
-  appAiTruncatedNote: '(Ответ был обрезан из-за ограничения длины и может быть неполным.)',
-  appAiStopped: '(остановлено)',
-  appAiNoSummary: 'ИИ завершил работу без сводки.',
-  appAiNoAction:
-    'ИИ не выполнил никаких действий и не дал ответа. Попробуйте ещё раз или переформулируйте.',
-  appNewConversation: 'Начат новый диалог.',
+  appReadyInitial: 'Готово',
   appPivotCellNoEdit:
     'Эта ячейка входит в сводную таблицу — её редактирование пока не поддерживается.',
   appAreaStreaming: 'Эта область ещё загружается потоково — повторите попытку чуть позже.',
@@ -336,17 +321,8 @@ export const ru = {
   appDvListOptions: 'Список: {items}',
   appDvListFromRange: 'Список (из диапазона {range})',
   appRuleBrokenRef: 'Недействительная ссылка (#REF!) — правило никогда не сработает',
-  appCellStreaming: 'Эта ячейка ещё загружается потоково — повторите попытку чуть позже.',
-  appPreviewCreated: 'Предварительный просмотр создан — ничего не изменится, пока вы не примените.',
-  appPreviewCreatedDemo: 'Предварительный просмотр создан. Состояние книги не изменилось.',
-  appPreviewFailed: 'Не удаётся создать предварительный просмотр.',
   appApplyTxFailed: 'Не удаётся применить транзакцию.',
   appTxCommitted: 'Транзакция зафиксирована (версия {revision}).',
-  appPreviewOtherWorkbook: 'Предварительный просмотр относился к другой книге — создайте новый.',
-  appPreviewSheetGone:
-    'Лист предварительного просмотра больше не существует — создайте новый просмотр.',
-  appWorkbookChangedSincePreview:
-    'Книга изменилась после создания просмотра — создайте новый просмотр.',
   appAppliedJournaled: 'Применено — изменения записаны в журнал; сохраните с помощью ⌘S.',
   appUndoCommitted: 'Отмена зафиксирована (версия {revision}).',
   appUndoFailed: 'Не удаётся отменить.',
@@ -602,8 +578,6 @@ export const ru = {
   appShowCommentsTitle: 'Закрепить/открепить всплывающее примечание выделенной ячейки',
   appStructuralShiftBlocked:
     'Диаграмма или таблица на этом листе привязана к затрагиваемым строкам/столбцам, сдвиг невозможен; структурное изменение не сохранено. Отмените его (⌘Z) и сохраните снова.',
-  appAiChangesNotSaved:
-    'Изменения ИИ применены (не сохранены). Отмена — ⌘Z; сохранить в файл — ⌘S.',
   appChartUpdated: 'Диаграмма обновлена.',
   appChartNotEditable: 'Эта диаграмма недоступна для редактирования.',
   appChartEditRecorded: 'Изменение диаграммы записано — сохраните с помощью ⌘S.',
@@ -680,7 +654,6 @@ export const ru = {
   appRibbonCollapse: 'Свернуть ленту',
   appRibbonExpand: 'Развернуть ленту',
   appTabView: 'Вид',
-  appTabAi: 'ИИ',
   appTabChartDesign: 'Конструктор диаграмм',
   appAutoSave: 'Автосохранение',
   appAutoSaveTitle: 'Автосохранение доступно только для облачных файлов',
@@ -697,8 +670,6 @@ export const ru = {
   appRevisionChip: 'Версия {revision}',
   appOpenWorkbookTitle: 'Открыть книгу (⌘O)',
   appOpenXlsx: 'Открыть XLSX',
-  appHideAi: 'Скрыть ИИ',
-  appShowAi: 'Показать ИИ',
   appCategoryAxisTitle: 'Название оси категорий',
   appValueAxisTitle: 'Название оси значений',
   appTitleText: 'Текст названия',
@@ -768,10 +739,6 @@ export const ru = {
   appFormatPaneDetail: 'Оси, боковой зазор, вырезание',
   appGroupChartActions: 'Действия с диаграммой',
   appRemoveFromSheet: 'Удалить с листа',
-  appGroupAiAssistant: 'Помощник ИИ',
-  appAiOpenPanelDetail: 'Чат в боковой панели',
-  appGroupAiStarters: 'Быстрый старт',
-  appAiStarterDetail: 'Отправить в панель ИИ',
   appGroupTables: 'Таблицы',
   appFromSelection: 'Из текущего выделения',
   appEditPivotTable: 'Изменить сводную таблицу',
@@ -1239,11 +1206,6 @@ export const ru = {
   appGroupProofing: 'Правописание',
   appWorkbookStatsLabel: 'Статистика книги',
   appSheetsCellsFormulas: 'Листы, ячейки, формулы',
-  appTranslate: 'Перевод',
-  appGroupLanguage: 'Язык',
-  appTranslateTitle: 'Перевести выделение с помощью ИИ',
-  appTranslatePrompt:
-    'Переведи текст выделенного диапазона на {language} и запиши перевод в те же ячейки.',
   appNewCommentDetail: 'Добавить или изменить',
   appDeleteLabel: 'Удалить',
   appNoteAtSelection: 'Заметка в выделении',

@@ -191,7 +191,7 @@ function boundsOf(matrix: CellMatrix): IRange | null {
   return { startRow, endRow, startColumn, endColumn }
 }
 
-export interface MergeSourcesResult {
+interface MergeSourcesResult {
   importedSheets: number
   files: number
   /** final (deduped) names of the sheets created in the current workbook */

@@ -33,7 +33,7 @@ export const zoteroStrings = defineStrings({
     zoteroConnectionError: 'Unable to connect to Zotero. Start Zotero and keep it running.',
     zoteroOperationError: 'The Zotero operation failed.',
     zoteroNoteFieldsUnsupported:
-      'This document has Zotero citations in footnotes or endnotes, which GenOffice cannot update yet. Zotero commands are turned off here so the bibliography stays intact.',
+      'This document has Zotero citations in footnotes or endnotes, which Hyper-Files cannot update yet. Zotero commands are turned off here so the bibliography stays intact.',
     zoteroGroup: 'Zotero',
   },
   ja: {

@@ -140,17 +140,6 @@ function undoRedoService(runtime: UniverRuntime): UndoRedoServiceInternals {
   return runtime.univer.__getInjector().get<UndoRedoServiceInternals>(IUndoRedoService)
 }
 
-export function undoStackDepth(runtime: UniverRuntime | null): number {
-  if (!runtime) return 0
-  try {
-    const unitId = runtime.univerAPI.getActiveWorkbook()?.getId()
-    if (!unitId) return 0
-    return undoRedoService(runtime)._undoStacks?.get(unitId)?.length ?? 0
-  } catch {
-    return 0
-  }
-}
-
 /// Snapshot the active unit's undo stack, rewritten against the saved file's
 /// unitId. Must run while the pre-save unit is still alive (style pool).
 /// Returns null when there is nothing carriable; never throws.

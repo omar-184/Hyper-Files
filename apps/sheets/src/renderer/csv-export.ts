@@ -105,7 +105,7 @@ export function activeCsvSheet(
   }
 }
 
-export function sheetHasFormulas(sheet: CsvWorksheet): boolean {
+function sheetHasFormulas(sheet: CsvWorksheet): boolean {
   let found = false
   sheet
     .getSheet()

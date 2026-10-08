@@ -147,15 +147,10 @@ export const ja = {
   appRefreshHintIn: '現在のピボットテーブルを再計算',
   appRefreshHintOut: 'ピボット範囲を選択してから更新してください',
   // App status bar / toast messages
-  appAttachmentReadFailed: '{name}: 読み取りに失敗しました',
-  appTooManyImages: '1 つのメッセージで送信できる画像は最大 {max} 枚です。超過分は無視されました',
-  appAppliedRevision:
-    '適用しました（リビジョン {revision}）— ⌘Z で元に戻せます。⌘S でファイルに保存します。',
   appCannotReadImage: '画像ファイルを読み取れません。',
   appTableNotDeletable:
     'テーブル "{name}" は存在しないか、このセッションで作成されたものではありません。ファイルに元からあるテーブルは今のところ削除できません。',
   appImageNotLoaded: '画像を読み込めませんでした: {path}',
-  appApplyFailed: '⚠️ 適用に失敗しました：{reason}',
   appPivotChartNeedsFile:
     '先に XLSX ファイルを開いてください。ピボットグラフはファイルに書き込まれます。',
   appCursorNotInPivot:
@@ -289,17 +284,8 @@ export const ja = {
   appSavedTwoPhase: '保存しました。',
   appSaveSecondFailed:
     '構造は保存されましたが、2 段階目（ピボットテーブル/テーブル/名前付き範囲）に失敗しました：{reason}',
-  // AI session / status bar
-  appReadyInitial: '準備完了 — ローカルの決定論的 AI コマンドを使用できます。',
-  appAiThinking: 'AI が考えています…',
-  appAiDone: 'AI が完了しました',
-  appAiTurnLimit:
-    '（1 回のリクエストのツール呼び出し上限に達したため、ここまでに読み取った情報に基づく回答です。不完全な場合があります。）',
-  appAiTruncatedNote: '（返信は長さ制限により途中で打ち切られ、不完全な可能性があります。）',
-  appAiStopped: '（停止しました）',
-  appAiNoSummary: 'AI は完了しましたが、要約は生成されませんでした。',
-  appAiNoAction: 'AI は操作も返信も行いませんでした。もう一度試すか、言い換えてください。',
-  appNewConversation: '新しい会話を開始しました。',
+  // Status bar
+  appReadyInitial: '準備完了',
   // Streaming load / edit gating
   appPivotCellNoEdit: 'このセルはピボットテーブルの一部です — 編集には未対応です。',
   appAreaStreaming: 'この範囲はまだストリーミング読み込み中です — しばらくしてからお試しください。',
@@ -338,21 +324,13 @@ export const ja = {
     'このシートにはシート スコープの定義済み名前があるため、複製はまだサポートされていません。',
   appMoveRowsColsUnsaved:
     '列全体の移動は、インポートしたブックには現時点では保存できません——行全体の移動には対応しています。',
-  // Preview / apply / undo
+  // Workbook state
   appNoWorkbookOpen: '開いているブックがありません。',
   appDvListOptions: 'リスト：{items}',
   appDvListFromRange: 'リスト（範囲 {range} から）',
   appRuleBrokenRef: '参照が無効です（#REF!）。このルールは適用されません',
-  appCellStreaming: 'このセルはまだストリーミング読み込み中です — しばらくしてからお試しください。',
-  appPreviewCreated: 'プレビューを作成しました — 適用するまで何も変更されません。',
-  appPreviewCreatedDemo: 'プレビューを作成しました。ブックの状態は変更されていません。',
-  appPreviewFailed: 'プレビューを作成できません。',
   appApplyTxFailed: 'このトランザクションを適用できません。',
   appTxCommitted: 'トランザクションをコミットしました（リビジョン {revision}）。',
-  appPreviewOtherWorkbook: 'このプレビューは別のブックのものです — 作成し直してください。',
-  appPreviewSheetGone: 'プレビューしたシートが存在しません — プレビューを作成し直してください。',
-  appWorkbookChangedSincePreview:
-    'プレビュー後にブックが変更されました — プレビューを作成し直してください。',
   appAppliedJournaled: '適用しました — 変更は記録済みです。⌘S でファイルに保存します。',
   appUndoCommitted: '元に戻す操作をコミットしました（リビジョン {revision}）。',
   appUndoFailed: '元に戻せません。',
@@ -619,8 +597,6 @@ export const ja = {
   appShowCommentsTitle: '選択セルのコメント吹き出しを固定/固定解除',
   appStructuralShiftBlocked:
     'このシートのグラフやテーブルが対象の行/列に固定されているため移動できず、構造変更は保存されませんでした。元に戻して(⌘Z)から再度保存してください。',
-  appAiChangesNotSaved:
-    'AI の変更を適用しました(未保存)。⌘Z で元に戻せます。⌘S でファイルに保存します。',
   // Floating objects / chart editing
   appChartUpdated: 'グラフを更新しました。',
   appChartNotEditable: 'このグラフは編集できません。',
@@ -697,7 +673,6 @@ export const ja = {
   appRibbonCollapse: 'リボンを折りたたむ',
   appRibbonExpand: 'リボンを展開する',
   appTabView: '表示',
-  appTabAi: 'AI',
   appTabChartDesign: 'グラフのデザイン',
   // Title bar / status
   appAutoSave: '自動保存',
@@ -715,8 +690,6 @@ export const ja = {
   appRevisionChip: 'リビジョン {revision}',
   appOpenWorkbookTitle: 'ブックを開く（⌘O）',
   appOpenXlsx: 'XLSX を開く',
-  appHideAi: 'AI を非表示',
-  appShowAi: 'AI を表示',
   // Chart text dialog
   appCategoryAxisTitle: '項目軸のタイトル',
   appValueAxisTitle: '数値軸のタイトル',
@@ -792,11 +765,6 @@ export const ja = {
   appFormatPaneDetail: '軸、要素の間隔、切り出し',
   appGroupChartActions: 'グラフの操作',
   appRemoveFromSheet: 'シートから削除',
-  // AI Tab
-  appGroupAiAssistant: 'AI アシスタント',
-  appAiOpenPanelDetail: 'サイドバーで会話',
-  appGroupAiStarters: 'クイック スタート',
-  appAiStarterDetail: 'AI パネルに送信',
   // Insert tab
   appGroupTables: 'テーブル',
   appFromSelection: '現在の選択範囲から',
@@ -1269,11 +1237,6 @@ export const ja = {
   appGroupProofing: '文章校正',
   appWorkbookStatsLabel: 'ブックの統計情報',
   appSheetsCellsFormulas: 'シート、セル、数式',
-  appTranslate: '翻訳',
-  appGroupLanguage: '言語',
-  appTranslateTitle: 'AI で選択範囲を翻訳',
-  appTranslatePrompt:
-    '選択範囲のテキストを{language}に翻訳し、訳文を元のセルに書き戻してください。',
   appNewCommentDetail: '追加または編集',
   appDeleteLabel: '削除',
   appNoteAtSelection: '選択位置のメモ',

@@ -1,6 +1,6 @@
 {
   "name": "@genoffice/docs",
-  "productName": "GenOffice Docs",
+  "productName": "Hyper-Files Docs",
   "version": "0.1.0",
   "license": "Apache-2.0",
   "private": true,
@@ -42,12 +42,12 @@
     "vite": "^7.3.1",
     "vitest": "^4.1.11"
   },
-  "author": "GenOffice",
+  "author": "Hyper-Files",
   "build": {
-    "appId": "com.genoffice.docs",
-    "productName": "GenOffice Docs",
+    "appId": "io.github.omar184.hyperfiles.docs",
+    "productName": "Hyper-Files Docs",
     "electronVersion": "43.3.0",
-    "artifactName": "AIDocx-${version}-${arch}.${ext}",
+    "artifactName": "HyperFilesDocs-${version}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },
