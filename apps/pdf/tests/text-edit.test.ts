@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { inflateSync } from 'node:zlib'
-import { PDFDocument, StandardFonts } from 'pdf-lib'
+import { PDFDocument, PDFName, StandardFonts } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 import {
   applyTextEdits,
@@ -1123,6 +1123,160 @@ describe('validateTextEdits', () => {
     // No bounds for an edit that does not match
     const [miss] = await validateTextEdits(f.bytes, [edit(f, 'Never was here', 'X')])
     expect(miss!.bounds).toBeUndefined()
+  })
+})
+
+describe('text inside Form XObjects', () => {
+  /** Page text per page via pdf.js, runs joined with '|' */
+  async function pageTexts(bytes: Uint8Array): Promise<string[]> {
+    const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    const doc = await getDocument({ data: bytes.slice(), useSystemFonts: true }).promise
+    try {
+      const out: string[] = []
+      for (let i = 1; i <= doc.numPages; i++) {
+        const content = await (await doc.getPage(i)).getTextContent()
+        out.push(content.items.map((t) => ('str' in t ? t.str : '')).join('|'))
+      }
+      return out
+    } finally {
+      await doc.loadingTask.destroy()
+    }
+  }
+
+  /** Two text lines on a page that is then drawn as a Form XObject (scaled 0.5 and
+      offset by 10/20) onto `pages` pages that all share that one form, the way
+      imposition / merge tools and some printers write PDFs */
+  async function makeFormFixture(pages = 1, nest = false) {
+    const src = await PDFDocument.create()
+    const p = src.addPage([595, 842])
+    const font = await src.embedFont(StandardFonts.Helvetica)
+    p.drawText('Hello world', { x: 50, y: 700, size: 14, font })
+    p.drawText('Second line', { x: 50, y: 600, size: 14, font })
+    let inner = await src.save()
+    if (nest) {
+      // One more wrapping level: the text then sits in a form inside a form
+      const mid = await PDFDocument.create()
+      const [e] = await mid.embedPdf(inner)
+      mid.addPage([595, 842]).drawPage(e!, { x: 0, y: 0 })
+      inner = await mid.save()
+    }
+    const doc = await PDFDocument.create()
+    const [emb] = await doc.embedPdf(inner)
+    for (let i = 0; i < pages; i++) {
+      doc.addPage([595, 842]).drawPage(emb!, { x: 10, y: 20, xScale: 0.5, yScale: 0.5 })
+    }
+    const w = font.widthOfTextAtSize('Hello world', 14)
+    const rect: [number, number, number, number] = [
+      45 * 0.5 + 10,
+      694 * 0.5 + 20,
+      (55 + w) * 0.5 + 10,
+      718 * 0.5 + 20,
+    ]
+    return { bytes: await doc.save({ useObjectStreams: false }), rect }
+  }
+
+  const formEdit = (
+    rect: [number, number, number, number],
+    oldText: string,
+    newText: string,
+    pageIndex = 0,
+  ): TextEditInput => ({ pageIndex, rect, oldText, newText, fontSize: 7 })
+
+  it('locates a run drawn inside a form and reports page-space bounds', async () => {
+    const f = await makeFormFixture()
+    const [v] = await validateTextEdits(f.bytes, [formEdit(f.rect, 'Hello world', 'Hi')])
+    expect(v!.reason).toBeNull()
+    const b = v!.bounds!
+    expect(b[0]).toBeGreaterThan(f.rect[0] - 2)
+    expect(b[2]).toBeLessThan(f.rect[2] + 2)
+    expect(b[1]).toBeGreaterThan(f.rect[1] - 2)
+    expect(b[3]).toBeLessThan(f.rect[3] + 2)
+  })
+
+  it('edits the run in place and keeps the rest of the form', async () => {
+    const f = await makeFormFixture()
+    const out = await applyAll(f.bytes, [formEdit(f.rect, 'Hello world', 'Hello there')])
+    const [text] = await pageTexts(out)
+    expect(text).toContain('Hello there')
+    expect(text).not.toContain('Hello world')
+    expect(text).toContain('Second line')
+    // Same place on the page: the new text is found again under the original rect
+    const [again] = await validateTextEdits(out, [formEdit(f.rect, 'Hello there', 'X')])
+    expect(again!.reason).toBeNull()
+  })
+
+  it('renders a lifted run exactly where the form drew it', async () => {
+    const f = await makeFormFixture()
+    const render = async (bytes: Uint8Array) => {
+      const m = await loadPdfium()
+      return withDocument(m, bytes, async (doc) => {
+        const page = m._FPDF_LoadPage(doc, 0)
+        const [w, h] = [595, 842]
+        const buf = m._malloc(w * h * 4)
+        const bmp = m._FPDFBitmap_CreateEx(w, h, 4, buf, w * 4)
+        m._FPDFBitmap_FillRect(bmp, 0, 0, w, h, 0xffffffff)
+        m._FPDF_RenderPageBitmap(bmp, page, 0, 0, w, h, 0, 0)
+        const px = Uint8Array.from(m.HEAPU8.subarray(buf, buf + w * h * 4))
+        m._FPDFBitmap_Destroy(bmp)
+        m._free(buf)
+        m._FPDF_ClosePage(page)
+        return px
+      })
+    }
+    // Identical text: the run leaves the form for the page but must not move a pixel
+    const out = await applyAll(f.bytes, [formEdit(f.rect, 'Hello world', 'Hello world')])
+    expect(out).not.toBe(f.bytes)
+    expect(await render(out)).toEqual(await render(f.bytes))
+  })
+
+  it('deletes a run inside a form', async () => {
+    const f = await makeFormFixture()
+    const out = await applyAll(f.bytes, [formEdit(f.rect, 'Hello world', '')])
+    const [text] = await pageTexts(out)
+    expect(text).not.toContain('Hello world')
+    expect(text).toContain('Second line')
+  })
+
+  it('leaves other pages that share the same form untouched', async () => {
+    const f = await makeFormFixture(3)
+    const out = await applyAll(f.bytes, [formEdit(f.rect, 'Hello world', 'Hello there', 1)])
+    const texts = await pageTexts(out)
+    expect(texts[1]).toContain('Hello there')
+    expect(texts[1]).not.toContain('Hello world')
+    for (const i of [0, 2]) {
+      expect(texts[i]).toContain('Hello world')
+      expect(texts[i]).not.toContain('Hello there')
+      expect(texts[i]).toContain('Second line')
+    }
+  })
+
+  it('leaves pages alone that reach the form through a shared resources dict', async () => {
+    const f = await makeFormFixture(2)
+    // One indirect /Resources dict for both pages: the form's own reference is then
+    // written once, yet both pages draw it
+    const doc = await PDFDocument.load(f.bytes)
+    const [p0, p1] = doc.getPages()
+    const ref = doc.context.register(p0!.node.Resources()!)
+    p0!.node.set(PDFName.of('Resources'), ref)
+    p1!.node.set(PDFName.of('Resources'), ref)
+    p1!.node.set(PDFName.of('Contents'), p0!.node.get(PDFName.of('Contents'))!)
+    const bytes = await doc.save({ useObjectStreams: false })
+    expect(await pageTexts(bytes)).toEqual(['Hello world|Second line', 'Hello world|Second line'])
+    const out = await applyAll(bytes, [formEdit(f.rect, 'Hello world', 'Hello there')])
+    const texts = await pageTexts(out)
+    expect(texts[0]).toContain('Hello there')
+    expect(texts[1]).toContain('Hello world')
+    expect(texts[1]).not.toContain('Hello there')
+  })
+
+  it('reaches a run in a form nested inside another form', async () => {
+    const f = await makeFormFixture(2, true)
+    const out = await applyAll(f.bytes, [formEdit(f.rect, 'Hello world', 'Hello there')])
+    const texts = await pageTexts(out)
+    expect(texts[0]).toContain('Hello there')
+    expect(texts[0]).not.toContain('Hello world')
+    expect(texts[0]).toContain('Second line')
+    expect(texts[1]).toContain('Hello world')
   })
 })
 
