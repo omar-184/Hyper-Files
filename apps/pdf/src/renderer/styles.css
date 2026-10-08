@@ -3252,3 +3252,41 @@ button {
   font-size: 12px;
   color: var(--text);
 }
+
+/* ── Form designer: pending fields drawn on the page, properties dialog ── */
+.pdf-field-draft {
+  fill: var(--accent-soft);
+  fill-opacity: 0.6;
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
+.pdf-draw-selected .pdf-field-draft {
+  stroke-dasharray: none;
+  stroke-width: 2;
+}
+
+.pdf-field-draft-label {
+  fill: var(--accent);
+  font-size: 9px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pdf-field-props {
+  width: 340px;
+}
+
+.pdf-field-props-options {
+  height: 96px;
+  padding: 6px 8px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.pdf-field-props-error {
+  margin-top: -6px;
+  font-size: 12px;
+  color: var(--pdf-error);
+}

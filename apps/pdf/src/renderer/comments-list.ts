@@ -180,7 +180,8 @@ export function buildCommentList(src: CommentSources): CommentEntry[] {
   }
   for (const d of src.drawings) {
     const input = d.input
-    if (d.formWidgetId || input.kind === 'note' || input.kind === 'image') continue
+    if (d.formWidgetId || input.kind === 'note' || input.kind === 'image' || input.kind === 'field')
+      continue
     if (!order.has(input.pageIndex)) continue
     const box = drawingBox(input)
     if (!box) continue

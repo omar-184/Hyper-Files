@@ -69,6 +69,7 @@ import { buildHeadingOutline, remapOutlinePages } from './heading-outline'
 import { printPdf } from './print'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
+import { FieldPropsDialog, type FieldProps } from './FieldPropsDialog'
 import { SignatureDialog, fileToCanvas } from './SignatureDialog'
 import type { SignatureData } from './SignatureDialog'
 import { signatureDrawingForField } from './signature-field'
@@ -124,6 +125,7 @@ import { Dropdown, useDismissablePopover, useRibbonCollapse } from '@genoffice/u
 import { useI18n } from './i18n/locale'
 import { useAutosave } from './useAutosave'
 import { MAX_REDACTION_REGIONS } from '../shared/ipc'
+import type { NewFieldType } from '../shared/ipc'
 import type {
   AnnotDeleteInput,
   CropPagesRequest,
@@ -220,6 +222,11 @@ import {
   IconArrow,
   IconNote,
   IconTextBox,
+  IconFieldText,
+  IconFieldCheck,
+  IconFieldRadio,
+  IconFieldDropdown,
+  IconFieldSign,
   IconSign,
   IconPreviousField,
   IconNextField,
@@ -276,6 +283,52 @@ import {
 
 GlobalWorkerOptions.workerSrc = workerUrl
 
+/** Form designer tools: icon, label, the size a plain click places (PDF pt) and the
+    stem of auto-generated names (Acrobat style: Text1, Check Box1, …) */
+const FIELD_TOOLS = [
+  {
+    type: 'text' as const,
+    icon: IconFieldText,
+    key: 'fieldText' as const,
+    size: [160, 22],
+    stem: 'Text',
+  },
+  {
+    type: 'checkbox' as const,
+    icon: IconFieldCheck,
+    key: 'fieldCheckbox' as const,
+    size: [14, 14],
+    stem: 'Check Box',
+  },
+  {
+    type: 'radio' as const,
+    icon: IconFieldRadio,
+    key: 'fieldRadio' as const,
+    size: [14, 14],
+    stem: 'Group',
+  },
+  {
+    type: 'dropdown' as const,
+    icon: IconFieldDropdown,
+    key: 'fieldDropdown' as const,
+    size: [140, 22],
+    stem: 'Dropdown',
+  },
+  {
+    type: 'signature' as const,
+    icon: IconFieldSign,
+    key: 'fieldSignature' as const,
+    size: [180, 48],
+    stem: 'Signature',
+  },
+] satisfies {
+  type: NewFieldType
+  size: [number, number]
+  stem: string
+  key: string
+  icon: unknown
+}[]
+
 const DRAW_TOOLS = [
   { tool: 'ink' as const, icon: IconInk, key: 'drawInk' as const },
   { tool: 'rect' as const, icon: IconRect, key: 'drawRect' as const },
@@ -299,7 +352,7 @@ const RIBBON_TABS = [
   { id: 'page', labelKey: 'ribbonTabPage' },
   { id: 'view', labelKey: 'ribbonTabView' },
 ] as const
-type RibbonTab = (typeof RIBBON_TABS)[number]['id'] | 'fillForm'
+type RibbonTab = (typeof RIBBON_TABS)[number]['id'] | 'fillForm' | 'prepareForm'
 
 export default function App() {
   const { lang, t } = useI18n()
@@ -699,6 +752,10 @@ export default function App() {
     editId: string | null
   } | null>(null)
   const [textBoxSize, setTextBoxSize] = useState<number>(TEXT_BOX_DEFAULT_SIZE)
+  /** Field type the form designer places while drawTool is 'field' */
+  const [fieldType, setFieldType] = useState<NewFieldType>('text')
+  /** Pending form field whose properties dialog is open */
+  const [fieldDlg, setFieldDlg] = useState<string | null>(null)
   /** In-progress rewrite of an existing comment. Hoisted out of the margin card so a
       save can fold it in before the post-save reload tears the edit box down. */
   const [noteEditDraft, setNoteEditDraft] = useState<{
@@ -3839,6 +3896,63 @@ export default function App() {
     ])
   }
 
+  /** Field names in use: the file's fields plus pending ones (but not the one being edited) */
+  const fieldNameTaken = (name: string, exceptId?: string): boolean =>
+    (formCatalog?.fields.has(name) ?? false) ||
+    drawings.some((d) => d.id !== exceptId && d.input.kind === 'field' && d.input.name === name)
+
+  /** Place a new form field. Radio buttons placed one after another join one group. */
+  const placeField = (origIdx: number, rect: [number, number, number, number]) => {
+    const tool = FIELD_TOOLS.find((f) => f.type === fieldType)!
+    const last = drawings[drawings.length - 1]?.input
+    let name: string
+    let exportValue: string | undefined
+    if (fieldType === 'radio' && last?.kind === 'field' && last.fieldType === 'radio') {
+      name = last.name
+      const values = new Set(
+        drawings.flatMap((d) =>
+          d.input.kind === 'field' && d.input.name === name ? [d.input.exportValue] : [],
+        ),
+      )
+      let n = values.size + 1
+      while (values.has(`Choice${n}`)) n++
+      exportValue = `Choice${n}`
+    } else {
+      let n = 1
+      while (fieldNameTaken(`${tool.stem}${n}`)) n++
+      name = `${tool.stem}${n}`
+      if (fieldType === 'radio') exportValue = 'Choice1'
+    }
+    const id = newId()
+    applyEditOps([
+      {
+        op: 'addDrawing',
+        id,
+        drawing: {
+          kind: 'field',
+          pageIndex: origIdx,
+          rect,
+          fieldType,
+          name,
+          ...(exportValue ? { exportValue } : {}),
+          ...(fieldType === 'dropdown' ? { options: [] } : {}),
+        },
+      },
+    ])
+    // A dropdown is useless without options: ask for them right away
+    if (fieldType === 'dropdown') setFieldDlg(id)
+  }
+
+  // The field tool belongs to the Prepare form tab; leaving the tab puts it down
+  useEffect(() => {
+    if (ribbonTab !== 'prepareForm') setDrawTool((tool) => (tool === 'field' ? null : tool))
+  }, [ribbonTab])
+
+  const applyFieldProps = (id: string, props: FieldProps) => {
+    setFieldDlg(null)
+    applyEditOps([{ op: 'setFieldProps', id, ...props }])
+  }
+
   const editTextBox = (origIdx: number, id: string) => {
     const d = drawings.find((x) => x.id === id)
     if (!d || d.input.kind !== 'freetext') return
@@ -6010,6 +6124,18 @@ export default function App() {
               {t('ribbonTabFillForm')}
             </button>
           )}
+          {!readOnly && (
+            <button
+              className={`ribbon-tab ribbon-tab-context ${collapse.tabClass(ribbonTab === 'prepareForm')}`}
+              data-tip={collapse.tabTip(ribbonTab === 'prepareForm') ?? t('prepareFormHint')}
+              onClick={() => {
+                collapse.onTabPress(ribbonTab === 'prepareForm')
+                setRibbonTab('prepareForm')
+              }}
+            >
+              {t('ribbonTabPrepareForm')}
+            </button>
+          )}
           <span className="ribbon-tabs-spacer" />
           {readOnly && <span className="tb-readonly">{t('roEncrypted')}</span>}
           {/* The file on disk is only touched by an explicit save until then. */}
@@ -6305,6 +6431,64 @@ export default function App() {
                       <IconWatermark />
                     </span>
                     {t('watermark')}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {ribbonTab === 'prepareForm' && (
+            <>
+              <div className="ribbon-group">
+                <div className="ribbon-group-items">
+                  {FIELD_TOOLS.map(({ type, icon: FieldIcon, key }) => {
+                    const active = drawTool === 'field' && fieldType === type
+                    return (
+                      <button
+                        key={type}
+                        className={`rb-big${active ? ' active' : ''}`}
+                        disabled={readOnly}
+                        data-tip={t(key)}
+                        onClick={() => {
+                          setEditTextMode(false)
+                          setTextDraft(null)
+                          setPendingTextInsert(null)
+                          setImagePick(null)
+                          setEditImageMode(false)
+                          setFieldType(type)
+                          setDrawTool(active ? null : 'field')
+                          if (!active) showNotice(t('fieldPlaceHint'))
+                        }}
+                      >
+                        <span className="rb-big-icon">
+                          <FieldIcon />
+                        </span>
+                        {t(key)}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="ribbon-sep" />
+              <div className="ribbon-group">
+                <div className="ribbon-group-items">
+                  <button
+                    className="rb-big"
+                    disabled={
+                      readOnly ||
+                      selected?.kind !== 'drawing' ||
+                      !(drawings.find((d) => d.id === selected.id)?.input.kind === 'field')
+                    }
+                    data-tip={t('fieldProps')}
+                    onClick={() => {
+                      if (selected?.kind !== 'drawing') return
+                      setFieldDlg(selected.id)
+                      setSelected(null)
+                    }}
+                  >
+                    <span className="rb-big-icon">
+                      <IconProps />
+                    </span>
+                    {t('fieldProps')}
                   </button>
                 </div>
               </div>
@@ -7910,6 +8094,16 @@ export default function App() {
                                 onTextBoxEdit={
                                   readOnly ? undefined : (id) => editTextBox(origIdx, id)
                                 }
+                                fieldSize={FIELD_TOOLS.find((f) => f.type === fieldType)!.size}
+                                onFieldBox={(rect) => placeField(origIdx, rect)}
+                                onFieldEdit={
+                                  readOnly
+                                    ? undefined
+                                    : (id) => {
+                                        setSelected(null)
+                                        setFieldDlg(id)
+                                      }
+                                }
                                 onNoteAt={(at) => {
                                   setActiveNote(null)
                                   setNoteDraft({ origIdx, at })
@@ -8218,6 +8412,23 @@ export default function App() {
                 style={{ left: selected.x, top: selected.y }}
                 onMouseDown={(e) => e.preventDefault()}
               >
+                {selected.kind === 'drawing' &&
+                  drawings.find((d) => d.id === selected.id)?.input.kind === 'field' && (
+                    <>
+                      <button
+                        type="button"
+                        data-tip={t('fieldProps')}
+                        aria-label={t('fieldProps')}
+                        onClick={() => {
+                          setFieldDlg(selected.id)
+                          setSelected(null)
+                        }}
+                      >
+                        <IconProps />
+                      </button>
+                      <span className="pdf-del-popup-sep" />
+                    </>
+                  )}
                 {selectedStaticTextTarget() && (
                   <>
                     <button
@@ -8477,6 +8688,20 @@ export default function App() {
                 }}
               />
             )}
+            {fieldDlg &&
+              (() => {
+                const d = drawings.find((x) => x.id === fieldDlg)
+                if (d?.input.kind !== 'field') return null
+                return (
+                  <FieldPropsDialog
+                    key={fieldDlg}
+                    field={d.input}
+                    nameTaken={(name) => fieldNameTaken(name, fieldDlg)}
+                    onApply={(props) => applyFieldProps(fieldDlg, props)}
+                    onCancel={() => setFieldDlg(null)}
+                  />
+                )
+              })()}
             {propsDlg && (
               <PropertiesDialog
                 doc={doc}

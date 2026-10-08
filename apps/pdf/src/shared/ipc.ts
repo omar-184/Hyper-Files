@@ -130,6 +130,16 @@ export interface NoteEditInput {
   contents: string
 }
 
+/** Field kinds the form designer can create */
+export type NewFieldType = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'signature'
+export const NEW_FIELD_TYPES: readonly NewFieldType[] = [
+  'text',
+  'checkbox',
+  'radio',
+  'dropdown',
+  'signature',
+]
+
 /** Drawing annotations (all coords in PDF user space, y up).
     One union member per kind; a union-literal kind would break TS narrowing. */
 interface DrawBase {
@@ -177,6 +187,23 @@ export type DrawingInput =
       createdMs?: number
       /** PNG (base64, no data: prefix) appearance for text Helvetica cannot draw */
       image?: string
+    }
+  | {
+      /** New AcroForm field placed with the form designer */
+      kind: 'field'
+      pageIndex: number
+      /** Widget rect, PDF user space [x1,y1,x2,y2] */
+      rect: [number, number, number, number]
+      fieldType: NewFieldType
+      /** Fully qualified field name; radio buttons sharing a name form one group */
+      name: string
+      /** dropdown: the option list */
+      options?: string[]
+      /** radio: this button's export value */
+      exportValue?: string
+      /** text: allow several lines */
+      multiline?: boolean
+      required?: boolean
     }
   | {
       kind: 'note'

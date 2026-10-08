@@ -17,6 +17,7 @@ import type {
   TextEditInput,
   TextInsertInput,
 } from '../../shared/ipc'
+import { NEW_FIELD_TYPES } from '../../shared/ipc'
 import type { LocalMarkup } from '../annotations'
 import type { LocalDrawing } from '../DrawLayer'
 import type { LocalImageEdit } from '../ImageEditLayer'
@@ -145,12 +146,22 @@ register({
   validate(op, ctx) {
     const d = obj<DrawingInput>(op.drawing, 'drawing')
     pageIndex(d.pageIndex, ctx, 'drawing.pageIndex')
-    if (!['ink', 'rect', 'ellipse', 'line', 'arrow', 'image', 'note', 'freetext'].includes(d.kind))
+    if (
+      !['ink', 'rect', 'ellipse', 'line', 'arrow', 'image', 'note', 'freetext', 'field'].includes(
+        d.kind,
+      )
+    )
       throw new GuidedError(
-        'drawing.kind must be ink | rect | ellipse | line | arrow | image | note | freetext',
+        'drawing.kind must be ink | rect | ellipse | line | arrow | image | note | freetext | field',
       )
     if ((d.kind === 'note' || d.kind === 'freetext') && typeof d.contents !== 'string')
       throw new GuidedError(`a ${d.kind} drawing needs string contents`)
+    if (d.kind === 'field') {
+      if (!NEW_FIELD_TYPES.includes(d.fieldType))
+        throw new GuidedError(`field.fieldType must be ${NEW_FIELD_TYPES.join(' | ')}`)
+      if (typeof d.name !== 'string' || !d.name.trim())
+        throw new GuidedError('a field drawing needs a non-empty "name"')
+    }
   },
   apply(op, s) {
     const drawing = op.drawing as DrawingInput
@@ -223,6 +234,39 @@ register({
 })
 
 register({
+  name: 'setFieldProps',
+  touches: ['drawings'],
+  validate(op) {
+    id(op)
+    if (typeof op.name !== 'string' || !op.name.trim())
+      throw new GuidedError('"name" must be a non-empty string')
+    if (
+      op.options !== undefined &&
+      (!Array.isArray(op.options) || !op.options.every((o) => typeof o === 'string'))
+    )
+      throw new GuidedError('"options" must be an array of strings')
+  },
+  apply(op, s) {
+    return {
+      drawings: s.drawings.map((d) => {
+        if (d.id !== op.id || d.input.kind !== 'field') return d
+        return {
+          ...d,
+          input: {
+            ...d.input,
+            name: op.name as string,
+            options: op.options as string[] | undefined,
+            exportValue: typeof op.exportValue === 'string' ? op.exportValue : undefined,
+            multiline: op.multiline === true,
+            required: op.required === true,
+          },
+        }
+      }),
+    }
+  },
+})
+
+register({
   name: 'moveDrawing',
   touches: ['drawings'],
   validate(op) {
@@ -255,6 +299,7 @@ register({
           case 'ellipse':
           case 'image':
           case 'freetext':
+          case 'field':
             return {
               ...d,
               input: {

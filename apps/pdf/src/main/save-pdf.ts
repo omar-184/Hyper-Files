@@ -38,6 +38,7 @@ import {
   wrapTextBox,
 } from '../shared/text-box'
 import { redactPdf } from './redaction'
+import { addFormFields, type FieldDrawing } from './form-fields'
 
 const num = (v: number) => Math.round(v * 100) / 100
 const STATIC_FORM_FILLS_KEY = PDFName.of('GenOfficeStaticFormFills')
@@ -509,7 +510,8 @@ function addDrawing(
   /** localId → registered ref of notes written earlier in this request (reply parenting) */
   noteRefs?: Map<string, PDFRef>,
 ): void {
-  if (d.kind === 'image' || d.kind === 'freetext') return // async embeds: addImageStamp / addFreeText
+  // async embeds (addImageStamp / addFreeText) and form fields (addFormFields) go elsewhere
+  if (d.kind === 'image' || d.kind === 'freetext' || d.kind === 'field') return
   const [r, g, b] = d.color
 
   if (d.kind === 'note') {
@@ -1168,8 +1170,13 @@ export async function applySaveRequest(
     if (!page) continue
     if (d.kind === 'image') await addImageStamp(pdfDoc, page, d)
     else if (d.kind === 'freetext') await addFreeText(pdfDoc, page, d)
-    else addDrawing(pdfDoc, page, d, noteRefs)
+    else if (d.kind !== 'field') addDrawing(pdfDoc, page, d, noteRefs)
   }
+  addFormFields(
+    pdfDoc,
+    pages,
+    (request.drawings ?? []).filter((d): d is FieldDrawing => d.kind === 'field'),
+  )
   // Note content edits go after the drawings: replies added above locate their /IRT
   // parent by its old contents, which an earlier in-place rewrite would break. An
   // unmatched edit is a silent no-op (same degradation as an unresolvable reply).

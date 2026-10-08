@@ -13,7 +13,8 @@ import {
 } from '../shared/text-box'
 import { TEXT_BOX_CSS_FONT, textBoxLines } from './text-box-render'
 
-export type DrawTool = 'ink' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'note' | 'textbox' | 'redact'
+export type DrawTool =
+  'ink' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'note' | 'textbox' | 'field' | 'redact'
 
 /** Displayed-pixel box (scaled) */
 interface Box {
@@ -102,6 +103,38 @@ function drawingShape(
               {line}
             </tspan>
           ))}
+        </text>
+      </>
+    )
+  }
+  if (d.kind === 'field') {
+    const [ax, ay] = toView(geom, scale, d.rect[0], d.rect[1])
+    const [bx, by] = toView(geom, scale, d.rect[2], d.rect[3])
+    const [x, y] = [Math.min(ax, bx), Math.min(ay, by)]
+    const [w, h] = [Math.abs(bx - ax), Math.abs(by - ay)]
+    if (hit) return <rect x={x} y={y} width={w} height={h} fill="transparent" />
+    const round = d.fieldType === 'radio'
+    const label = d.fieldType === 'radio' ? `${d.name}: ${d.exportValue ?? ''}` : d.name
+    return (
+      <>
+        {round ? (
+          <ellipse
+            className="pdf-field-draft"
+            cx={x + w / 2}
+            cy={y + h / 2}
+            rx={w / 2}
+            ry={h / 2}
+          />
+        ) : (
+          <rect className="pdf-field-draft" x={x} y={y} width={w} height={h} />
+        )}
+        <text
+          className="pdf-field-draft-label"
+          x={d.fieldType === 'checkbox' || round ? x + w + 3 : x + 3}
+          y={d.fieldType === 'checkbox' || round ? y + h / 2 : y + Math.min(h / 2, 9)}
+          dominantBaseline="central"
+        >
+          {label}
         </text>
       </>
     )
@@ -218,6 +251,9 @@ export function DrawLayer({
   onCommit,
   onTextBox,
   onTextBoxEdit,
+  fieldSize,
+  onFieldBox,
+  onFieldEdit,
   onNoteAt,
   onNoteOpen,
   onSelect,
@@ -244,6 +280,12 @@ export function DrawLayer({
   onTextBox?: (rect: [number, number, number, number]) => void
   /** Double-click on a pending text box: reopen its editor */
   onTextBoxEdit?: (id: string) => void
+  /** Field tool: size (PDF pt, on screen) of the box a plain click places */
+  fieldSize?: [number, number]
+  /** The field tool marked out a widget rect (PDF space) */
+  onFieldBox?: (rect: [number, number, number, number]) => void
+  /** Double-click on a pending form field: open its properties */
+  onFieldEdit?: (id: string) => void
   onNoteAt: (at: [number, number]) => void
   /** Open the comment-thread popover for a pin ('S<objNum>' saved / 'P<id>' pending) */
   onNoteOpen: (key: string, x: number, y: number) => void
@@ -295,10 +337,10 @@ export function DrawLayer({
     if (tool === 'ink') {
       inkRef.current = [...inkRef.current, at[0], at[1]]
       setLive({ kind: 'ink', pageIndex: 0, color, width: strokeWidth, paths: [inkRef.current] })
-    } else if (tool === 'rect' || tool === 'ellipse' || tool === 'textbox') {
+    } else if (tool === 'rect' || tool === 'ellipse' || tool === 'textbox' || tool === 'field') {
       const [sx, sy] = startRef.current
       setLive({
-        kind: tool === 'textbox' ? 'rect' : tool,
+        kind: tool === 'textbox' || tool === 'field' ? 'rect' : tool,
         pageIndex: 0,
         color,
         width: strokeWidth,
@@ -339,6 +381,24 @@ export function DrawLayer({
         vy + textBoxHeight(1, TEXT_BOX_DEFAULT_SIZE),
       )
       onTextBox?.([Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)])
+      return
+    }
+    if (tool === 'field') {
+      setLive(null)
+      if (!start) return
+      if (pending?.kind === 'rect') {
+        const [x1, y1, x2, y2] = pending.rect
+        if (x2 - x1 >= 6 && y2 - y1 >= 6) {
+          onFieldBox?.(pending.rect)
+          return
+        }
+      }
+      // A click: a default-sized widget hanging right and down from the point on screen
+      const [fw, fh] = fieldSize ?? [160, 22]
+      const [vx, vy] = pdfToView(geom, start[0], start[1])
+      const [ax, ay] = viewToPdf(geom, vx, vy)
+      const [bx, by] = viewToPdf(geom, vx + fw, vy + fh)
+      onFieldBox?.([Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)])
       return
     }
     inkRef.current = []
@@ -480,12 +540,18 @@ export function DrawLayer({
               onPointerUp={shapeUp}
               onPointerCancel={() => setDrag(null)}
               onDoubleClick={
-                d.input.kind === 'freetext' && onTextBoxEdit ? () => onTextBoxEdit(d.id) : undefined
+                d.input.kind === 'freetext' && onTextBoxEdit
+                  ? () => onTextBoxEdit(d.id)
+                  : d.input.kind === 'field' && onFieldEdit
+                    ? () => onFieldEdit(d.id)
+                    : undefined
               }
               style={{
                 pointerEvents: tool
                   ? 'none'
-                  : d.input.kind === 'image' || d.input.kind === 'freetext'
+                  : d.input.kind === 'image' ||
+                      d.input.kind === 'freetext' ||
+                      d.input.kind === 'field'
                     ? 'auto'
                     : 'stroke',
               }}
