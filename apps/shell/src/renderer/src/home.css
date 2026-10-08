@@ -363,16 +363,6 @@ body.vib .home {
   color: var(--text-muted);
 }
 
-.ai-chip {
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--badge-bg);
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-
 @media (max-width: 1100px) {
   .quick-cards {
     flex-wrap: wrap;

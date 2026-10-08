@@ -9,7 +9,9 @@ test.describe('html editor', () => {
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'new-html-tab' })
     const { app, page } = launched
     try {
-      const card = page.locator('.quick-card', { hasText: 'HTML' })
+      const card = page.locator('.quick-card', {
+        has: page.locator('.quick-title', { hasText: /^HTML$/ }),
+      })
       await expect(card).toHaveCount(1)
       await card.click()
 

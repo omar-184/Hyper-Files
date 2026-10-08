@@ -192,7 +192,9 @@ test.describe('home folders panel', () => {
         'Personal',
       )
       // the blank PDF is written synchronously by the shell, so it exercises the pending-folder path
-      await page.locator('.quick-card', { hasText: 'PDF' }).click()
+      await page
+        .locator('.quick-card', { has: page.locator('.quick-title', { hasText: /^PDF$/ }) })
+        .click()
       const hasPdf = (dir: string) =>
         existsSync(dir) && readdirSync(dir).some((f) => f.endsWith('.pdf'))
       await expect.poll(() => hasPdf(join(root, 'Personal')), { timeout: 15_000 }).toBe(true)

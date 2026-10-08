@@ -544,7 +544,9 @@ html.genoffice-popover-open .ribbon-tabs {
 
 .hx-float {
   position: absolute;
-  z-index: 5;
+  /* above the style panel: in a narrow split view the panel can sit under the
+     selection's toolbar, and the toolbar's own panel toggle must stay reachable */
+  z-index: 7;
   display: flex;
   align-items: center;
   gap: 2px;
