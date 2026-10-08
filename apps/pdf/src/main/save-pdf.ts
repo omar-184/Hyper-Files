@@ -206,7 +206,7 @@ function addMarkup(pdfDoc: PDFDocument, page: PDFPage, m: MarkupInput): void {
     QuadPoints: m.quads.flat(),
     C: m.color,
     F: 4, // print
-    T: 'Hyper-Files',
+    T: 'Hypercube Office',
     P: page.ref,
     AP: { N: apRef },
   })
@@ -278,7 +278,7 @@ async function addImageStamp(
     P: page.ref,
     AP: { N: pdfDoc.context.register(ap) },
   })
-  annot.set(PDFName.of('T'), PDFHexString.fromText('Hyper-Files'))
+  annot.set(PDFName.of('T'), PDFHexString.fromText('Hypercube Office'))
   setVisualSignatureMetadata(annot, d.formFieldName)
   appendAnnot(pdfDoc, page, pdfDoc.context.register(annot))
 }
@@ -352,7 +352,7 @@ async function addFreeText(
   })
   annot.set(PDFName.of('DA'), PDFString.of(`/Helv ${num(d.fontSize)} Tf ${r} ${g} ${b} rg`))
   annot.set(PDFName.of('Contents'), PDFHexString.fromText(d.contents))
-  annot.set(PDFName.of('T'), PDFHexString.fromText(d.author || 'Hyper-Files'))
+  annot.set(PDFName.of('T'), PDFHexString.fromText(d.author || 'Hypercube Office'))
   const when = pdfDateString(d.createdMs ?? Date.now())
   annot.set(PDFName.of('CreationDate'), PDFString.of(when))
   annot.set(PDFName.of('M'), PDFString.of(when))
@@ -529,7 +529,7 @@ function addDrawing(
       AP: { N: pdfDoc.context.register(noteAppearance(pdfDoc, rect, d.color)) },
     })
     annot.set(PDFName.of('Contents'), PDFHexString.fromText(d.contents))
-    annot.set(PDFName.of('T'), PDFHexString.fromText(d.author || 'Hyper-Files'))
+    annot.set(PDFName.of('T'), PDFHexString.fromText(d.author || 'Hypercube Office'))
     const when = pdfDateString(d.createdMs ?? Date.now())
     annot.set(PDFName.of('CreationDate'), PDFString.of(when))
     annot.set(PDFName.of('M'), PDFString.of(when))
@@ -629,7 +629,7 @@ function addDrawing(
   if (d.kind === 'line' || d.kind === 'arrow') {
     annot.set(PDFName.of('L'), pdfDoc.context.obj([...d.from, ...d.to]))
   }
-  annot.set(PDFName.of('T'), PDFHexString.fromText('Hyper-Files'))
+  annot.set(PDFName.of('T'), PDFHexString.fromText('Hypercube Office'))
   if (d.kind === 'ink') setVisualSignatureMetadata(annot, d.formFieldName)
   appendAnnot(pdfDoc, page, pdfDoc.context.register(annot))
 }

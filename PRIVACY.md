@@ -1,8 +1,8 @@
-# Hyper-Files Privacy
+# Hypercube Office Privacy
 
 Last updated: October 7, 2026
 
-Hyper-Files opens, edits and saves documents on your computer. It has no
+Hypercube Office opens, edits and saves documents on your computer. It has no
 accounts, no AI features, no usage analytics and no automatic updates, and it
 never uploads your documents anywhere.
 

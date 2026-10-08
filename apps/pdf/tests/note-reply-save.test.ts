@@ -99,7 +99,9 @@ describe('note reply save', () => {
   it('falls back to the GenOffice author when none is provided', async () => {
     const { bytes } = await fixtureWithComment()
     const { bytes: out } = await applySaveRequest(bytes, request([note({ contents: 'anon' })]))
-    expect((await textAnnots(out)).find((a) => a.contents === 'anon')!.author).toBe('Hyper-Files')
+    expect((await textAnnots(out)).find((a) => a.contents === 'anon')!.author).toBe(
+      'Hypercube Office',
+    )
   })
 
   it('links a reply to a saved comment via /IRT even with a stale object number', async () => {

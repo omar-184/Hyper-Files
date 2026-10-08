@@ -349,10 +349,10 @@ describe('helpers', () => {
   })
 
   it('describeRoot creates a missing root and reports it usable', () => {
-    const fresh = join(root, 'Hyper-Files')
+    const fresh = join(root, 'Hypercube Office')
     expect(describeRoot(fresh)).toEqual({
       path: fresh,
-      name: 'Hyper-Files',
+      name: 'Hypercube Office',
       usable: true,
       readable: true,
       removable: false,

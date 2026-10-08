@@ -1,5 +1,5 @@
 /**
- * PDF tools strings, en: the source text and the key set. Hyper-Files ships
+ * PDF tools strings, en: the source text and the key set. Hypercube Office ships
  * English first, so here en defines the keys and every other shard is typed
  * against it; untranslated shards reuse the English text.
  */

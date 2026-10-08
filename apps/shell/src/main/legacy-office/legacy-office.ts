@@ -131,7 +131,7 @@ export async function openLegacyDocument(source: string): Promise<void> {
       source,
       destination,
       profileDir: join(app.getPath('userData'), 'addons', 'libreoffice-profile'),
-      tempRoot: join(app.getPath('temp'), 'hyper-files-legacy'),
+      tempRoot: join(app.getPath('temp'), 'hypercube-office-legacy'),
     })
   } catch (error) {
     console.warn('[legacy-office] conversion failed:', error)

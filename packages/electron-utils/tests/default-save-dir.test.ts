@@ -53,7 +53,7 @@ describe('resolveDefaultSaveDir', () => {
   })
 
   it('creates and returns the fallback when nothing is configured', () => {
-    const fallback = join(root, 'Documents', 'Hyper-Files')
+    const fallback = join(root, 'Documents', 'Hypercube Office')
     expect(resolveDefaultSaveDir(null, fallback)).toBe(fallback)
     expect(existsSync(fallback)).toBe(true)
   })
@@ -90,14 +90,27 @@ describe('configuredDefaultSaveDir', () => {
     expect(configuredDefaultSaveDir(app)).toBe(custom)
   })
 
-  it('falls back to <Documents>/Hyper-Files without a setting', () => {
+  it('falls back to <Documents>/Hypercube Office without a setting', () => {
     const userData = join(root, 'userData')
     const documents = join(root, 'Documents')
     mkdirSync(userData, { recursive: true })
     const app = {
       getPath: (name: 'userData' | 'documents') => (name === 'userData' ? userData : documents),
     }
+    expect(configuredDefaultSaveDir(app)).toBe(join(documents, 'Hypercube Office'))
+    expect(existsSync(join(documents, 'Hypercube Office'))).toBe(true)
+  })
+
+  it('keeps using the pre-rename <Documents>/Hyper-Files when only that exists', () => {
+    const userData = join(root, 'userData')
+    const documents = join(root, 'Documents')
+    mkdirSync(userData, { recursive: true })
+    mkdirSync(join(documents, 'Hyper-Files'), { recursive: true })
+    const app = {
+      getPath: (name: 'userData' | 'documents') => (name === 'userData' ? userData : documents),
+    }
     expect(configuredDefaultSaveDir(app)).toBe(join(documents, 'Hyper-Files'))
-    expect(existsSync(join(documents, 'Hyper-Files'))).toBe(true)
+    mkdirSync(join(documents, 'Hypercube Office'))
+    expect(configuredDefaultSaveDir(app)).toBe(join(documents, 'Hypercube Office'))
   })
 })

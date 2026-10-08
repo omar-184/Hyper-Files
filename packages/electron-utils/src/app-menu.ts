@@ -44,7 +44,7 @@ const EN: Labels = {
   zoomOut: 'Zoom Out',
   fullscreen: 'Full Screen',
   help: 'Help',
-  about: 'About Hyper-Files',
+  about: 'About Hypercube Office',
   version: 'Version',
 }
 
@@ -68,7 +68,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: '缩小',
     fullscreen: '全屏',
     help: '帮助',
-    about: '关于 Hyper-Files',
+    about: '关于 Hypercube Office',
     version: '版本',
   },
   en: EN,
@@ -89,7 +89,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: '縮小',
     fullscreen: 'フルスクリーン',
     help: 'ヘルプ',
-    about: 'Hyper-Files について',
+    about: 'Hypercube Office について',
     version: 'バージョン',
   },
   ko: {
@@ -109,7 +109,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: '축소',
     fullscreen: '전체 화면',
     help: '도움말',
-    about: 'Hyper-Files 정보',
+    about: 'Hypercube Office 정보',
     version: '버전',
   },
   fr: {
@@ -129,7 +129,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Zoom arrière',
     fullscreen: 'Plein écran',
     help: 'Aide',
-    about: 'À propos de Hyper-Files',
+    about: 'À propos de Hypercube Office',
     version: 'Version',
   },
   de: {
@@ -149,7 +149,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Verkleinern',
     fullscreen: 'Vollbild',
     help: 'Hilfe',
-    about: 'Über Hyper-Files',
+    about: 'Über Hypercube Office',
     version: 'Version',
   },
   es: {
@@ -169,7 +169,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Alejar',
     fullscreen: 'Pantalla completa',
     help: 'Ayuda',
-    about: 'Acerca de Hyper-Files',
+    about: 'Acerca de Hypercube Office',
     version: 'Versión',
   },
   th: {
@@ -189,7 +189,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'ย่อ',
     fullscreen: 'เต็มหน้าจอ',
     help: 'วิธีใช้',
-    about: 'เกี่ยวกับ Hyper-Files',
+    about: 'เกี่ยวกับ Hypercube Office',
     version: 'เวอร์ชัน',
   },
   id: {
@@ -209,7 +209,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Perkecil',
     fullscreen: 'Layar Penuh',
     help: 'Bantuan',
-    about: 'Tentang Hyper-Files',
+    about: 'Tentang Hypercube Office',
     version: 'Versi',
   },
   ru: {
@@ -229,7 +229,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Уменьшить',
     fullscreen: 'Полноэкранный режим',
     help: 'Справка',
-    about: 'О Hyper-Files',
+    about: 'О Hypercube Office',
     version: 'Версия',
   },
   ar: {
@@ -249,7 +249,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'تصغير العرض',
     fullscreen: 'ملء الشاشة',
     help: 'تعليمات',
-    about: 'حول Hyper-Files',
+    about: 'حول Hypercube Office',
     version: 'الإصدار',
   },
   pt: {
@@ -269,7 +269,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Reduzir',
     fullscreen: 'Tela Cheia',
     help: 'Ajuda',
-    about: 'Sobre o Hyper-Files',
+    about: 'Sobre o Hypercube Office',
     version: 'Versão',
   },
   it: {
@@ -289,7 +289,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Riduci',
     fullscreen: 'Schermo intero',
     help: 'Aiuto',
-    about: 'Informazioni su Hyper-Files',
+    about: 'Informazioni su Hypercube Office',
     version: 'Versione',
   },
   pl: {
@@ -309,7 +309,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Pomniejsz',
     fullscreen: 'Pełny ekran',
     help: 'Pomoc',
-    about: 'O programie Hyper-Files',
+    about: 'O programie Hypercube Office',
     version: 'Wersja',
   },
   cs: {
@@ -329,7 +329,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Oddálit',
     fullscreen: 'Celá obrazovka',
     help: 'Nápověda',
-    about: 'O aplikaci Hyper-Files',
+    about: 'O aplikaci Hypercube Office',
     version: 'Verze',
   },
   nl: {
@@ -349,7 +349,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Uitzoomen',
     fullscreen: 'Volledig scherm',
     help: 'Help',
-    about: 'Over Hyper-Files',
+    about: 'Over Hypercube Office',
     version: 'Versie',
   },
   ms: {
@@ -369,7 +369,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Zum Keluar',
     fullscreen: 'Skrin Penuh',
     help: 'Bantuan',
-    about: 'Perihal Hyper-Files',
+    about: 'Perihal Hypercube Office',
     version: 'Versi',
   },
   he: {
@@ -389,7 +389,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'הקטן',
     fullscreen: 'מסך מלא',
     help: 'עזרה',
-    about: 'אודות Hyper-Files',
+    about: 'אודות Hypercube Office',
     version: 'גרסה',
   },
   hi: {
@@ -409,7 +409,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'ज़ूम आउट',
     fullscreen: 'पूर्ण स्क्रीन',
     help: 'सहायता',
-    about: 'Hyper-Files के बारे में',
+    about: 'Hypercube Office के बारे में',
     version: 'संस्करण',
   },
   vi: {
@@ -429,7 +429,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: 'Thu nhỏ',
     fullscreen: 'Toàn màn hình',
     help: 'Trợ giúp',
-    about: 'Giới thiệu Hyper-Files',
+    about: 'Giới thiệu Hypercube Office',
     version: 'Phiên bản',
   },
   'zh-TW': {
@@ -449,7 +449,7 @@ const LABELS: Record<string, Labels> = {
     zoomOut: '縮小',
     fullscreen: '全螢幕',
     help: '說明',
-    about: '關於 Hyper-Files',
+    about: '關於 Hypercube Office',
     version: '版本',
   },
 }
@@ -578,14 +578,14 @@ export function aboutMenuItem(labels: AppMenuLabels): MenuItemConstructorOptions
       const version = app.getVersion()
       const { response } = await dialog.showMessageBox({
         type: 'info',
-        title: 'Hyper-Files',
-        message: 'Hyper-Files',
+        title: 'Hypercube Office',
+        message: 'Hypercube Office',
         detail: `${labels.version} ${version}`,
         buttons: ['OK', labels.copy],
         defaultId: 0,
         cancelId: 0,
       })
-      if (response === 1) clipboard.writeText(`Hyper-Files ${version}`)
+      if (response === 1) clipboard.writeText(`Hypercube Office ${version}`)
     },
   }
 }

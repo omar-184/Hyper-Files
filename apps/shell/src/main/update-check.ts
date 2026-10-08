@@ -1,6 +1,6 @@
 /**
  * Opt-in update check. Off until the user turns it on in Settings → About;
- * while off, Hyper-Files makes no network request of its own. When on, it
+ * while off, Hypercube Office makes no network request of its own. When on, it
  * asks the GitHub Releases API for the latest published release at most once
  * a day and, if that release is newer, shows one notification per version.
  * Nothing is downloaded or installed: the user follows the link to the

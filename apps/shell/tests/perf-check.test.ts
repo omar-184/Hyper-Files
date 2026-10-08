@@ -99,7 +99,7 @@ describe('perf ratings', () => {
 
   it('formats a plain-text report with every measurement', () => {
     const text = formatPerfReport(lowSpec)
-    expect(text).toContain('Hyper-Files 0.1.0 performance check')
+    expect(text).toContain('Hypercube Office 0.1.0 performance check')
     expect(text).toContain('Overall: SLOW')
     expect(text).toContain('Celeron N4020 (2 threads)')
     expect(text).toMatch(/Open Word document\s+18\.00 s\s+\[slow\]/)

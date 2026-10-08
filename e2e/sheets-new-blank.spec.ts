@@ -19,11 +19,11 @@ test.describe('sheets: new blank workbook', () => {
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'sheets-new-blank' })
     try {
       const { app, page } = launched
-      // keep the auto-created workbook out of the real ~/Documents/Hyper-Files
+      // keep the auto-created workbook out of the real ~/Documents/Hypercube Office
       await app.evaluate(({ app: electronApp }, dir) => {
         electronApp.setPath('documents', dir)
       }, scratch)
-      const saveDir = join(scratch, 'Hyper-Files')
+      const saveDir = join(scratch, 'Hypercube Office')
       const workbook = join(saveDir, 'quick-create.xlsx')
       // the workbook has no file yet, so Save answers the Save As picker
       await app.evaluate(({ dialog }, target) => {

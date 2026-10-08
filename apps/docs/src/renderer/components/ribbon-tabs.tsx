@@ -1443,7 +1443,7 @@ export function ViewTab({
                     }}
                   >
                     {w.focused ? '✓ ' : ''}
-                    {w.title || 'Hyper-Files Docs'}
+                    {w.title || 'Hypercube Office Docs'}
                   </button>
                 ))}
               </div>

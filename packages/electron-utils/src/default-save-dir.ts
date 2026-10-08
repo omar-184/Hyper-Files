@@ -1,10 +1,11 @@
 /// The default folder where new/untitled files land on their first (silent)
 /// save and where AI-generated drafts go. Historically hardcoded to
-/// <Documents>/Hyper-Files; now user-configurable via the `defaultSaveDir` key
-/// in userData/app-settings.json (set from the home screen's account menu).
+/// <Documents>/Hypercube Office (formerly Hyper-Files); now user-configurable
+/// via the `defaultSaveDir` key in userData/app-settings.json (set from the
+/// home screen's account menu).
 /// Every editor main module resolves through here so they all honor the same
 /// setting.
-import { accessSync, constants, mkdirSync, readFileSync } from 'node:fs'
+import { accessSync, constants, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
 /** the subset of Electron's `app` needed here (kept structural: this package has no Electron dependency) */
@@ -49,9 +50,21 @@ export function resolveDefaultSaveDir(configured: string | null, fallbackDir: st
   return fallbackDir
 }
 
+/**
+ * <Documents>/Hypercube Office, unless only the pre-rename <Documents>/Hyper-Files
+ * exists: files saved before the rename stay where the user already finds them.
+ */
+export function defaultSaveDirFallback(documentsDir: string): string {
+  const current = join(documentsDir, 'Hypercube Office')
+  const legacy = join(documentsDir, 'Hyper-Files')
+  return !existsSync(current) && existsSync(legacy) ? legacy : current
+}
+
 /** convenience for the Electron mains: settings lookup + fallback in one call */
 export function configuredDefaultSaveDir(app: PathProvider): string {
   const settingsPath = join(app.getPath('userData'), 'app-settings.json')
-  const fallback = join(app.getPath('documents'), 'Hyper-Files')
-  return resolveDefaultSaveDir(readDefaultSaveDirSetting(settingsPath), fallback)
+  return resolveDefaultSaveDir(
+    readDefaultSaveDirSetting(settingsPath),
+    defaultSaveDirFallback(app.getPath('documents')),
+  )
 }

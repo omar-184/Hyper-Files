@@ -1,5 +1,5 @@
 /**
- * Shared main-process state for Hyper-Files Slides, extracted from slides-main.ts so
+ * Shared main-process state for Hypercube Office Slides, extracted from slides-main.ts so
  * the IPC modules (slides-main, presenter-show) can share it:
  * per-renderer sessions, snapshot undo/redo history, runtime paths, window
  * references, and RenderSlide rebuild helpers.

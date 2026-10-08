@@ -1,6 +1,6 @@
 /**
  * Settings → Performance: a short, fully offline self-test that tells the user
- * how Hyper-Files runs on this computer. The main process measures
+ * how Hypercube Office runs on this computer. The main process measures
  * (main/perf-check.ts); this module holds the shared shapes and the pure
  * rating/report logic so both sides and the unit tests agree on them.
  *
@@ -47,7 +47,7 @@ export interface PerfTiming {
 }
 
 export interface PerfMemory {
-  /** working set of every Hyper-Files process (main, windows, helpers) */
+  /** working set of every Hypercube Office process (main, windows, helpers) */
   totalMB: number
   processCount: number
   /** lowest free system RAM seen while the sample documents were open */
@@ -222,7 +222,7 @@ export function formatPerfReport(r: PerfReport): string {
   ]
   const width = Math.max(...rows.map(([label]) => label.length))
   const lines = [
-    `Hyper-Files ${r.appVersion} performance check`,
+    `Hypercube Office ${r.appVersion} performance check`,
     `Date: ${new Date(r.startedAt).toISOString()}`,
     `System: ${s.os} ${s.arch}, ${s.cpuModel} (${s.cpuCores} threads)`,
     `Free disk space: ${fmtMB(s.diskFreeMB)}`,

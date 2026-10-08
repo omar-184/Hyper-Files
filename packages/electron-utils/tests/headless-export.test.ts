@@ -12,7 +12,7 @@ import {
 
 /** argv as Electron delivers it: binary first, then the app's own switches. */
 const argv = (...rest: string[]): string[] => [
-  '/Applications/Hyper-Files.app/Contents/MacOS/Hyper-Files',
+  '/Applications/Hypercube Office.app/Contents/MacOS/Hypercube Office',
   ...rest,
 ]
 
