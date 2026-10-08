@@ -296,3 +296,83 @@
 .set-btn.danger {
   color: var(--danger);
 }
+
+/* Performance pane: verdict line, per-row rating badges, tips */
+.perf-result {
+  display: flex;
+  flex-direction: column;
+}
+
+.perf-result > * {
+  flex-shrink: 0;
+}
+
+.perf-verdict {
+  margin: 14px 0 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.perf-verdict.perf-good {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.perf-verdict.perf-ok,
+.perf-verdict.perf-incomplete {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.perf-verdict.perf-slow {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.perf-badge {
+  flex-shrink: 0;
+  min-width: 52px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.perf-badge.perf-good {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.perf-badge.perf-ok {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.perf-badge.perf-slow {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.perf-badge.perf-failed {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.perf-note {
+  margin-top: 10px;
+}
+
+.perf-tips {
+  margin-top: 14px;
+}
+
+.perf-tips ul {
+  margin: 6px 0 0;
+  padding-inline-start: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}

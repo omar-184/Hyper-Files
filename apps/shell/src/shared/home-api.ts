@@ -1,3 +1,5 @@
+import type { PerfProgress, PerfReport } from './perf-check'
+
 /** UI language; kept self-contained here (mirrors Lang in @genoffice/i18n) */
 export type UiLanguage =
   | 'zh'
@@ -236,6 +238,14 @@ export interface HomeApi {
   checkForUpdates(): Promise<UpdateCheckResult>
   /** open the release page of the last 'available' result in the browser */
   openUpdatePage(): Promise<void>
+  /** Settings → Performance: the last offline self-test this session, null before the first */
+  getPerfCheck(): Promise<PerfReport | null>
+  /** run the offline self-test (main/perf-check.ts); a call while one runs joins it */
+  runPerfCheck(): Promise<PerfReport>
+  /** step updates while the self-test runs */
+  onPerfCheckProgress(handler: (progress: PerfProgress) => void): () => void
+  /** copy the plain-text report of the last run; false when there is none */
+  copyPerfReport(): Promise<boolean>
 }
 
 export interface RenameResult {
@@ -359,4 +369,8 @@ export const HOME_CHANNELS = {
   setUpdateCheck: 'home:set-update-check',
   checkForUpdates: 'home:check-for-updates',
   openUpdatePage: 'home:open-update-page',
+  getPerfCheck: 'home:get-perf-check',
+  runPerfCheck: 'home:run-perf-check',
+  perfCheckProgress: 'home:perf-check-progress',
+  copyPerfReport: 'home:copy-perf-report',
 } as const
