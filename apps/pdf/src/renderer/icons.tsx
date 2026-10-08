@@ -380,6 +380,18 @@ export const IconSearch = () => (
     <path d="M15.28 15.28 L19.5 19.5" />
   </Icon>
 )
+/** Text lines inside scan corners: recognize the text on scanned pages (OCR) */
+export const IconRecognizeText = () => (
+  <Icon>
+    <path d="M4.5 8.5 L4.5 4.5 L8.5 4.5" />
+    <path d="M15.5 4.5 L19.5 4.5 L19.5 8.5" />
+    <path d="M19.5 15.5 L19.5 19.5 L15.5 19.5" />
+    <path d="M8.5 19.5 L4.5 19.5 L4.5 15.5" />
+    <path d="M8 9.5 L16 9.5" />
+    <path d="M8 12 L16 12" />
+    <path d="M8 14.5 L13 14.5" />
+  </Icon>
+)
 export const IconPrint = () => (
   <Icon>
     <path d="M7.71 8.79 L7.71 4.5 L16.29 4.5 L16.29 8.79" />

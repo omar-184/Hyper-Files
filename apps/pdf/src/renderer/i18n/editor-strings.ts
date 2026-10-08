@@ -78,6 +78,12 @@ export const editorStrings = {
   linkToWeb: 'Web address',
   linkToPage: 'Page in this document',
   linkRemove: 'Remove link',
+  ocrRecognize: 'Recognize text',
+  ocrRecognizeHint:
+    'Find scanned pages that have no text and recognize their text (OCR) so you can search and select it',
+  ocrNoScannedPages: 'Every page already has text. Nothing to recognize.',
+  ocrNoEngine:
+    'Text recognition is not available on this computer. It needs Windows 10 or 11 with an OCR language installed.',
 }
 
 export const localizedEditorStrings: Partial<

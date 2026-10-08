@@ -5,13 +5,19 @@
  */
 import { pathToFileURL } from 'node:url'
 import { parentPort, workerData } from 'node:worker_threads'
-import type { Mupdf } from '@genoffice/pdf-tools'
+import type { Mupdf, OcrRecognizer } from '@genoffice/pdf-tools'
+import {
+  createVisionOcrEngine,
+  createWindowsOcrEngine,
+} from '../../../../../packages/pdf2docx/src/ocr-vision'
 import type { FileInfo, ToolRequest, ToolResult } from '../../shared/pdf-tools-api'
 import { fileInfo, runRequest } from './jobs'
 
 export interface WorkerInit {
   /** absolute path of mupdf.js (dev: node_modules; packaged: Resources/mupdf) */
   mupdfPath: string
+  /** system OCR helper binary; null when this computer has none */
+  ocrHelperPath: string | null
 }
 
 export type WorkerRequest =
@@ -23,7 +29,17 @@ export type WorkerMessage =
   | { id: number; type: 'info'; info: FileInfo }
   | { id: number; type: 'progress'; done: number; total: number }
 
-const { mupdfPath } = workerData as WorkerInit
+const { mupdfPath, ocrHelperPath } = workerData as WorkerInit
+
+/** The OCR engine is only started by the OCR tool, never on open. */
+let ocr: OcrRecognizer | null | undefined
+function ocrEngine(): OcrRecognizer | null {
+  if (ocr === undefined) {
+    const create = process.platform === 'darwin' ? createVisionOcrEngine : createWindowsOcrEngine
+    ocr = ocrHelperPath ? create(ocrHelperPath) : null
+  }
+  return ocr
+}
 
 // mupdf.js is an ES module with top-level await; importing it by URL at run
 // time keeps it out of the CommonJS bundle this file is compiled into
@@ -41,8 +57,17 @@ parentPort?.on('message', async (req: WorkerRequest) => {
     parentPort?.postMessage({ id: req.id, type: 'info', info } satisfies WorkerMessage)
     return
   }
-  const result = runRequest(m, req.request, (done, total) =>
-    parentPort?.postMessage({ id: req.id, type: 'progress', done, total } satisfies WorkerMessage),
+  const result = runRequest(
+    m,
+    req.request,
+    (done, total) =>
+      parentPort?.postMessage({
+        id: req.id,
+        type: 'progress',
+        done,
+        total,
+      } satisfies WorkerMessage),
+    req.request.tool === 'ocr' ? { ocr: ocrEngine() } : {},
   )
   parentPort?.postMessage({ id: req.id, type: 'run', result } satisfies WorkerMessage)
 })

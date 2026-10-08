@@ -22,6 +22,8 @@ import {
   flattenPdf,
   imagesToPdf,
   mergePdfs,
+  type OcrRecognizer,
+  ocrPdf,
   pdfInfo,
   pdfToImages,
   protectPdf,
@@ -116,7 +118,18 @@ function writeOutputs(
   return written
 }
 
-function runOne(m: Mupdf, req: ToolRequest, input: ToolInput): ToolOutput[] {
+/** What a run needs besides MuPDF: the system OCR engine, when this computer has one. */
+export interface JobDeps {
+  ocr?: OcrRecognizer | null
+}
+
+function runOne(
+  m: Mupdf,
+  req: ToolRequest,
+  input: ToolInput,
+  deps: JobDeps,
+  onProgress: (done: number, total: number) => void,
+): ToolOutput[] {
   switch (req.tool) {
     case 'split':
       return splitPdf(m, input, req.options)
@@ -161,6 +174,15 @@ function runOne(m: Mupdf, req: ToolRequest, input: ToolInput): ToolOutput[] {
       return [repairPdf(m, input)]
     case 'properties':
       return [writeMetadata(m, input, req.options)]
+    case 'ocr':
+      if (!deps.ocr) {
+        throw new PdfToolError(
+          'unsupported',
+          'text recognition is not available on this computer; it needs Windows 10 or 11 with an OCR language installed',
+          input.name,
+        )
+      }
+      return [ocrPdf(m, input, deps.ocr, req.options, onProgress)]
     case 'merge':
     case 'images-to-pdf':
       throw new Error(`${req.tool} combines its inputs`)
@@ -177,6 +199,7 @@ export function runRequest(
   m: Mupdf,
   req: ToolRequest,
   onProgress: (done: number, total: number) => void = () => {},
+  deps: JobDeps = {},
 ): ToolResult {
   if (req.files.length === 0) {
     return { ok: false, error: { code: 'bad-input', message: 'add at least one file' } }
@@ -205,7 +228,8 @@ export function runRequest(
   req.files.forEach((file, i) => {
     try {
       const input = readInput(file)
-      const outputs = runOne(m, req, input)
+      // OCR reports pages, since one scanned file can take minutes
+      const outputs = runOne(m, req, input, deps, req.tool === 'ocr' ? onProgress : () => {})
       if (outputs.length === 0) {
         items.push({
           source: file.path,
@@ -223,7 +247,7 @@ export function runRequest(
     } catch (err) {
       items.push({ source: file.path, outputs: [], error: toToolError(err, file.path) })
     }
-    onProgress(i + 1, req.files.length)
+    if (req.tool !== 'ocr') onProgress(i + 1, req.files.length)
   })
   return { ok: true, items }
 }

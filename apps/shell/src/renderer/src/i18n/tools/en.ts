@@ -46,6 +46,8 @@ export const en = {
   toolFlattenDesc: 'Make comments and form fields part of the page',
   toolRepair: 'Repair PDF',
   toolRepairDesc: 'Rebuild a damaged PDF so it opens again',
+  toolOcr: 'Recognize text (OCR)',
+  toolOcrDesc: 'Make scanned pages searchable and copyable',
   toolProperties: 'Edit properties',
   toolPropertiesDesc: 'Change title, author, subject and keywords',
 
@@ -172,6 +174,8 @@ export const en = {
   flattenHint:
     'Comments, highlights, stamps and filled form fields become part of the page. They print the same everywhere and can no longer be changed.',
   repairHint: 'The file is read as far as possible and saved again with a clean structure.',
+  ocrHint:
+    'Pages that are only a picture, such as scans, get an invisible text layer so you can search, select and copy their text. The pages look the same, and pages that already have text are left alone. Uses the text recognition built into Windows; English and other Latin-script text for now.',
   propTitle: 'Title',
   propAuthor: 'Author',
   propSubject: 'Subject',

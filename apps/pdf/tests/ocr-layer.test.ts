@@ -212,6 +212,7 @@ async function runPass(
     fromPage?: number
     /** The queue a continued pass walks (see `result.pending`) */
     pending?: readonly number[]
+    skip?: ReadonlySet<number>
     limit?: number
     cache?: SearchIndexCache
     signal?: AbortSignal
@@ -233,6 +234,7 @@ async function runPass(
     signal: opts.signal ?? controller.signal,
     ...(opts.pending === undefined ? {} : { pending: opts.pending }),
     ...(opts.limit === undefined ? {} : { limit: opts.limit }),
+    ...(opts.skip === undefined ? {} : { skip: opts.skip }),
     geom: () => GEOM,
     render: opts.render ?? (async () => 'png'),
     ocrPage: async () => {
@@ -313,6 +315,14 @@ describe('runAutoOcr', () => {
     expect(result.stop).toBe('complete')
     expect(result.total).toBe(1)
     expect(recognized).toEqual([1])
+  })
+
+  it('leaves alone the pages an earlier pass already recognized', async () => {
+    const { doc } = scannedDoc(4)
+    const { result, recognized } = await runPass(doc, { skip: new Set([0, 2]) })
+    expect(result.stop).toBe('complete')
+    expect(result.total).toBe(2)
+    expect(recognized).toEqual([1, 3])
   })
 
   it('stops at the first null answer: no OCR engine on this platform', async () => {
