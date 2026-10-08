@@ -1537,7 +1537,7 @@ export function Home() {
           {TEMPLATE_ITEMS.map((item) => (
             <button
               key={item.id}
-              className="quick-card template-card"
+              className="template-card"
               onClick={() => void window.hyperFiles.newFromTemplate(item.id, newFileOpts)}
             >
               <FileBadge ext={item.ext} size={24} />

@@ -281,7 +281,8 @@ body.vib .home {
   gap: 10px;
 }
 
-.quick-card {
+.quick-card,
+.template-card {
   position: relative;
   flex: 1;
   min-width: 0;
@@ -303,13 +304,15 @@ body.vib .home {
     box-shadow 0.12s;
 }
 
-.quick-card:hover {
+.quick-card:hover,
+.template-card:hover {
   border-color: var(--border-hover);
   --home-shadow-1: 0 3px 12px rgb(0 0 0 / 8%);
   box-shadow: var(--home-shadow-1);
 }
 
-.quick-card svg {
+.quick-card svg,
+.template-card svg {
   flex-shrink: 0;
 }
 
@@ -363,12 +366,13 @@ body.vib .home {
   color: var(--text-muted);
 }
 
-/* Templates: a second, lower row of quick cards with the badge beside the text */
+/* Templates: a second, lower row of cards with the badge beside the text. Its own
+   class (not .quick-card) keeps quick-create card lookups unambiguous. */
 .template-head {
   margin: 18px 0 8px;
 }
 
-.quick-card.template-card {
+.template-card {
   flex-direction: row;
   align-items: center;
   gap: 10px;
@@ -381,7 +385,8 @@ body.vib .home {
     flex-wrap: wrap;
   }
 
-  .quick-card {
+  .quick-card,
+  .template-card {
     flex: 1 1 calc(50% - 5px);
     max-width: none;
   }

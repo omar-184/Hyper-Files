@@ -8,7 +8,7 @@ test.describe('home screen', () => {
     try {
       await expect(page.locator('.home-hero')).toBeVisible()
       // six quick-create cards plus the "Open file" browse card
-      const quick = page.locator('.quick-cards:not(.template-cards) .quick-card')
+      const quick = page.locator('.quick-card')
       await expect(quick).toHaveCount(7)
       await expect(quick.first()).toContainText('Docs')
       await expect(quick.nth(1)).toContainText('Sheets')
