@@ -36,8 +36,6 @@ exactly and that the files contain no CJK text.
   Combine as `(internal, pending)`.
 - Fenced `json` code blocks are examples. Use the placeholder ids below.
 
-  ```
-
 ## Placeholder ids for examples
 
 | Placeholder  | Fixture element                 |
