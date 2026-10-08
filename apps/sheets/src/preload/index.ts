@@ -2035,6 +2035,12 @@ function isPageSetupState(input: unknown): boolean {
   if (input.scale !== undefined && !isBoundedInt(input.scale, 10, 400)) return false
   if (input.fitToWidth !== undefined && !isBoundedInt(input.fitToWidth, 0, 1_000)) return false
   if (input.fitToHeight !== undefined && !isBoundedInt(input.fitToHeight, 0, 1_000)) return false
+  if (
+    input.tabColor !== undefined &&
+    input.tabColor !== null &&
+    (typeof input.tabColor !== 'string' || !/^[0-9A-F]{8}$/.test(input.tabColor))
+  )
+    return false
   if (input.margins !== undefined && !['normal', 'wide', 'narrow'].includes(String(input.margins)))
     return false
   for (const key of [

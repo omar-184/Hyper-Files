@@ -54,6 +54,7 @@ export const SET_NUMFMT_MUTATION = 'sheet.mutation.set.numfmt'
 // undo/redo re-records the restored state (ribbon handlers do not record).
 export const SET_FROZEN_MUTATION = 'sheet.mutation.set-frozen'
 export const TOGGLE_GRIDLINES_MUTATION = 'sheet.mutation.toggle-gridlines'
+export const SET_TAB_COLOR_MUTATION = 'sheet.mutation.set-tab-color'
 export const SET_ZOOM_OPERATION = 'sheet.operation.set-zoom-ratio'
 export const SET_ZOOM_COMMAND = 'sheet.command.set-zoom-ratio'
 export const OPEN_FILTER_PANEL_OPERATION = 'sheet.operation.open-filter-panel'

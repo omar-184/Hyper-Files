@@ -422,3 +422,47 @@ describe('applyPageSetupState page breaks', () => {
     expect(xml).toBe(BARE)
   })
 })
+
+describe('tab color', () => {
+  const set = (xml: string, tabColor: string | null) =>
+    applyPageSetupState(xml, { sheetName: 'S', tabColor })
+
+  it('creates sheetPr as the first worksheet child', () => {
+    expect(set(BARE, 'FFFF0000')).toBe(
+      '<worksheet><sheetPr><tabColor rgb="FFFF0000"/></sheetPr><sheetData/></worksheet>',
+    )
+  })
+
+  it('puts tabColor first inside an existing sheetPr and keeps its attributes', () => {
+    const xml =
+      '<worksheet><sheetPr codeName="Sheet1"><pageSetUpPr fitToPage="1"/></sheetPr><sheetData/></worksheet>'
+    expect(set(xml, 'FF00B050')).toBe(
+      '<worksheet><sheetPr codeName="Sheet1"><tabColor rgb="FF00B050"/>' +
+        '<pageSetUpPr fitToPage="1"/></sheetPr><sheetData/></worksheet>',
+    )
+  })
+
+  it('expands a self-closing sheetPr', () => {
+    const xml = '<worksheet><sheetPr codeName="Sheet1"/><sheetData/></worksheet>'
+    expect(set(xml, 'FF0070C0')).toBe(
+      '<worksheet><sheetPr codeName="Sheet1"><tabColor rgb="FF0070C0"/></sheetPr><sheetData/></worksheet>',
+    )
+  })
+
+  it('replaces a theme tab color and clears it again', () => {
+    const xml =
+      '<worksheet><sheetPr><tabColor theme="5" tint="0.4"/><outlinePr summaryBelow="0"/></sheetPr>' +
+      '<sheetData/></worksheet>'
+    const replaced = set(xml, 'FFFFC000')
+    expect(replaced).toContain('<sheetPr><tabColor rgb="FFFFC000"/><outlinePr summaryBelow="0"/>')
+    expect(set(replaced, null)).toBe(
+      '<worksheet><sheetPr><outlinePr summaryBelow="0"/></sheetPr><sheetData/></worksheet>',
+    )
+  })
+
+  it('drops an emptied sheetPr and leaves a sheet without a color untouched', () => {
+    const colored = set(BARE, 'FFFF0000')
+    expect(set(colored, null)).toBe(BARE)
+    expect(set(BARE, null)).toBe(BARE)
+  })
+})
