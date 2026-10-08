@@ -26,6 +26,7 @@ const empty = (): EditSnapshot => ({
   deleted: new Set(),
   order: null,
   metadata: null,
+  outlineEdit: null,
 })
 
 const ctx = (over: Partial<OpContext> = {}): OpContext => ({

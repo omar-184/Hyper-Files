@@ -17,13 +17,15 @@ import type {
   TextEditInput,
   TextInsertInput,
 } from '../../shared/ipc'
+import { NEW_FIELD_TYPES } from '../../shared/ipc'
 import type { LocalMarkup } from '../annotations'
+import type { OutlineNode } from '../OutlinePanel'
 import type { LocalDrawing } from '../DrawLayer'
 import type { LocalImageEdit } from '../ImageEditLayer'
 import { imageRectKey } from '../ImageEditLayer'
 import type { LocalTextEdit, LocalTextInsert } from '../text-edit-preview'
 import type { SavedNoteAnnot } from '../note-threads'
-import type { SavedMarkupAnnot, StampConfig } from '../edit-state'
+import type { SavedAnnot, StampConfig } from '../edit-state'
 import { GuidedError, register, type Op, type OpContext } from './registry'
 
 type Rect = [number, number, number, number]
@@ -103,12 +105,12 @@ register({
   touches: ['annotDeletes', 'noteEdits'],
   additive: true,
   validate(op, ctx) {
-    const a = obj<SavedMarkupAnnot | SavedNoteAnnot>(op.annot, 'annot')
+    const a = obj<SavedAnnot>(op.annot, 'annot')
     pageIndex(a.pageIndex, ctx, 'annot.pageIndex')
     if (typeof a.objNum !== 'number') throw new GuidedError('annot.objNum must be a number')
   },
   apply(op, s) {
-    const annot = op.annot as SavedMarkupAnnot | SavedNoteAnnot
+    const annot = op.annot as SavedAnnot
     return {
       annotDeletes: [...s.annotDeletes, { id: id(op), annot }],
       noteEdits: s.noteEdits.filter((e) => e.annot.objNum !== annot.objNum),
@@ -145,12 +147,33 @@ register({
   validate(op, ctx) {
     const d = obj<DrawingInput>(op.drawing, 'drawing')
     pageIndex(d.pageIndex, ctx, 'drawing.pageIndex')
-    if (!['ink', 'rect', 'ellipse', 'line', 'arrow', 'image', 'note'].includes(d.kind))
+    if (
+      ![
+        'ink',
+        'rect',
+        'ellipse',
+        'line',
+        'arrow',
+        'image',
+        'note',
+        'freetext',
+        'field',
+        'link',
+      ].includes(d.kind)
+    )
       throw new GuidedError(
-        'drawing.kind must be ink | rect | ellipse | line | arrow | image | note',
+        'drawing.kind must be ink | rect | ellipse | line | arrow | image | note | freetext | field | link',
       )
-    if (d.kind === 'note' && typeof d.contents !== 'string')
-      throw new GuidedError('a note drawing needs string contents')
+    if ((d.kind === 'note' || d.kind === 'freetext') && typeof d.contents !== 'string')
+      throw new GuidedError(`a ${d.kind} drawing needs string contents`)
+    if (d.kind === 'link' && typeof d.url !== 'string' && typeof d.targetPage !== 'number')
+      throw new GuidedError('a link drawing needs "url" or "targetPage"')
+    if (d.kind === 'field') {
+      if (!NEW_FIELD_TYPES.includes(d.fieldType))
+        throw new GuidedError(`field.fieldType must be ${NEW_FIELD_TYPES.join(' | ')}`)
+      if (typeof d.name !== 'string' || !d.name.trim())
+        throw new GuidedError('a field drawing needs a non-empty "name"')
+    }
   },
   apply(op, s) {
     const drawing = op.drawing as DrawingInput
@@ -194,6 +217,95 @@ register({
 })
 
 register({
+  name: 'setFreeText',
+  touches: ['drawings'],
+  validate(op) {
+    id(op)
+    if (typeof op.contents !== 'string') throw new GuidedError('"contents" must be a string')
+    const r = op.rect as unknown
+    if (!Array.isArray(r) || r.length !== 4 || !r.every((v) => Number.isFinite(v)))
+      throw new GuidedError('"rect" must be four numbers (PDF user space)')
+  },
+  apply(op, s) {
+    return {
+      drawings: s.drawings.map((d) => {
+        if (d.id !== op.id || d.input.kind !== 'freetext') return d
+        const { image: _image, ...rest } = d.input
+        return {
+          ...d,
+          input: {
+            ...rest,
+            contents: op.contents as string,
+            rect: op.rect as Rect,
+            ...(typeof op.image === 'string' ? { image: op.image } : {}),
+          },
+        }
+      }),
+    }
+  },
+})
+
+register({
+  name: 'setFieldProps',
+  touches: ['drawings'],
+  validate(op) {
+    id(op)
+    if (typeof op.name !== 'string' || !op.name.trim())
+      throw new GuidedError('"name" must be a non-empty string')
+    if (
+      op.options !== undefined &&
+      (!Array.isArray(op.options) || !op.options.every((o) => typeof o === 'string'))
+    )
+      throw new GuidedError('"options" must be an array of strings')
+  },
+  apply(op, s) {
+    return {
+      drawings: s.drawings.map((d) => {
+        if (d.id !== op.id || d.input.kind !== 'field') return d
+        return {
+          ...d,
+          input: {
+            ...d.input,
+            name: op.name as string,
+            options: op.options as string[] | undefined,
+            exportValue: typeof op.exportValue === 'string' ? op.exportValue : undefined,
+            multiline: op.multiline === true,
+            required: op.required === true,
+          },
+        }
+      }),
+    }
+  },
+})
+
+register({
+  name: 'setLinkTarget',
+  touches: ['drawings'],
+  validate(op) {
+    id(op)
+    if (typeof op.url !== 'string' && typeof op.targetPage !== 'number')
+      throw new GuidedError('give "url" or "targetPage"')
+  },
+  apply(op, s) {
+    return {
+      drawings: s.drawings.map((d) => {
+        if (d.id !== op.id || d.input.kind !== 'link') return d
+        const { url: _url, targetPage: _page, ...rest } = d.input
+        return {
+          ...d,
+          input: {
+            ...rest,
+            ...(typeof op.url === 'string'
+              ? { url: op.url }
+              : { targetPage: op.targetPage as number }),
+          },
+        }
+      }),
+    }
+  },
+})
+
+register({
   name: 'moveDrawing',
   touches: ['drawings'],
   validate(op) {
@@ -225,6 +337,9 @@ register({
           case 'rect':
           case 'ellipse':
           case 'image':
+          case 'freetext':
+          case 'field':
+          case 'link':
             return {
               ...d,
               input: {
@@ -665,5 +780,17 @@ register({
   },
   apply(op) {
     return { metadata: op.metadata as MetadataInput | null }
+  },
+})
+
+register({
+  name: 'setOutline',
+  touches: ['outlineEdit'],
+  validate(op) {
+    if (op.outline !== null && !Array.isArray(op.outline))
+      throw new GuidedError('"outline" must be an array of bookmarks or null')
+  },
+  apply(op) {
+    return { outlineEdit: op.outline as OutlineNode[] | null }
   },
 })

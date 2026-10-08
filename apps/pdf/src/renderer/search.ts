@@ -1,5 +1,6 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { foldCase } from '@genoffice/ui'
+import { matchRanges, type FindTarget } from '../shared/text-match'
 
 /** One hit: original page + PDF user-space rects (multiple when spanning several text items) */
 export interface SearchMatch {
@@ -103,33 +104,79 @@ export function createSearchIndexCache(): SearchIndexCache {
   }
 }
 
+/** Rects of the char range [s, e) on one page; linearly interpolated within items by char ratio */
+function rectsForRange(
+  items: IndexedItem[],
+  s: number,
+  e: number,
+): [number, number, number, number][] {
+  const rects: [number, number, number, number][] = []
+  for (const it of items) {
+    if (it.end <= s || it.start >= e) continue
+    const len = it.end - it.start
+    const lo = (Math.max(s, it.start) - it.start) / len
+    const hi = (Math.min(e, it.end) - it.start) / len
+    const x1 = it.x + it.w * lo
+    const x2 = it.x + it.w * hi
+    if (x2 - x1 < 0.01) continue
+    rects.push([x1, it.y, x2, it.y + it.h])
+  }
+  return rects
+}
+
 /** Case-insensitive full-text search; rects linearly interpolated within items by char ratio (approximate; bounding box for rotated glyphs) */
 export function searchInIndex(index: SearchIndex, query: string): SearchMatch[] {
-  const q = foldCase(query)
-  if (!q) return []
+  return findInIndex(index, { query })
+}
+
+/** Every occurrence of a phrase or sensitive-text pattern, in page order */
+export function findInIndex(index: SearchIndex, target: FindTarget): SearchMatch[] {
   const matches: SearchMatch[] = []
   for (let pageIndex = 0; pageIndex < index.length; pageIndex++) {
-    const { lower, items } = index[pageIndex]!
-    let from = 0
-    while (matches.length < MAX_MATCHES) {
-      const s = lower.indexOf(q, from)
-      if (s < 0) break
-      const e = s + q.length
-      from = e
-      const rects: [number, number, number, number][] = []
-      for (const it of items) {
-        if (it.end <= s || it.start >= e) continue
-        const len = it.end - it.start
-        const lo = (Math.max(s, it.start) - it.start) / len
-        const hi = (Math.min(e, it.end) - it.start) / len
-        const x1 = it.x + it.w * lo
-        const x2 = it.x + it.w * hi
-        if (x2 - x1 < 0.01) continue
-        rects.push([x1, it.y, x2, it.y + it.h])
-      }
+    const { text, lower, items } = index[pageIndex]!
+    for (const [s, e] of matchRanges(text, target, MAX_MATCHES - matches.length, lower)) {
+      const rects = rectsForRange(items, s, e)
       if (rects.length > 0) matches.push({ pageIndex, rects })
     }
     if (matches.length >= MAX_MATCHES) break
   }
   return matches
+}
+
+/** Text of a page lying inside the given PDF-space boxes (the words a highlight
+    covers). Items count when at least half their height falls in a box; within an
+    item the char range is cut by the same linear ratio search uses. */
+export function textInRects(
+  entry: PageEntry,
+  boxes: readonly (readonly [number, number, number, number])[],
+): string {
+  const parts: string[] = []
+  let lastItem = -1
+  entry.items.forEach((it, i) => {
+    if (it.w <= 0 || it.h <= 0) return
+    let lo = Infinity
+    let hi = -Infinity
+    for (const [bx1, by1, bx2, by2] of boxes) {
+      const overlapY =
+        Math.min(it.y + it.h, Math.max(by1, by2)) - Math.max(it.y, Math.min(by1, by2))
+      if (overlapY < it.h * 0.5) continue
+      const x1 = Math.max(it.x, Math.min(bx1, bx2))
+      const x2 = Math.min(it.x + it.w, Math.max(bx1, bx2))
+      if (x2 <= x1) continue
+      lo = Math.min(lo, x1)
+      hi = Math.max(hi, x2)
+    }
+    if (hi <= lo) return
+    const len = it.end - it.start
+    const from = it.start + Math.round(((lo - it.x) / it.w) * len)
+    const to = it.start + Math.round(((hi - it.x) / it.w) * len)
+    const piece = entry.text.slice(from, to)
+    if (!piece) return
+    // Adjacent items continue a run; a gap means a new line or column
+    if (parts.length > 0 && lastItem !== i - 1 && !/\s$/.test(parts[parts.length - 1]!))
+      parts.push(' ')
+    parts.push(piece)
+    lastItem = i
+  })
+  return parts.join('').replace(/\s+/g, ' ').trim()
 }

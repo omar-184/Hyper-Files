@@ -1,3 +1,5 @@
+import type { FindTarget } from './text-match'
+
 import type { Lang } from '@genoffice/i18n'
 
 export const PDF_CHANNELS = {
@@ -13,6 +15,7 @@ export const PDF_CHANNELS = {
   listStaticFormFills: 'pdf:list-static-form-fills',
   pageImagePng: 'pdf:page-image-png',
   ocrPage: 'pdf:ocr-page',
+  findTextBoxes: 'pdf:find-text-boxes',
   pagePreviewPng: 'pdf:page-preview-png',
   extractPages: 'pdf:extract-pages',
   insertPdf: 'pdf:insert-pdf',
@@ -77,6 +80,10 @@ export type UiTheme = 'light' | 'dark' | 'system'
 
 export type MarkupType = 'highlight' | 'underline' | 'strikeout'
 
+/** Saved non-text annotations the editor can list and delete (drawings, text boxes, stamps) */
+export type ShapeAnnotType =
+  'freetext' | 'line' | 'square' | 'circle' | 'polygon' | 'polyline' | 'stamp' | 'ink'
+
 /** A text markup to write; quads are 4-point groups in PDF coords (y up) [x1,yTop,x2,yTop,x1,yBottom,x2,yBottom] */
 export interface MarkupInput {
   pageIndex: number
@@ -93,7 +100,7 @@ export interface AnnotDeleteInput {
   pageIndex: number
   /** PDF object number (pdf.js annotation id "123R" → 123) */
   objNum: number
-  subtype: MarkupType | 'note'
+  subtype: MarkupType | 'note' | ShapeAnnotType | 'link'
   /** Annotation /Rect in PDF user space, for fallback matching */
   rect: [number, number, number, number]
   /** /Contents to match. Required identity for notes: every comment of a thread shares
@@ -122,6 +129,34 @@ export interface NoteEditInput {
   oldContents: string
   contents: string
 }
+
+/** One bookmark of an edited outline. Page indices are original (pre-reorder) indices. */
+export interface OutlineEntryInput {
+  title: string
+  /** Target page; null = no destination (e.g. its page was deleted) */
+  pageIndex: number | null
+  /** Destination fit type after the page (XYZ, Fit, FitH, ...) */
+  fit?: string
+  /** The fit type's numeric arguments; null leaves that coordinate unchanged */
+  args?: (number | null)[]
+  /** External link instead of a page destination */
+  url?: string
+  bold?: boolean
+  italic?: boolean
+  /** rgb 0-1; omitted = black */
+  color?: [number, number, number]
+  items: OutlineEntryInput[]
+}
+
+/** Field kinds the form designer can create */
+export type NewFieldType = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'signature'
+export const NEW_FIELD_TYPES: readonly NewFieldType[] = [
+  'text',
+  'checkbox',
+  'radio',
+  'dropdown',
+  'signature',
+]
 
 /** Drawing annotations (all coords in PDF user space, y up).
     One union member per kind; a union-literal kind would break TS narrowing. */
@@ -153,6 +188,50 @@ export type DrawingInput =
       rect: [number, number, number, number]
       /** AcroForm field explicitly associated with a visual image signature. */
       formFieldName?: string
+    }
+  | {
+      /** Text-box comment, written as a FreeText annotation */
+      kind: 'freetext'
+      pageIndex: number
+      /** PDF user space [x1,y1,x2,y2] */
+      rect: [number, number, number, number]
+      contents: string
+      fontSize: number
+      /** Text and border color, rgb 0-1 */
+      color: [number, number, number]
+      /** Annotation author (/T); omitted → 'Hyper-Files' */
+      author?: string
+      /** Creation time (ms since epoch); omitted → save time */
+      createdMs?: number
+      /** PNG (base64, no data: prefix) appearance for text Helvetica cannot draw */
+      image?: string
+    }
+  | {
+      /** Link area written as a Link annotation: to a web address or a page */
+      kind: 'link'
+      pageIndex: number
+      /** PDF user space [x1,y1,x2,y2] */
+      rect: [number, number, number, number]
+      url?: string
+      /** Target page, original index (used when url is absent) */
+      targetPage?: number
+    }
+  | {
+      /** New AcroForm field placed with the form designer */
+      kind: 'field'
+      pageIndex: number
+      /** Widget rect, PDF user space [x1,y1,x2,y2] */
+      rect: [number, number, number, number]
+      fieldType: NewFieldType
+      /** Fully qualified field name; radio buttons sharing a name form one group */
+      name: string
+      /** dropdown: the option list */
+      options?: string[]
+      /** radio: this button's export value */
+      exportValue?: string
+      /** text: allow several lines */
+      multiline?: boolean
+      required?: boolean
     }
   | {
       kind: 'note'
@@ -393,6 +472,23 @@ export interface StaticFormFillRecord {
 }
 
 /** A pending area selected for permanent native PDF redaction. PDF user space, y up. */
+/** One find-and-redact hit from the file: exact glyph boxes, one rect per line (PDF user space) */
+export interface FindTextMatch {
+  pageIndex: number
+  rects: [number, number, number, number][]
+}
+
+export interface FindTextBoxesRequest {
+  path: string
+  target: FindTarget
+}
+
+export type FindTextBoxesResult =
+  { ok: true; matches: FindTextMatch[] } | { ok: false; error: string }
+
+/** Max redaction rects per request: prevents 100k-rect DoS on native redact. */
+export const MAX_REDACTION_REGIONS = 500
+
 export interface RedactionInput {
   pageIndex: number
   rect: [number, number, number, number]
@@ -485,6 +581,8 @@ export interface SavePdfRequest {
   /** New page order (array of original page indices, excluding deleted); omitted if unreordered */
   pageOrder?: number[]
   metadata?: MetadataInput
+  /** Complete bookmark tree to write; omitted keeps the file's own, [] removes it */
+  outline?: OutlineEntryInput[]
 }
 
 /** A text edit that could not be matched to the document at save time and was skipped */
@@ -674,6 +772,8 @@ export interface PdfApi {
   /** System-OCR one rendered page image (PNG, base64); null when no engine is
       available on this platform, [] when recognition failed for this image */
   ocrPage(png: string): Promise<PdfOcrLine[] | null>
+  /** Exact glyph boxes of every occurrence of a phrase or pattern in the file on disk */
+  findTextBoxes(req: FindTextBoxesRequest): Promise<FindTextBoxesResult>
   /** Render one existing image object to PNG (base64) for move/resize ghost previews; null if it can't be matched */
   pageImagePng(request: {
     path: string

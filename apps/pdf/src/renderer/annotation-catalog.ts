@@ -1,10 +1,16 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import { MARKUP_TYPE_BY_ANNOT, type SavedMarkupAnnot } from './edit-state'
+import {
+  MARKUP_TYPE_BY_ANNOT,
+  SHAPE_TYPE_BY_ANNOT,
+  type SavedMarkupAnnot,
+  type SavedShapeAnnot,
+} from './edit-state'
 import { toSavedNote, type PdfJsAnnotData, type SavedNoteAnnot } from './note-threads'
 
 export interface PageSavedAnnots {
   markups: SavedMarkupAnnot[]
   notes: SavedNoteAnnot[]
+  shapes: SavedShapeAnnot[]
 }
 
 /**
@@ -18,6 +24,7 @@ export async function loadSavedAnnots(
     const page = await doc.getPage(origIdx + 1)
     const annots = (await page.getAnnotations()) as (PdfJsAnnotData & {
       quadPoints?: Float32Array | null
+      fieldName?: string
     })[]
     const markups = annots.flatMap((a) => {
       const type = MARKUP_TYPE_BY_ANNOT[a.annotationType]
@@ -46,8 +53,25 @@ export async function loadSavedAnnots(
       const note = toSavedNote(a, origIdx)
       return note ? [note] : []
     })
-    return { markups, notes }
+    const shapes = annots.flatMap((a): SavedShapeAnnot[] => {
+      const type = SHAPE_TYPE_BY_ANNOT[a.annotationType]
+      const objNum = /^(\d+)R$/.exec(a.id)
+      if (!type || !objNum || a.hidden || !Array.isArray(a.rect) || a.rect.length !== 4) return []
+      // Form-field signatures are stamps or ink bound to a widget; they belong to the form
+      if (a.fieldName) return []
+      return [
+        {
+          pageIndex: origIdx,
+          objNum: Number(objNum[1]),
+          type,
+          rect: [a.rect[0]!, a.rect[1]!, a.rect[2]!, a.rect[3]!],
+          author: a.titleObj?.str ?? '',
+          contents: a.contentsObj?.str ?? '',
+        },
+      ]
+    })
+    return { markups, notes, shapes }
   } catch {
-    return { markups: [], notes: [] } // page unreadable; no saved annotations to offer
+    return { markups: [], notes: [], shapes: [] } // page unreadable; no saved annotations to offer
   }
 }

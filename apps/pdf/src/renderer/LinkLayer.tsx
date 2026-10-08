@@ -3,14 +3,18 @@ import type { ReactElement } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { pdfRectToCss } from './annotations'
 import type { PageGeom } from './annotations'
+import type { SavedLinkAnnot } from './edit-state'
 
 interface LinkItem {
   rect: [number, number, number, number]
   url?: string
   dest?: unknown
+  /** PDF object number, when the link is an indirect object (deletable) */
+  objNum?: number
 }
 
 interface RawLinkAnnotation {
+  id?: string
   subtype?: string
   rect?: number[]
   url?: string
@@ -39,7 +43,13 @@ export function collectPageLinks(annots: RawLinkAnnotation[]): LinkItem[] {
     if (out.length >= MAX_PAGE_LINKS) break
     if (a.subtype !== 'Link' || (!a.url && !a.dest)) continue
     if (!isFiniteRect(a.rect)) continue
-    out.push({ rect: a.rect, url: a.url, dest: a.dest })
+    const objNum = /^(\d+)R$/.exec(a.id ?? '')
+    out.push({
+      rect: a.rect,
+      url: a.url,
+      dest: a.dest,
+      ...(objNum ? { objNum: Number(objNum[1]) } : {}),
+    })
   }
   return out
 }
@@ -51,12 +61,18 @@ export function LinkLayer({
   geom,
   scale,
   onGoToDest,
+  hidden,
+  editing,
 }: {
   doc: PDFDocumentProxy
   pageNo: number
   geom: PageGeom
   scale: number
   onGoToDest: (dest: unknown) => void
+  /** Object numbers of links pending deletion: not shown */
+  hidden?: ReadonlySet<number>
+  /** Link tool on: links show as boxes with a remove button instead of navigating */
+  editing?: { removeLabel: string; onRemove: (link: SavedLinkAnnot) => void }
 }): ReactElement | null {
   const [links, setLinks] = useState<LinkItem[] | null>(null)
 
@@ -73,11 +89,47 @@ export function LinkLayer({
     }
   }, [doc, pageNo])
 
-  if (!links || links.length === 0) return null
+  const shown = links?.filter((l) => l.objNum === undefined || !hidden?.has(l.objNum))
+  if (!shown || shown.length === 0) return null
+
+  if (editing) {
+    return (
+      <div className="pdf-link-layer is-editing">
+        {shown.map((l, i) => (
+          <div
+            key={i}
+            className="pdf-link-edit"
+            style={pdfRectToCss(geom, l.rect, scale)}
+            data-tip={l.url}
+          >
+            {l.objNum !== undefined && (
+              <button
+                type="button"
+                className="pdf-link-remove"
+                aria-label={editing.removeLabel}
+                data-tip={editing.removeLabel}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() =>
+                  editing.onRemove({
+                    pageIndex: pageNo - 1,
+                    objNum: l.objNum!,
+                    type: 'link',
+                    rect: l.rect,
+                  })
+                }
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="pdf-link-layer">
-      {links.map((l, i) => (
+      {shown.map((l, i) => (
         <a
           key={i}
           className="pdf-link"

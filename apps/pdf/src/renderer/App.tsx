@@ -65,10 +65,25 @@ import type { PdfViewState, ZoomAnchor } from './view-state'
 import { LinkLayer } from './LinkLayer'
 import { OutlinePanel } from './OutlinePanel'
 import type { OutlineNode } from './OutlinePanel'
+import {
+  indentAt,
+  insertAfter,
+  moveAt,
+  nodeAt,
+  normalizeOutline,
+  outdentAt,
+  pageBookmark,
+  removeAt,
+  renameAt,
+  toOutlineInput,
+  type OutlinePath,
+} from './outline-edit'
 import { buildHeadingOutline, remapOutlinePages } from './heading-outline'
 import { printPdf } from './print'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
+import { FieldPropsDialog, type FieldProps } from './FieldPropsDialog'
+import { LinkDialog, type LinkTarget } from './LinkDialog'
 import { SignatureDialog, fileToCanvas } from './SignatureDialog'
 import type { SignatureData } from './SignatureDialog'
 import { signatureDrawingForField } from './signature-field'
@@ -80,8 +95,23 @@ import {
 import { StampDialog } from './StampDialog'
 import { buildStamps } from './stamps'
 import type { HeaderFooterConfig, WatermarkConfig } from './stamps'
-import { createSearchIndexCache, searchInIndex } from './search'
+import { createSearchIndexCache, findInIndex, searchInIndex, textInRects } from './search'
 import type { SearchIndex, SearchMatch } from './search'
+import type { FindTarget, RedactPattern } from '../shared/text-match'
+import { marksFromMatches, padMatchRect } from './redact-marks'
+import {
+  TEXT_BOX_DEFAULT_SIZE,
+  TEXT_BOX_FONT_SIZES,
+  TEXT_BOX_LEADING,
+  TEXT_BOX_PAD,
+  isWinAnsi,
+  textBoxHeight,
+  wrapTextBox,
+} from '../shared/text-box'
+import { measureTextBox, rasterTextBox } from './text-box-render'
+import { buildCommentList } from './comments-list'
+import type { CommentEntry, CommentKind } from './comments-list'
+import { CommentsPanel } from './CommentsPanel'
 import { mapDocFont, type DocFontStyle } from './doc-font'
 import { groupPageBlocks, reflowOverflows, type TextBlock } from './text-block'
 import {
@@ -108,6 +138,8 @@ import { platformShortcuts } from '@genoffice/i18n'
 import { Dropdown, useDismissablePopover, useRibbonCollapse } from '@genoffice/ui'
 import { useI18n } from './i18n/locale'
 import { useAutosave } from './useAutosave'
+import { MAX_REDACTION_REGIONS } from '../shared/ipc'
+import type { NewFieldType } from '../shared/ipc'
 import type {
   AnnotDeleteInput,
   CropPagesRequest,
@@ -183,7 +215,9 @@ import type { Bucket, Op, OpContext, PlanResult } from './edit-ops'
 import { rectsNear } from './edit-state'
 import type {
   StampConfig,
+  SavedAnnot,
   SavedMarkupAnnot,
+  SavedShapeAnnot,
   LocalAnnotDelete,
   LocalNoteEdit,
   EditSnapshot,
@@ -201,6 +235,13 @@ import {
   IconEllipse,
   IconArrow,
   IconNote,
+  IconTextBox,
+  IconFieldText,
+  IconLink,
+  IconFieldCheck,
+  IconFieldRadio,
+  IconFieldDropdown,
+  IconFieldSign,
   IconSign,
   IconPreviousField,
   IconNextField,
@@ -257,12 +298,59 @@ import {
 
 GlobalWorkerOptions.workerSrc = workerUrl
 
+/** Form designer tools: icon, label, the size a plain click places (PDF pt) and the
+    stem of auto-generated names (Acrobat style: Text1, Check Box1, …) */
+const FIELD_TOOLS = [
+  {
+    type: 'text' as const,
+    icon: IconFieldText,
+    key: 'fieldText' as const,
+    size: [160, 22],
+    stem: 'Text',
+  },
+  {
+    type: 'checkbox' as const,
+    icon: IconFieldCheck,
+    key: 'fieldCheckbox' as const,
+    size: [14, 14],
+    stem: 'Check Box',
+  },
+  {
+    type: 'radio' as const,
+    icon: IconFieldRadio,
+    key: 'fieldRadio' as const,
+    size: [14, 14],
+    stem: 'Group',
+  },
+  {
+    type: 'dropdown' as const,
+    icon: IconFieldDropdown,
+    key: 'fieldDropdown' as const,
+    size: [140, 22],
+    stem: 'Dropdown',
+  },
+  {
+    type: 'signature' as const,
+    icon: IconFieldSign,
+    key: 'fieldSignature' as const,
+    size: [180, 48],
+    stem: 'Signature',
+  },
+] satisfies {
+  type: NewFieldType
+  size: [number, number]
+  stem: string
+  key: string
+  icon: unknown
+}[]
+
 const DRAW_TOOLS = [
   { tool: 'ink' as const, icon: IconInk, key: 'drawInk' as const },
   { tool: 'rect' as const, icon: IconRect, key: 'drawRect' as const },
   { tool: 'ellipse' as const, icon: IconEllipse, key: 'drawEllipse' as const },
   { tool: 'arrow' as const, icon: IconArrow, key: 'drawArrow' as const },
   { tool: 'note' as const, icon: IconNote, key: 'drawNote' as const },
+  { tool: 'textbox' as const, icon: IconTextBox, key: 'drawTextBox' as const },
 ]
 
 /** A native picker was dismissed; flushed = the pending edits had already been saved to disk first */
@@ -279,7 +367,7 @@ const RIBBON_TABS = [
   { id: 'page', labelKey: 'ribbonTabPage' },
   { id: 'view', labelKey: 'ribbonTabView' },
 ] as const
-type RibbonTab = (typeof RIBBON_TABS)[number]['id'] | 'fillForm'
+type RibbonTab = (typeof RIBBON_TABS)[number]['id'] | 'fillForm' | 'prepareForm'
 
 export default function App() {
   const { lang, t } = useI18n()
@@ -299,7 +387,7 @@ export default function App() {
   const [scale, setScale] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
-  const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | null>('thumbs')
+  const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'comments' | null>('thumbs')
   const [sidebarW, setSidebarW] = useState(loadSidebarW)
   /** raster width for thumbnails — only updated when a drag ends (re-rastering every frame would jank) */
   const [thumbRasterW, setThumbRasterW] = useState(() => loadSidebarW() - SIDEBAR_CHROME)
@@ -361,6 +449,7 @@ export default function App() {
   const [savedMarkups, setSavedMarkups] = useState<Map<number, SavedMarkupAnnot[]>>(new Map())
   /** Saved note (Text) comments per original page index, loaded in the same pass */
   const [savedNotes, setSavedNotes] = useState<Map<number, SavedNoteAnnot[]>>(new Map())
+  const [savedShapes, setSavedShapes] = useState<Map<number, SavedShapeAnnot[]>>(new Map())
   /** Active comment thread: its margin card is expanded and linked to its pin */
   const [activeNote, setActiveNote] = useState<{ origIdx: number; rootKey: string } | null>(null)
   /** OS account name; the default author of new note comments */
@@ -668,6 +757,26 @@ export default function App() {
   const [colorOpen, setColorOpen] = useState(false)
   /** Note just placed with the note tool; its content is typed into a margin draft card */
   const [noteDraft, setNoteDraft] = useState<{ origIdx: number; at: [number, number] } | null>(null)
+  /** Text-box comment being typed: a new box (editId null) or a pending one reopened */
+  const [textBoxDraft, setTextBoxDraft] = useState<{
+    origIdx: number
+    rect: [number, number, number, number]
+    text: string
+    fontSize: number
+    color: [number, number, number]
+    editId: string | null
+  } | null>(null)
+  const [textBoxSize, setTextBoxSize] = useState<number>(TEXT_BOX_DEFAULT_SIZE)
+  /** Field type the form designer places while drawTool is 'field' */
+  const [fieldType, setFieldType] = useState<NewFieldType>('text')
+  /** Pending form field whose properties dialog is open */
+  const [fieldDlg, setFieldDlg] = useState<string | null>(null)
+  /** Link area waiting for its target: a new one (editId null) or a pending one reopened */
+  const [linkDraft, setLinkDraft] = useState<{
+    origIdx: number
+    rect: [number, number, number, number]
+    editId: string | null
+  } | null>(null)
   /** In-progress rewrite of an existing comment. Hoisted out of the margin card so a
       save can fold it in before the post-save reload tears the edit box down. */
   const [noteEditDraft, setNoteEditDraft] = useState<{
@@ -703,6 +812,9 @@ export default function App() {
   const [metadata, setMetadata] = useState<MetadataInput | null>(null)
   const metadataRef = useRef(metadata)
   metadataRef.current = metadata
+  const [outlineEdit, setOutlineEdit] = useState<OutlineNode[] | null>(null)
+  const outlineEditRef = useRef(outlineEdit)
+  outlineEditRef.current = outlineEdit
   const [stampDlg, setStampDlg] = useState(false)
   const [propsDlg, setPropsDlg] = useState(false)
   const [fileSize, setFileSize] = useState(0)
@@ -753,6 +865,9 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMatches, setSearchMatches] = useState<SearchMatch[]>([])
   const [searchCur, setSearchCur] = useState(0)
+  /** Find-and-redact mode: the search bar also offers sensitive-text patterns and "mark all" */
+  const [searchRedact, setSearchRedact] = useState(false)
+  const [searchPattern, setSearchPattern] = useState<RedactPattern | null>(null)
   const [printing, setPrinting] = useState(false)
   const [undoStack, setUndoStack] = useState<EditSnapshot[]>([])
   const [redoStack, setRedoStack] = useState<EditSnapshot[]>([])
@@ -1037,6 +1152,7 @@ export default function App() {
         setDeleted(new Set())
         setOrder(null)
         setMetadata(null)
+        setOutlineEdit(null)
       } else {
         // Post-save reload: subtract exactly what the save wrote. Edits made while the
         // write was in flight stay pending, with page indices remapped through the
@@ -1145,6 +1261,7 @@ export default function App() {
         // it is in the file now, a new object means the user changed it during the save
         setStampCfg((prev) => (prev === saved.stampCfg ? null : prev))
         setMetadata((prev) => (prev === saved.metadata ? null : prev))
+        setOutlineEdit((prev) => (prev === saved.outlineEdit ? null : prev))
         setFormEdits((prev) => {
           const next = new Map<string, FormValueInput>()
           for (const [k, v] of prev) if (saved.formEdits.get(k) !== v) next.set(k, v)
@@ -1592,7 +1709,8 @@ export default function App() {
     rotations.size > 0 ||
     deleted.size > 0 ||
     order !== null ||
-    metadata !== null
+    metadata !== null ||
+    outlineEdit !== null
   const dirty = redactions.length > 0 || ordinaryDirty
 
   // Mirror dirty state to the main process (close-tab/close-window guard)
@@ -1639,6 +1757,7 @@ export default function App() {
     deleted: deletedRef.current,
     order: orderRef.current,
     metadata: metadataRef.current,
+    outlineEdit: outlineEditRef.current,
   })
 
   const pushUndo = (coalesceKey?: string) => {
@@ -1732,6 +1851,10 @@ export default function App() {
       orderRef.current = reduce('order', orderRef.current)
       setOrder(orderRef.current)
     }
+    if (touched.has('outlineEdit')) {
+      outlineEditRef.current = reduce('outlineEdit', outlineEditRef.current)
+      setOutlineEdit(outlineEditRef.current)
+    }
     if (touched.has('metadata')) {
       metadataRef.current = reduce('metadata', metadataRef.current)
       setMetadata(metadataRef.current)
@@ -1784,6 +1907,7 @@ export default function App() {
     deletedRef.current = s.deleted
     orderRef.current = s.order
     metadataRef.current = s.metadata
+    outlineEditRef.current = s.outlineEdit
     setMarkups(s.markups)
     setAnnotDeletes(s.annotDeletes)
     setNoteEdits(s.noteEdits)
@@ -1801,6 +1925,7 @@ export default function App() {
     setDeleted(s.deleted)
     setOrder(s.order)
     setMetadata(s.metadata)
+    setOutlineEdit(s.outlineEdit)
     // The selected annotation may no longer exist in the restored snapshot
     setSelected(null)
   }
@@ -1966,6 +2091,7 @@ export default function App() {
   useEffect(() => {
     setSavedMarkups(new Map())
     setSavedNotes(new Map())
+    setSavedShapes(new Map())
     setActiveNote(null)
     setNoteDraft(null)
   }, [doc])
@@ -1973,34 +2099,45 @@ export default function App() {
   /** Load saved markup + note annotations for pages scrolled into view: markups so
       clicking one can select it for deletion, notes so their comment threads show.
       Runs for read-only docs too (comments are viewable). Settles the same way as
-      the paragraph-box effect. */
+      the paragraph-box effect. With the comments list open every page is read, a
+      batch per run: each commit re-runs the effect for the next batch, and a
+      scroll in between only restarts the batch in flight. */
   useEffect(() => {
     if (!doc) return
     const missing: number[] = []
     for (const r of visibleRows)
       for (const i of rows[r] ?? []) if (!savedMarkups.has(i)) missing.push(i)
+    if (sidebar === 'comments') {
+      const queued = new Set(missing)
+      for (let i = 0; i < doc.numPages; i++)
+        if (!savedMarkups.has(i) && !queued.has(i)) missing.push(i)
+    }
     if (missing.length === 0) return
     let stale = false
     void (async () => {
       const markupEntries: [number, SavedMarkupAnnot[]][] = []
       const noteEntries: [number, SavedNoteAnnot[]][] = []
-      for (const origIdx of missing) {
-        const { markups: markupList, notes: noteList } = await loadSavedAnnots(doc, origIdx)
-        markupEntries.push([origIdx, markupList])
-        noteEntries.push([origIdx, noteList])
+      const shapeEntries: [number, SavedShapeAnnot[]][] = []
+      for (const origIdx of missing.slice(0, 16)) {
+        const loaded = await loadSavedAnnots(doc, origIdx)
+        if (stale) return
+        markupEntries.push([origIdx, loaded.markups])
+        noteEntries.push([origIdx, loaded.notes])
+        shapeEntries.push([origIdx, loaded.shapes])
       }
       if (!stale) {
         setSavedMarkups((prev) => new Map([...prev, ...markupEntries]))
         setSavedNotes((prev) => new Map([...prev, ...noteEntries]))
+        setSavedShapes((prev) => new Map([...prev, ...shapeEntries]))
       }
     })()
     return () => {
       stale = true
     }
-  }, [doc, visibleRows, rows, savedMarkups])
+  }, [doc, visibleRows, rows, savedMarkups, sidebar])
 
   useEffect(() => {
-    if (!searchOpen || !searchQuery.trim()) {
+    if (!searchOpen || (!searchPattern && !searchQuery.trim())) {
       setSearchMatches([])
       setSearchCur(0)
       return
@@ -2009,7 +2146,11 @@ export default function App() {
     const timer = setTimeout(() => {
       void getSearchIndex()?.then((idx) => {
         if (cancelled) return
-        setSearchMatches(searchInIndex(idx, searchQuery.trim()))
+        setSearchMatches(
+          searchPattern
+            ? findInIndex(idx, { pattern: searchPattern })
+            : searchInIndex(idx, searchQuery.trim()),
+        )
         setSearchCur(0)
       })
     }, 200)
@@ -2017,7 +2158,7 @@ export default function App() {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [searchOpen, searchQuery, getSearchIndex])
+  }, [searchOpen, searchQuery, searchPattern, getSearchIndex])
 
   /** Pages with unsaved deletion are excluded from match navigation */
   const activeMatches = useMemo(
@@ -2054,7 +2195,9 @@ export default function App() {
     setSearchCur((searchCurClamped + dir + n) % n)
   }
 
-  const openSearch = () => {
+  const openSearch = (redact = false) => {
+    setSearchRedact(redact)
+    if (!redact) setSearchPattern(null)
     setSearchOpen(true)
     requestAnimationFrame(() => {
       searchInputRef.current?.focus()
@@ -2062,7 +2205,64 @@ export default function App() {
     })
   }
 
-  const closeSearch = () => setSearchOpen(false)
+  const closeSearch = () => {
+    setSearchOpen(false)
+    setSearchRedact(false)
+    setSearchPattern(null)
+  }
+
+  /** Text index the comments list reads markup words from; loaded while the list is open */
+  const [commentsIndex, setCommentsIndex] = useState<SearchIndex | null>(null)
+  useEffect(() => {
+    if (sidebar !== 'comments') return
+    let stale = false
+    void getSearchIndex()?.then((idx) => {
+      if (!stale) setCommentsIndex(idx)
+    })
+    return () => {
+      stale = true
+    }
+  }, [sidebar, getSearchIndex])
+
+  const [markingAll, setMarkingAll] = useState(false)
+
+  /** Find and redact: turn every match into a pending redaction mark. Boxes come from
+      the file's exact glyph positions (the search rects are approximate); pages
+      recognized by OCR have no text in the file and use their OCR boxes. */
+  const markMatchesForRedaction = async () => {
+    const target: FindTarget = searchPattern
+      ? { pattern: searchPattern }
+      : { query: searchQuery.trim() }
+    if ('query' in target && !target.query) return
+    setMarkingAll(true)
+    try {
+      const res = await window.pdfApi.findTextBoxes({ path: filePath, target })
+      if (!res.ok) {
+        opFailed(res.error)
+        return
+      }
+      const fromOcr = activeMatches
+        .filter((m) => ocrPages.has(m.pageIndex))
+        .map((m) => ({ ...m, rects: m.rects.map(padMatchRect) }))
+      const fromFile = res.matches.filter(
+        (m) => !deleted.has(m.pageIndex) && !ocrPages.has(m.pageIndex),
+      )
+      const { added, overCap } = marksFromMatches([...fromFile, ...fromOcr], redactions)
+      if (added.length > 0)
+        setRedactions((prev) => [...prev, ...added.map((mark) => ({ ...mark, id: newId() }))])
+      showNotice(
+        overCap > 0
+          ? t('redactMatchesCapped', { count: added.length, max: MAX_REDACTION_REGIONS })
+          : added.length === 0
+            ? t('redactMatchesNone')
+            : added.length === 1
+              ? t('redactMatchesOne')
+              : t('redactMatchesMarked', { count: added.length }),
+      )
+    } finally {
+      setMarkingAll(false)
+    }
+  }
 
   /** Selection quads in PDF space keyed by original page index; null when nothing usable */
   const selectionQuads = (): Map<number, number[][]> | null => {
@@ -3328,6 +3528,7 @@ export default function App() {
     deletedPages: [...deleted],
     ...(order ? { pageOrder: visList } : {}),
     ...(metadata ? { metadata } : {}),
+    ...(outlineEdit ? { outline: toOutlineInput(outlineEdit) } : {}),
   })
 
   /** Resolved when the running save() lands; queued saves and Save As serialize behind it */
@@ -3384,6 +3585,7 @@ export default function App() {
       formEdits,
       rotations,
       metadata,
+      outlineEdit,
       pageMap: new Map(visList.map((origIdx, i) => [origIdx, i])),
     }
     inFlightNoteWritesRef.current = snapshot.noteEditWritten
@@ -3601,7 +3803,8 @@ export default function App() {
       rotations.size > 0 ||
       deleted.size > 0 ||
       order !== null ||
-      metadata !== null
+      metadata !== null ||
+      outlineEdit !== null
     if (otherPending) {
       showNotice(t('redactSaveFirst'))
       return
@@ -3677,6 +3880,156 @@ export default function App() {
 
   const commitDrawing = (origIdx: number, input: DrawingInput) => {
     applyEditOps([{ op: 'addDrawing', drawing: { ...input, pageIndex: origIdx } }])
+  }
+
+  /** Close the text-box editor, writing its text as a new or updated pending box.
+      The box grows downward on screen to fit its lines; text Helvetica cannot draw
+      (e.g. Arabic, CJK) carries a rendered image as its saved appearance. */
+  const commitTextBox = () => {
+    const draft = textBoxDraft
+    if (!draft) return
+    setTextBoxDraft(null)
+    const text = draft.text.replace(/\s+$/, '')
+    if (!text.trim()) {
+      if (draft.editId) applyEditOps([{ op: 'removeDrawing', id: draft.editId }])
+      return
+    }
+    const geom = pageGeom(draft.origIdx)
+    const box = pdfRectToCss(geom, draft.rect, 1)
+    const lines = wrapTextBox(text, box.width - 2 * TEXT_BOX_PAD, measureTextBox(draft.fontSize))
+    const height = Math.max(box.height, textBoxHeight(lines.length, draft.fontSize))
+    const [ax, ay] = viewToPdf(geom, box.left, box.top)
+    const [bx, by] = viewToPdf(geom, box.left + box.width, box.top + height)
+    const rect: [number, number, number, number] = [
+      Math.min(ax, bx),
+      Math.min(ay, by),
+      Math.max(ax, bx),
+      Math.max(ay, by),
+    ]
+    const image = isWinAnsi(text)
+      ? undefined
+      : rasterTextBox(text, box.width, height, draft.fontSize, draft.color)
+    if (draft.editId) {
+      applyEditOps([
+        { op: 'setFreeText', id: draft.editId, contents: text, rect, ...(image ? { image } : {}) },
+      ])
+      return
+    }
+    applyEditOps([
+      {
+        op: 'addDrawing',
+        drawing: {
+          kind: 'freetext',
+          pageIndex: draft.origIdx,
+          rect,
+          contents: text,
+          fontSize: draft.fontSize,
+          color: draft.color,
+          author: noteAuthor || undefined,
+          createdMs: Date.now(),
+          ...(image ? { image } : {}),
+        },
+      },
+    ])
+  }
+
+  /** Field names in use: the file's fields plus pending ones (but not the one being edited) */
+  const fieldNameTaken = (name: string, exceptId?: string): boolean =>
+    (formCatalog?.fields.has(name) ?? false) ||
+    drawings.some((d) => d.id !== exceptId && d.input.kind === 'field' && d.input.name === name)
+
+  /** Place a new form field. Radio buttons placed one after another join one group. */
+  const placeField = (origIdx: number, rect: [number, number, number, number]) => {
+    const tool = FIELD_TOOLS.find((f) => f.type === fieldType)!
+    const last = drawings[drawings.length - 1]?.input
+    let name: string
+    let exportValue: string | undefined
+    if (fieldType === 'radio' && last?.kind === 'field' && last.fieldType === 'radio') {
+      name = last.name
+      const values = new Set(
+        drawings.flatMap((d) =>
+          d.input.kind === 'field' && d.input.name === name ? [d.input.exportValue] : [],
+        ),
+      )
+      let n = values.size + 1
+      while (values.has(`Choice${n}`)) n++
+      exportValue = `Choice${n}`
+    } else {
+      let n = 1
+      while (fieldNameTaken(`${tool.stem}${n}`)) n++
+      name = `${tool.stem}${n}`
+      if (fieldType === 'radio') exportValue = 'Choice1'
+    }
+    const id = newId()
+    applyEditOps([
+      {
+        op: 'addDrawing',
+        id,
+        drawing: {
+          kind: 'field',
+          pageIndex: origIdx,
+          rect,
+          fieldType,
+          name,
+          ...(exportValue ? { exportValue } : {}),
+          ...(fieldType === 'dropdown' ? { options: [] } : {}),
+        },
+      },
+    ])
+    // A dropdown is useless without options: ask for them right away
+    if (fieldType === 'dropdown') setFieldDlg(id)
+  }
+
+  // The field and link tools belong to their tabs; leaving the tab puts them down
+  useEffect(() => {
+    setDrawTool((tool) =>
+      (tool === 'field' && ribbonTab !== 'prepareForm') || (tool === 'link' && ribbonTab !== 'edit')
+        ? null
+        : tool,
+    )
+  }, [ribbonTab])
+
+  const applyLink = (target: LinkTarget) => {
+    const draft = linkDraft
+    setLinkDraft(null)
+    if (!draft) return
+    const dest =
+      'url' in target ? { url: target.url } : { targetPage: visList[target.page - 1] ?? 0 }
+    if (draft.editId) {
+      applyEditOps([{ op: 'setLinkTarget', id: draft.editId, ...dest }])
+      return
+    }
+    applyEditOps([
+      {
+        op: 'addDrawing',
+        drawing: { kind: 'link', pageIndex: draft.origIdx, rect: draft.rect, ...dest },
+      },
+    ])
+  }
+
+  /** Saved links pending deletion, by object number (the link layer hides them) */
+  const deletedLinkObjs = useMemo(
+    () => new Set(annotDeletes.flatMap((d) => (d.annot.type === 'link' ? [d.annot.objNum] : []))),
+    [annotDeletes],
+  )
+
+  const applyFieldProps = (id: string, props: FieldProps) => {
+    setFieldDlg(null)
+    applyEditOps([{ op: 'setFieldProps', id, ...props }])
+  }
+
+  const editTextBox = (origIdx: number, id: string) => {
+    const d = drawings.find((x) => x.id === id)
+    if (!d || d.input.kind !== 'freetext') return
+    setSelected(null)
+    setTextBoxDraft({
+      origIdx,
+      rect: d.input.rect,
+      text: d.input.contents,
+      fontSize: d.input.fontSize,
+      color: d.input.color,
+      editId: id,
+    })
   }
 
   /** Render stamps in current page order; page numbers depend on visList, so both preview and save compute fresh */
@@ -4521,7 +4874,7 @@ export default function App() {
       number,
       {
         rects: [number, number, number, number][]
-        annots: (SavedMarkupAnnot | SavedNoteAnnot)[]
+        annots: SavedAnnot[]
         text: { probe: TextEditInput; rect: [number, number, number, number] }[]
       }
     >()
@@ -4536,7 +4889,9 @@ export default function App() {
     for (const e of imageEdits) {
       if (e.input.kind !== 'insertImage') jobFor(e.input.pageIndex).rects.push(e.input.oldRect)
     }
-    for (const d of annotDeletes) jobFor(d.annot.pageIndex).annots.push(d.annot)
+    // Links draw nothing on the page; hiding them is the link layer's job
+    for (const d of annotDeletes)
+      if (d.annot.type !== 'link') jobFor(d.annot.pageIndex).annots.push(d.annot)
     // The draft goes first: a reopened edit's run must be claimed by the draft's probe
     if (draftProbe) jobFor(draftProbe.probe.pageIndex).text.push(draftProbe)
     for (const te of textEdits) {
@@ -4849,6 +5204,73 @@ export default function App() {
     toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
   }
 
+  // ── Comments list (sidebar) ──
+
+  const commentEntries: CommentEntry[] =
+    sidebar === 'comments'
+      ? buildCommentList({
+          pages: visList,
+          savedMarkups,
+          savedShapes,
+          annotDeletes,
+          markups,
+          drawings,
+          noteThreads: noteThreadsOn,
+          textUnder: (pageIndex, boxes) => {
+            const entry = commentsIndex?.[pageIndex]
+            return entry ? textInRects(entry, boxes) : ''
+          },
+        })
+      : []
+  const commentsLoading = sidebar === 'comments' && !!doc && savedMarkups.size < doc.numPages
+
+  /** Scroll the comment's anchor into view; a note also opens its thread */
+  const goToComment = (entry: CommentEntry) => {
+    const el = scrollRef.current
+    const visIdx = visList.indexOf(entry.pageIndex)
+    if (!el || visIdx < 0) return
+    const [x, y] = entry.at
+    const box = pdfRectToCss(pageGeom(entry.pageIndex), [x, y, x, y], scale)
+    el.scrollTop = Math.max(0, pageTop(visIdx) + box.top - el.clientHeight * 0.3)
+    if (entry.target.type === 'note')
+      setActiveNote({ origIdx: entry.pageIndex, rootKey: entry.target.root.key })
+  }
+
+  const deleteComment = (entry: CommentEntry) => {
+    const target = entry.target
+    if (target.type === 'note') {
+      deleteNoteItem(target.root)
+      return
+    }
+    applyEditOps([
+      target.type === 'markup'
+        ? { op: 'removeMarkup', id: target.id }
+        : target.type === 'drawing'
+          ? { op: 'removeDrawing', id: target.id }
+          : { op: 'deleteSavedAnnot', annot: target.annot },
+    ])
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current)
+    setDeletedInsertedText(false)
+    setDeleteToast(true)
+    toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
+  }
+
+  const commentKindLabels: Record<CommentKind, string> = {
+    highlight: t('highlight'),
+    underline: t('underline'),
+    strikeout: t('strikeout'),
+    note: t('commentKindNote'),
+    ink: t('commentKindInk'),
+    square: t('commentKindSquare'),
+    circle: t('commentKindCircle'),
+    line: t('commentKindLine'),
+    arrow: t('commentKindArrow'),
+    polygon: t('commentKindPolygon'),
+    polyline: t('commentKindPolyline'),
+    freetext: t('commentKindFreetext'),
+    stamp: t('commentKindStamp'),
+  }
+
   /** Extract/insert work on the file on disk — flush unsaved changes first; undefined = the save failed */
   const flushThen = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
     if (redactions.length > 0) {
@@ -5150,6 +5572,61 @@ export default function App() {
   }
 
   const curOrigIdx = visList[currentPage - 1] ?? -1
+  /** Bookmarks the panel shows; an editable file without any still opens the panel to add some */
+  const outlineShown = outlineEdit ?? outline ?? (readOnly || !doc ? null : [])
+
+  /** Change the pending bookmark tree. The first edit starts from what the panel
+      shows (the file's bookmarks, or the heading-derived tree) with destinations
+      resolved, so saving writes exactly the tree the user sees. */
+  const editOutline = async (
+    fn: (base: OutlineNode[]) => [OutlineNode[], OutlinePath | null] | null,
+  ): Promise<OutlinePath | null> => {
+    let base = outlineEditRef.current
+    if (!base) {
+      const resolved = doc ? await normalizeOutline(doc, outline ?? []) : []
+      base = outlineEditRef.current ?? resolved
+    }
+    const result = fn(base)
+    if (!result) return null
+    applyEditOps([{ op: 'setOutline', outline: result[0] }])
+    return result[1]
+  }
+
+  const outlineEditing = readOnly
+    ? undefined
+    : {
+        labels: {
+          add: t('bookmarkAdd'),
+          rename: t('bookmarkRename'),
+          remove: t('bookmarkRemove'),
+          up: t('bookmarkUp'),
+          down: t('bookmarkDown'),
+          indent: t('bookmarkIndent'),
+          outdent: t('bookmarkOutdent'),
+        },
+        onAdd: (after: OutlinePath | null) => {
+          if (curOrigIdx < 0) return Promise.resolve(null)
+          const node = pageBookmark(
+            t('bookmarkUntitled'),
+            curOrigIdx,
+            sizes[curOrigIdx]?.height ?? 0,
+          )
+          return editOutline((base) => insertAfter(base, after, node))
+        },
+        onRename: (path: OutlinePath, title: string) =>
+          void editOutline((base) =>
+            nodeAt(base, path) ? [renameAt(base, path, title), path] : null,
+          ),
+        onRemove: (path: OutlinePath) =>
+          void editOutline((base) => (nodeAt(base, path) ? [removeAt(base, path), null] : null)),
+        onMove: (path: OutlinePath, how: 'up' | 'down' | 'indent' | 'outdent') =>
+          editOutline((base) => {
+            if (!nodeAt(base, path)) return null
+            if (how === 'up') return moveAt(base, path, -1)
+            if (how === 'down') return moveAt(base, path, 1)
+            return how === 'indent' ? indentAt(base, path) : outdentAt(base, path)
+          }),
+      }
 
   // ── unified popover dismissal: a press outside the guard roots, a window
   // blur, or a press on the shell tab strip closes each popover ──
@@ -5559,7 +6036,7 @@ export default function App() {
     <button
       className={`rb-big${searchOpen ? ' active' : ''}`}
       data-tip={`${t('search')} (${platformShortcuts('⌘F')})`}
-      onClick={() => (searchOpen ? closeSearch() : openSearch())}
+      onClick={() => (searchOpen && !searchRedact ? closeSearch() : openSearch())}
     >
       <span className="rb-big-icon">
         <IconSearch />
@@ -5653,6 +6130,19 @@ export default function App() {
     setRibbonTab('home')
   }
 
+  const commentsBtn = (
+    <button
+      className={`rb-big${sidebar === 'comments' ? ' active' : ''}`}
+      data-tip={t('commentsHint')}
+      onClick={() => setSidebar((v) => (v === 'comments' ? null : 'comments'))}
+    >
+      <span className="rb-big-icon">
+        <IconNote />
+      </span>
+      {t('comments')}
+    </button>
+  )
+
   const viewNavGroup = (
     <div className="ribbon-group">
       <div className="ribbon-group-items">
@@ -5667,7 +6157,7 @@ export default function App() {
         </button>
         <button
           className={`rb-big${sidebar === 'outline' ? ' active' : ''}`}
-          disabled={!outline}
+          disabled={!outlineShown}
           onClick={() => setSidebar((v) => (v === 'outline' ? null : 'outline'))}
         >
           <span className="rb-big-icon">
@@ -5675,6 +6165,7 @@ export default function App() {
           </span>
           {t('outline')}
         </button>
+        {commentsBtn}
         {searchBtn}
         <button
           className={`rb-big${spread === 2 ? ' active' : ''}`}
@@ -5753,6 +6244,18 @@ export default function App() {
               }}
             >
               {t('ribbonTabFillForm')}
+            </button>
+          )}
+          {!readOnly && (
+            <button
+              className={`ribbon-tab ribbon-tab-context ${collapse.tabClass(ribbonTab === 'prepareForm')}`}
+              data-tip={collapse.tabTip(ribbonTab === 'prepareForm') ?? t('prepareFormHint')}
+              onClick={() => {
+                collapse.onTabPress(ribbonTab === 'prepareForm')
+                setRibbonTab('prepareForm')
+              }}
+            >
+              {t('ribbonTabPrepareForm')}
             </button>
           )}
           <span className="ribbon-tabs-spacer" />
@@ -5885,6 +6388,29 @@ export default function App() {
                       {t(key)}
                     </button>
                   ))}
+                  {(drawTool === 'textbox' || textBoxDraft) && (
+                    <label className="rb-field">
+                      <span>{t('textBoxSize')}</span>
+                      <select
+                        className="pdf-search-mode"
+                        aria-label={t('textBoxSize')}
+                        value={textBoxDraft?.fontSize ?? textBoxSize}
+                        // Keep the open editor's focus: a blur would commit the box
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const size = Number(e.target.value)
+                          setTextBoxSize(size)
+                          setTextBoxDraft((d) => d && { ...d, fontSize: size })
+                        }}
+                      >
+                        {TEXT_BOX_FONT_SIZES.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <button
                     className={`rb-big${drawTool === 'redact' ? ' active' : ''}`}
                     disabled={readOnly}
@@ -5900,6 +6426,17 @@ export default function App() {
                       <IconRect />
                     </span>
                     {t('redact')}
+                  </button>
+                  <button
+                    className={`rb-big${searchOpen && searchRedact ? ' active' : ''}`}
+                    disabled={readOnly}
+                    data-tip={t('redactFindHint')}
+                    onClick={() => (searchOpen && searchRedact ? closeSearch() : openSearch(true))}
+                  >
+                    <span className="rb-big-icon">
+                      <IconSearch />
+                    </span>
+                    {t('redactFind')}
                   </button>
                   {redactions.length > 0 && (
                     <>
@@ -6016,6 +6553,82 @@ export default function App() {
                       <IconWatermark />
                     </span>
                     {t('watermark')}
+                  </button>
+                  <button
+                    className={`rb-big${drawTool === 'link' ? ' active' : ''}`}
+                    disabled={readOnly}
+                    data-tip={t('linkToolHint')}
+                    onClick={() => {
+                      setEditTextMode(false)
+                      setTextDraft(null)
+                      setPendingTextInsert(null)
+                      setImagePick(null)
+                      setEditImageMode(false)
+                      setDrawTool((tool) => (tool === 'link' ? null : 'link'))
+                    }}
+                  >
+                    <span className="rb-big-icon">
+                      <IconLink />
+                    </span>
+                    {t('linkTool')}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {ribbonTab === 'prepareForm' && (
+            <>
+              <div className="ribbon-group">
+                <div className="ribbon-group-items">
+                  {FIELD_TOOLS.map(({ type, icon: FieldIcon, key }) => {
+                    const active = drawTool === 'field' && fieldType === type
+                    return (
+                      <button
+                        key={type}
+                        className={`rb-big${active ? ' active' : ''}`}
+                        disabled={readOnly}
+                        data-tip={t(key)}
+                        onClick={() => {
+                          setEditTextMode(false)
+                          setTextDraft(null)
+                          setPendingTextInsert(null)
+                          setImagePick(null)
+                          setEditImageMode(false)
+                          setFieldType(type)
+                          setDrawTool(active ? null : 'field')
+                          if (!active) showNotice(t('fieldPlaceHint'))
+                        }}
+                      >
+                        <span className="rb-big-icon">
+                          <FieldIcon />
+                        </span>
+                        {t(key)}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="ribbon-sep" />
+              <div className="ribbon-group">
+                <div className="ribbon-group-items">
+                  <button
+                    className="rb-big"
+                    disabled={
+                      readOnly ||
+                      selected?.kind !== 'drawing' ||
+                      !(drawings.find((d) => d.id === selected.id)?.input.kind === 'field')
+                    }
+                    data-tip={t('fieldProps')}
+                    onClick={() => {
+                      if (selected?.kind !== 'drawing') return
+                      setFieldDlg(selected.id)
+                      setSelected(null)
+                    }}
+                  >
+                    <span className="rb-big-icon">
+                      <IconProps />
+                    </span>
+                    {t('fieldProps')}
                   </button>
                 </div>
               </div>
@@ -6341,7 +6954,57 @@ export default function App() {
       <div className="app-main">
         <div className="app-content">
           <div className="pdf-body">
-            {sidebar === 'outline' && outline && (
+            {sidebar === 'comments' && (
+              <div className="pdf-thumbs pdf-outline-pane" style={{ width: sidebarW }}>
+                <div className="pdf-outline-header">
+                  <span>{t('comments')}</span>
+                  <button
+                    type="button"
+                    className="rb-icon"
+                    aria-label={t('collapsePanel')}
+                    data-tip={t('collapsePanel')}
+                    onClick={() => setSidebar(null)}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m14 6-6 6 6 6" />
+                    </svg>
+                  </button>
+                </div>
+                <CommentsPanel
+                  entries={commentEntries}
+                  loading={commentsLoading}
+                  readOnly={readOnly}
+                  labels={{
+                    title: t('comments'),
+                    filter: t('commentsFilter'),
+                    empty: t('commentsEmpty'),
+                    noMatch: t('commentsNoMatch'),
+                    loading: t('commentsLoading'),
+                    remove: t('commentsDelete'),
+                    unsaved: t('commentsUnsaved'),
+                    kind: commentKindLabels,
+                    page: (page) => t('commentsPage', { page }),
+                    replies: (count) =>
+                      count === 1 ? t('commentsOneReply') : t('commentsReplies', { count }),
+                  }}
+                  pageNumber={(pageIndex) => visList.indexOf(pageIndex) + 1}
+                  formatTime={(ms) => new Date(ms).toLocaleString(lang)}
+                  onSelect={goToComment}
+                  onDelete={deleteComment}
+                />
+              </div>
+            )}
+            {sidebar === 'outline' && outlineShown && (
               <div className="pdf-thumbs pdf-outline-pane" style={{ width: sidebarW }}>
                 <div className="pdf-outline-header">
                   <span>{t('outline')}</span>
@@ -6368,11 +7031,12 @@ export default function App() {
                   </button>
                 </div>
                 <OutlinePanel
-                  outline={outline}
-                  note={outlineGenerated ? t('outlineGenerated') : undefined}
+                  outline={outlineShown}
+                  note={outlineGenerated && !outlineEdit ? t('outlineGenerated') : undefined}
                   label={t('outline')}
                   emptyLabel={t('searchNoResults')}
                   onGoToDest={(dest) => void goToDest(dest)}
+                  editing={outlineEditing}
                 />
               </div>
             )}
@@ -6493,7 +7157,9 @@ export default function App() {
                 })}
               </div>
             )}
-            {(sidebar === 'thumbs' || (sidebar === 'outline' && !!outline)) && (
+            {(sidebar === 'thumbs' ||
+              sidebar === 'comments' ||
+              (sidebar === 'outline' && !!outlineShown)) && (
               <div className="pdf-side-resizer" onPointerDown={startSidebarResize} />
             )}
             <div
@@ -7541,7 +8207,10 @@ export default function App() {
                                 scale={scale}
                                 pageWidth={size.width}
                                 pageHeight={size.height}
-                                drawings={drawings.filter((d) => d.input.pageIndex === origIdx)}
+                                drawings={drawings.filter(
+                                  (d) =>
+                                    d.input.pageIndex === origIdx && d.id !== textBoxDraft?.editId,
+                                )}
                                 savedNotes={savedNotePins(origIdx)}
                                 activeNoteKey={
                                   activeNote?.origIdx === origIdx ? activeNote.rootKey : null
@@ -7553,6 +8222,40 @@ export default function App() {
                                 selectTitle={t('removeMarkup')}
                                 noteOpenTitle={t('noteOpen')}
                                 onCommit={(input) => commitDrawing(origIdx, input)}
+                                onTextBox={(rect) =>
+                                  setTextBoxDraft({
+                                    origIdx,
+                                    rect,
+                                    text: '',
+                                    fontSize: textBoxSize,
+                                    color: drawColor,
+                                    editId: null,
+                                  })
+                                }
+                                onTextBoxEdit={
+                                  readOnly ? undefined : (id) => editTextBox(origIdx, id)
+                                }
+                                fieldSize={FIELD_TOOLS.find((f) => f.type === fieldType)!.size}
+                                onFieldBox={(rect) => placeField(origIdx, rect)}
+                                onLinkBox={(rect) => setLinkDraft({ origIdx, rect, editId: null })}
+                                onLinkEdit={
+                                  readOnly
+                                    ? undefined
+                                    : (id) => {
+                                        const d = drawings.find((x) => x.id === id)
+                                        if (d?.input.kind !== 'link') return
+                                        setSelected(null)
+                                        setLinkDraft({ origIdx, rect: d.input.rect, editId: id })
+                                      }
+                                }
+                                onFieldEdit={
+                                  readOnly
+                                    ? undefined
+                                    : (id) => {
+                                        setSelected(null)
+                                        setFieldDlg(id)
+                                      }
+                                }
                                 onNoteAt={(at) => {
                                   setActiveNote(null)
                                   setNoteDraft({ origIdx, at })
@@ -7588,7 +8291,45 @@ export default function App() {
                                   ])
                                 }
                                 onTooSmall={() => showNotice(t('redactHint'))}
+                                removeLabel={t('redactRemoveMark')}
+                                onRemove={(id) =>
+                                  setRedactions((prev) => prev.filter((mark) => mark.id !== id))
+                                }
                               />
+                              {textBoxDraft?.origIdx === origIdx &&
+                                (() => {
+                                  const box = pdfRectToCss(geom, textBoxDraft.rect, scale)
+                                  return (
+                                    <textarea
+                                      className="pdf-textbox-editor"
+                                      aria-label={t('drawTextBox')}
+                                      placeholder={t('textBoxPlaceholder')}
+                                      autoFocus
+                                      value={textBoxDraft.text}
+                                      style={{
+                                        left: box.left,
+                                        top: box.top,
+                                        width: box.width,
+                                        minHeight: box.height,
+                                        fontSize: textBoxDraft.fontSize * scale,
+                                        padding: TEXT_BOX_PAD * scale,
+                                        lineHeight: TEXT_BOX_LEADING,
+                                        color: cssRgb(textBoxDraft.color),
+                                        borderColor: cssRgb(textBoxDraft.color),
+                                      }}
+                                      onChange={(e) =>
+                                        setTextBoxDraft((d) => d && { ...d, text: e.target.value })
+                                      }
+                                      onBlur={commitTextBox}
+                                      onKeyDown={(e) => {
+                                        e.stopPropagation()
+                                        if (e.key === 'Escape') setTextBoxDraft(null)
+                                        else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey))
+                                          commitTextBox()
+                                      }}
+                                    />
+                                  )
+                                })()}
                               {/* Ghost pin for the note being typed into the margin draft card */}
                               {noteDraft?.origIdx === origIdx &&
                                 (() => {
@@ -7625,6 +8366,16 @@ export default function App() {
                                 geom={geom}
                                 scale={scale}
                                 onGoToDest={(dest) => void goToDest(dest)}
+                                hidden={deletedLinkObjs}
+                                editing={
+                                  !readOnly && drawTool === 'link'
+                                    ? {
+                                        removeLabel: t('linkRemove'),
+                                        onRemove: (annot) =>
+                                          applyEditOps([{ op: 'deleteSavedAnnot', annot }]),
+                                      }
+                                    : undefined
+                                }
                               />
                               <FormLayer
                                 widgets={formCatalog?.byPage.get(origIdx) ?? []}
@@ -7699,11 +8450,29 @@ export default function App() {
             </div>
             {searchOpen && (
               <div className="pdf-search-bar">
+                {searchRedact && (
+                  <select
+                    className="pdf-search-mode"
+                    aria-label={t('redactFindWhat')}
+                    value={searchPattern ?? 'text'}
+                    onChange={(e) =>
+                      setSearchPattern(
+                        e.target.value === 'text' ? null : (e.target.value as RedactPattern),
+                      )
+                    }
+                  >
+                    <option value="text">{t('redactFindText')}</option>
+                    <option value="email">{t('redactFindEmail')}</option>
+                    <option value="phone">{t('redactFindPhone')}</option>
+                    <option value="card">{t('redactFindCard')}</option>
+                  </select>
+                )}
                 <input
                   ref={searchInputRef}
                   className="pdf-search-input"
-                  placeholder={t('search')}
-                  value={searchQuery}
+                  placeholder={searchRedact ? t('redactFindPlaceholder') : t('search')}
+                  disabled={!!searchPattern}
+                  value={searchPattern ? '' : searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') searchStep(e.shiftKey ? -1 : 1)
@@ -7711,7 +8480,7 @@ export default function App() {
                   }}
                 />
                 <span className="pdf-search-count">
-                  {searchQuery.trim()
+                  {searchPattern || searchQuery.trim()
                     ? activeMatches.length > 0
                       ? t('searchCount', {
                           current: searchCurClamped + 1,
@@ -7738,6 +8507,17 @@ export default function App() {
                 >
                   ›
                 </button>
+                {searchRedact && (
+                  <button
+                    className="pdf-search-action"
+                    disabled={
+                      readOnly || redactionCopyInFlight || markingAll || activeMatches.length === 0
+                    }
+                    onClick={() => void markMatchesForRedaction()}
+                  >
+                    {t('redactMarkAll')}
+                  </button>
+                )}
                 <button className="rb-icon" onClick={closeSearch}>
                   ×
                 </button>
@@ -7794,6 +8574,23 @@ export default function App() {
                 style={{ left: selected.x, top: selected.y }}
                 onMouseDown={(e) => e.preventDefault()}
               >
+                {selected.kind === 'drawing' &&
+                  drawings.find((d) => d.id === selected.id)?.input.kind === 'field' && (
+                    <>
+                      <button
+                        type="button"
+                        data-tip={t('fieldProps')}
+                        aria-label={t('fieldProps')}
+                        onClick={() => {
+                          setFieldDlg(selected.id)
+                          setSelected(null)
+                        }}
+                      >
+                        <IconProps />
+                      </button>
+                      <span className="pdf-del-popup-sep" />
+                    </>
+                  )}
                 {selectedStaticTextTarget() && (
                   <>
                     <button
@@ -8053,6 +8850,40 @@ export default function App() {
                 }}
               />
             )}
+            {linkDraft &&
+              (() => {
+                const d = linkDraft.editId
+                  ? drawings.find((x) => x.id === linkDraft.editId)?.input
+                  : undefined
+                const initial: LinkTarget =
+                  d?.kind === 'link' && d.url !== undefined
+                    ? { url: d.url }
+                    : d?.kind === 'link' && d.targetPage !== undefined
+                      ? { page: Math.max(1, visList.indexOf(d.targetPage) + 1) }
+                      : { url: '' }
+                return (
+                  <LinkDialog
+                    initial={initial}
+                    pageCount={visList.length}
+                    onApply={applyLink}
+                    onCancel={() => setLinkDraft(null)}
+                  />
+                )
+              })()}
+            {fieldDlg &&
+              (() => {
+                const d = drawings.find((x) => x.id === fieldDlg)
+                if (d?.input.kind !== 'field') return null
+                return (
+                  <FieldPropsDialog
+                    key={fieldDlg}
+                    field={d.input}
+                    nameTaken={(name) => fieldNameTaken(name, fieldDlg)}
+                    onApply={(props) => applyFieldProps(fieldDlg, props)}
+                    onCancel={() => setFieldDlg(null)}
+                  />
+                )
+              })()}
             {propsDlg && (
               <PropertiesDialog
                 doc={doc}

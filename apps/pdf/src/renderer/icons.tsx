@@ -95,6 +95,48 @@ export const IconNote = () => (
     <path d="M8.25 9.32 L15.75 9.32 M8.25 12 L13.07 12" />
   </Icon>
 )
+export const IconTextBox = () => (
+  <Icon>
+    <rect x="4.5" y="5.5" width="15" height="13" rx="1" />
+    <path d="M8.5 9.25 L15.5 9.25 M12 9.25 L12 15.25" />
+  </Icon>
+)
+export const IconLink = () => (
+  <Icon>
+    <path d="M10.5 13.5 a3.2 3.2 0 0 0 4.5 0 l3 -3 a3.2 3.2 0 0 0 -4.5 -4.5 l-1.25 1.25" />
+    <path d="M13.5 10.5 a3.2 3.2 0 0 0 -4.5 0 l-3 3 a3.2 3.2 0 0 0 4.5 4.5 l1.25 -1.25" />
+  </Icon>
+)
+export const IconFieldText = () => (
+  <Icon>
+    <rect x="3.5" y="8" width="17" height="8" rx="1" />
+    <path d="M6.75 10.25 L6.75 13.75" />
+  </Icon>
+)
+export const IconFieldCheck = () => (
+  <Icon>
+    <rect x="5.5" y="5.5" width="13" height="13" rx="1.5" />
+    <path d="M8.5 12.2 L11 14.7 L15.75 9.5" />
+  </Icon>
+)
+export const IconFieldRadio = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="6.5" />
+    <circle cx="12" cy="12" r="2.5" />
+  </Icon>
+)
+export const IconFieldDropdown = () => (
+  <Icon>
+    <rect x="3.5" y="8" width="17" height="8" rx="1" />
+    <path d="M14.25 8 L14.25 16 M15.9 11 L17.15 12.5 L18.4 11" />
+  </Icon>
+)
+export const IconFieldSign = () => (
+  <Icon>
+    <rect x="3.5" y="6.5" width="17" height="11" rx="1" />
+    <path d="M6.5 14.5 L17.5 14.5 M7 12.25 C8.2 10.5 9 9.3 9.6 9.9 C10.2 10.5 9.6 12.2 10.6 11.8 C11.4 11.5 12 10.4 12.6 11 C13 11.4 13.4 11.8 14.2 11.4" />
+  </Icon>
+)
 export const IconSign = () => (
   <Icon>
     <path d="M5.5 15.1 C7.8 12.3 9.5 9 9.2 7 C9 5.7 7.9 5.9 7.6 7.4 C7.2 9.6 8.6 13.4 10.5 14.9 C12 16.1 13.9 15.3 14.7 13.8 C15.1 13 15.9 13 16.3 13.8 C16.7 14.7 17.7 15 18.5 14.4" />

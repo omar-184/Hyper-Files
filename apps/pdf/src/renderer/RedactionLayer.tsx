@@ -20,6 +20,8 @@ export function RedactionLayer({
   markLabel,
   onCommit,
   onTooSmall,
+  removeLabel,
+  onRemove,
 }: {
   active: boolean
   geom: PageGeom
@@ -32,6 +34,10 @@ export function RedactionLayer({
   onCommit: (rect: RedactionInput['rect']) => void
   /** Called when a drag is discarded for falling below the minimum size. */
   onTooSmall?: () => void
+  /** Translated tooltip of the per-mark remove button */
+  removeLabel?: string
+  /** Drop one pending mark; the button only shows while the tool is active */
+  onRemove?: (id: string) => void
 }) {
   const [live, setLive] = useState<RedactionInput['rect'] | null>(null)
   const start = useRef<[number, number] | null>(null)
@@ -88,7 +94,21 @@ export function RedactionLayer({
           className="pdf-redaction-mark"
           style={pdfRectToCss(geom, mark.rect, scale)}
           aria-label={markLabel}
-        />
+        >
+          {active && onRemove && (
+            <button
+              type="button"
+              className="pdf-redaction-remove"
+              data-tip={removeLabel}
+              aria-label={removeLabel}
+              // Keep the press from starting a new mark on the layer underneath
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => onRemove(mark.id)}
+            >
+              ×
+            </button>
+          )}
+        </div>
       ))}
       {live && (
         <div

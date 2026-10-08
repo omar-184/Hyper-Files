@@ -75,6 +75,7 @@ export const BUCKETS: Bucket[] = [
   'deleted',
   'order',
   'metadata',
+  'outlineEdit',
 ]
 
 export interface OpFailure {

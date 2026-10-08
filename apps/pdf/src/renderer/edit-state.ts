@@ -1,16 +1,35 @@
 import type { LocalMarkup } from './annotations'
+import type { OutlineNode } from './OutlinePanel'
 import type { LocalDrawing } from './DrawLayer'
 import type { LocalImageEdit } from './ImageEditLayer'
 import type { SavedNoteAnnot } from './note-threads'
 import type { HeaderFooterConfig, WatermarkConfig } from './stamps'
 import type { LocalTextEdit, LocalTextInsert } from './text-edit-preview'
-import type { FormValueInput, MarkupType, MetadataInput, PageImageRef } from '../shared/ipc'
+import type {
+  FormValueInput,
+  MarkupType,
+  MetadataInput,
+  PageImageRef,
+  ShapeAnnotType,
+} from '../shared/ipc'
 
 /** pdf.js AnnotationType codes for the markup subtypes we can delete */
 export const MARKUP_TYPE_BY_ANNOT: Record<number, MarkupType> = {
   9: 'highlight',
   10: 'underline',
   12: 'strikeout',
+}
+
+/** pdf.js AnnotationType codes for the saved drawing, text box and stamp subtypes */
+export const SHAPE_TYPE_BY_ANNOT: Record<number, ShapeAnnotType> = {
+  3: 'freetext',
+  4: 'line',
+  5: 'square',
+  6: 'circle',
+  7: 'polygon',
+  8: 'polyline',
+  13: 'stamp',
+  15: 'ink',
 }
 
 export const rectsNear = (a: readonly number[], b: readonly number[], tolerance = 2): boolean =>
@@ -35,10 +54,35 @@ export interface SavedMarkupAnnot {
   rect: [number, number, number, number]
 }
 
-/** Pending deletion of a saved markup or note annotation */
+/** A drawing, text box or stamp annotation already saved in the file */
+export interface SavedShapeAnnot {
+  pageIndex: number
+  /** PDF object number (pdf.js id "123R" → 123) */
+  objNum: number
+  type: ShapeAnnotType
+  rect: [number, number, number, number]
+  /** /T; '' when absent */
+  author: string
+  /** /Contents; '' when absent */
+  contents: string
+}
+
+/** A link area already saved in the file */
+export interface SavedLinkAnnot {
+  pageIndex: number
+  /** PDF object number (pdf.js id "123R" → 123) */
+  objNum: number
+  type: 'link'
+  rect: [number, number, number, number]
+}
+
+/** Any saved annotation the editor can delete */
+export type SavedAnnot = SavedMarkupAnnot | SavedNoteAnnot | SavedShapeAnnot | SavedLinkAnnot
+
+/** Pending deletion of a saved annotation */
 export interface LocalAnnotDelete {
   id: string
-  annot: SavedMarkupAnnot | SavedNoteAnnot
+  annot: SavedAnnot
 }
 
 /** Pending in-place content edit of a note comment saved in the file.
@@ -63,6 +107,8 @@ export interface EditSnapshot {
   deleted: Set<number>
   order: number[] | null
   metadata: MetadataInput | null
+  /** Edited bookmark tree (normalized destinations); null = the file's own outline */
+  outlineEdit: OutlineNode[] | null
 }
 
 /** What a running save wrote, captured when the save starts. The post-save reload
@@ -84,6 +130,7 @@ export interface SavedSnapshot {
   formEdits: Map<string, FormValueInput>
   rotations: Map<number, number>
   metadata: MetadataInput | null
+  outlineEdit: OutlineNode[] | null
   /** Old original page index → its index in the saved file (saved deletions/reorder applied) */
   pageMap: Map<number, number>
 }

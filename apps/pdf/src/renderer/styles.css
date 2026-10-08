@@ -38,6 +38,7 @@
   --pdf-form-control-mark: #111;
   --pdf-sign-drop-bg: rgb(196 62 28 / 6%);
   --pdf-search-hit-bg: rgb(255 214 0 / 35%);
+  --pdf-textbox-editor-bg: rgb(255 255 255 / 85%);
   --pdf-search-hit-cur-bg: rgb(255 150 50 / 55%);
   --pdf-search-hit-cur-outline: #f08c00;
   --pdf-link-hover-bg: rgb(196 62 28 / 12%);
@@ -1108,6 +1109,48 @@ button {
   background: var(--hover);
 }
 
+/* Wrapper is layout-neutral: the tree keeps scrolling inside the pane */
+.pdf-outline-wrap {
+  display: contents;
+}
+
+.pdf-outline-tools {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 0 4px 6px;
+}
+
+.pdf-outline-tools .rb-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-outline-tools-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--border);
+}
+
+.pdf-outline-item.is-selected {
+  background: var(--accent-soft);
+}
+
+.pdf-outline-rename {
+  flex-shrink: 0;
+  height: 26px;
+  margin-right: 4px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+}
+
 .pdf-outline-note {
   flex-shrink: 0;
   padding: 2px 8px 8px;
@@ -1528,6 +1571,58 @@ button {
   );
   border: 2px solid var(--pdf-redaction-border);
   pointer-events: none;
+}
+
+.pdf-redaction-remove {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 15px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.pdf-redaction-remove:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.pdf-search-action {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pdf-search-action:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.pdf-search-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pdf-search-mode {
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
 }
 
 /* With a tool active, take over the pointer and disable text selection so dragging doesn't select text */
@@ -2852,6 +2947,50 @@ button {
   box-shadow: 0 0 0 1px var(--pdf-link-hover-ring);
 }
 
+/* Above the active draw layer so the remove buttons stay reachable */
+.pdf-link-layer.is-editing {
+  z-index: 5;
+}
+
+/* Link tool: saved links outlined, each with a remove button; the box itself lets
+   drags through so a new link can be drawn over or next to it */
+.pdf-link-edit {
+  position: absolute;
+  border: 1px dashed var(--accent);
+  border-radius: 2px;
+  background: var(--pdf-link-hover-bg);
+}
+
+.pdf-link-remove {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 15px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.pdf-link-remove:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* Pending link area drawn with the link tool */
+.pdf-link-draft {
+  fill: var(--pdf-link-hover-bg);
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+}
+
 /* ── Print container: hidden on screen, the only thing shown when printing ── */
 
 .pdf-print-root {
@@ -3046,4 +3185,194 @@ button {
   flex-direction: column;
   flex: 1;
   min-width: 0;
+}
+
+/* ── Comments list (sidebar) ── */
+.pdf-comments {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 6px;
+}
+
+.pdf-comments-filter {
+  flex-shrink: 0;
+  height: 26px;
+  margin: 0 4px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+.pdf-comments-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 4px 8px;
+}
+
+.pdf-comments-page {
+  padding: 8px 6px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.pdf-comment-row {
+  display: flex;
+  align-items: flex-start;
+  border-radius: 6px;
+}
+
+.pdf-comment-row:hover {
+  background: var(--hover);
+}
+
+.pdf-comment-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pdf-comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.pdf-comment-kind {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pdf-comment-unsaved {
+  color: var(--accent);
+}
+
+.pdf-comment-text {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.35;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+.pdf-comment-replies {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.pdf-comment-delete {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: 4px 4px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 22px;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.pdf-comment-row:hover .pdf-comment-delete,
+.pdf-comment-delete:focus-visible {
+  visibility: visible;
+}
+
+.pdf-comment-delete:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.pdf-comments-empty {
+  padding: 16px 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Text-box comment editor ── */
+.pdf-textbox-editor {
+  position: absolute;
+  z-index: 30;
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px dashed;
+  background: var(--pdf-textbox-editor-bg);
+  font-family: Helvetica, Arial, 'Liberation Sans', sans-serif;
+  resize: none;
+  overflow: hidden;
+  field-sizing: content;
+  outline: 2px solid var(--accent-soft);
+}
+
+.rb-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* ── Form designer: pending fields drawn on the page, properties dialog ── */
+.pdf-field-draft {
+  fill: var(--accent-soft);
+  fill-opacity: 0.6;
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
+.pdf-draw-selected .pdf-field-draft {
+  stroke-dasharray: none;
+  stroke-width: 2;
+}
+
+.pdf-field-draft-label {
+  fill: var(--accent);
+  font-size: 9px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pdf-field-props {
+  width: 340px;
+}
+
+.pdf-field-props-options {
+  height: 96px;
+  padding: 6px 8px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.pdf-field-props-error {
+  margin-top: -6px;
+  font-size: 12px;
+  color: var(--pdf-error);
 }
