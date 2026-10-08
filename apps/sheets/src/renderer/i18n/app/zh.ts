@@ -38,6 +38,9 @@ export const zh = {
   appWorkbookProtectionWillRemove: '保存时将移除工作簿结构保护。',
   appWorkbookProtectedWithPassword: '工作簿结构受密码保护，无法在此更改。',
   appWorkbookStructureLocked: '工作簿结构已保护，无法新增、删除、重命名或移动工作表。',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: '工作表受保护时仍可编辑的区域',
   appRangesPasswordBlocked: '该工作表存在受密码保护的可编辑区域，暂不支持修改。',
   appRangesRecorded: '保存时将写入 {count} 个可编辑区域。',

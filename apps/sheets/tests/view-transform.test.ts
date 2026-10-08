@@ -122,6 +122,7 @@ describe('mapRangeResultToScreen', () => {
       rowBreaks: [],
       colBreaks: [],
       protectedRanges: [],
+      cellLocks: { unlocked: [], locked: [], truncated: false },
       pageSetup: null,
       indexedThroughRow: null,
       indexingComplete: true,

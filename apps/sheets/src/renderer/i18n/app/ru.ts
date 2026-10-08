@@ -42,6 +42,9 @@ export const ru = {
   appWorkbookProtectedWithPassword: 'Структура книги защищена паролем — здесь её изменить нельзя.',
   appWorkbookStructureLocked:
     'Структура книги защищена — листы нельзя добавлять, удалять, переименовывать или перемещать.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Диапазоны, доступные для изменения при защищённом листе',
   appRangesPasswordBlocked:
     'На этом листе есть диапазоны изменения, защищённые паролем — их изменение не поддерживается.',

@@ -42,6 +42,9 @@ export const ja = {
     'ブックの構成はパスワードで保護されているため、ここでは変更できません。',
   appWorkbookStructureLocked:
     'ブックの構成が保護されているため、シートの追加・削除・名前の変更・移動はできません。',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'シート保護中も編集できる範囲',
   appRangesPasswordBlocked:
     'このシートにはパスワードで保護された編集範囲があり、その変更には対応していません。',

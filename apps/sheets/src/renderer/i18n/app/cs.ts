@@ -41,6 +41,9 @@ export const cs = {
   appWorkbookProtectedWithPassword: 'Struktura sešitu je chráněna heslem — zde ji nelze změnit.',
   appWorkbookStructureLocked:
     'Struktura sešitu je zamknutá — listy nelze přidávat, odebírat, přejmenovávat ani přesouvat.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Oblasti, které zůstanou upravitelné i při zamknutém listu',
   appRangesPasswordBlocked:
     'Tento list má oblasti pro úpravy chráněné heslem — jejich úprava není podporována.',

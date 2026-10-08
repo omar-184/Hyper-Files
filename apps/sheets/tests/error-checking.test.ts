@@ -59,6 +59,7 @@ function state(): LazyWorkbookState {
     sheetProtections: new Map(),
     sheetPageBreaks: new Map(),
     sheetProtectedRanges: new Map(),
+    sheetCellLocks: new Map(),
     uninstalledDefinedNames: new Set(),
     appliedCfSheets: new Set(),
     appliedFilterSheets: new Set(),

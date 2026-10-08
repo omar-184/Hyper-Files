@@ -39,6 +39,9 @@ export const zhTW = {
   appWorkbookProtectionWillRemove: '儲存時將移除活頁簿結構保護。',
   appWorkbookProtectedWithPassword: '活頁簿結構受密碼保護，無法在此變更。',
   appWorkbookStructureLocked: '活頁簿結構已保護，無法新增、刪除、重新命名或移動工作表。',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: '工作表受保護時仍可編輯的範圍',
   appRangesPasswordBlocked: '此工作表存在受密碼保護的可編輯範圍，暫不支援修改。',
   appRangesRecorded: '儲存時將寫入 {count} 個可編輯範圍。',

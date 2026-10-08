@@ -44,6 +44,9 @@ export const id = {
     'Struktur buku kerja dilindungi kata sandi — tidak dapat diubah di sini.',
   appWorkbookStructureLocked:
     'Struktur buku kerja dilindungi — lembar tidak dapat ditambahkan, dihapus, diganti nama, atau dipindahkan.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Rentang yang tetap dapat diedit saat lembar dilindungi',
   appRangesPasswordBlocked:
     'Lembar ini memiliki rentang edit yang dilindungi kata sandi — mengeditnya tidak didukung.',

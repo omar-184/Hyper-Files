@@ -3647,6 +3647,90 @@ fn blank_cell_keeps_shrink_to_fit_only_style() {
 }
 
 #[test]
+fn parses_unlocked_cell_protection() {
+    let (_dir, path) = open_fixture(&[
+        (
+            "xl/workbook.xml",
+            r#"<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets></workbook>"#,
+        ),
+        (
+            "xl/_rels/workbook.xml.rels",
+            r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>"#,
+        ),
+        (
+            "xl/styles.xml",
+            r#"<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="1"><font><sz val="11"/></font></fonts>
+<fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+<borders count="1"><border/></borders>
+<cellXfs count="3"><xf/><xf applyProtection="1"><protection locked="0"/></xf><xf applyProtection="1"><protection locked="1" hidden="1"/></xf></cellXfs>
+</styleSheet>"#,
+        ),
+        (
+            "xl/worksheets/sheet1.xml",
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<cols><col min="4" max="4" width="9" style="1" customWidth="1"/></cols>
+<sheetData><row r="1"><c r="A1" s="1"/><c r="B1" s="1"><v>2</v></c><c r="C1"><v>3</v></c><c r="D1" s="2"><v>4</v></c></row>
+<row r="2"><c r="A2" s="1"/><c r="B2" s="1"/></row>
+<row r="5" s="1" customFormat="1"><c r="C5" s="2"><v>5</v></c></row></sheetData>
+<sheetProtection sheet="1"/>
+</worksheet>"#,
+        ),
+    ]);
+
+    let mut sessions = WorkbookSessions::new();
+    let metadata = sessions.open(&path).unwrap();
+    assert!(!metadata.styles[0].unlocked);
+    assert!(metadata.styles[1].unlocked);
+    assert!(!metadata.styles[2].unlocked);
+    let json = serde_json::to_value(&metadata.styles[1]).unwrap();
+    assert_eq!(json["unlocked"], serde_json::json!(true));
+    let json = serde_json::to_value(&metadata.styles[0]).unwrap();
+    assert!(json.get("unlocked").is_none());
+    // An unlocked input cell with no value must still reach the grid.
+    assert!(metadata.styles[1].styles_blank_cell(&metadata.styles[0]));
+
+    let sheet_id = metadata.sheets[0].id.clone();
+    let range = CellRange {
+        start_row: 0,
+        end_row: 4,
+        start_column: 0,
+        end_column: 3,
+    };
+    let result = loop {
+        let result = sessions
+            .read_range(&metadata.session_id, &sheet_id, &range)
+            .unwrap();
+        if result.indexing_complete {
+            break result;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    };
+    let area = |start_row, start_column, end_row, end_column| {
+        serde_json::json!({
+            "startRow": start_row,
+            "startColumn": start_column,
+            "endRow": end_row,
+            "endColumn": end_column,
+        })
+    };
+    assert_eq!(
+        serde_json::to_value(&result.cell_locks).unwrap(),
+        serde_json::json!({
+            // column D's default, A1:B2 merged from runs, row 5's default
+            "unlocked": [
+                area(0, 0, 1, 1),
+                area(0, 3, 1_048_575, 3),
+                area(4, 0, 4, 16_383),
+            ],
+            // D1 has its own locked xf inside column D; C5 inside row 5
+            "locked": [area(0, 3, 0, 3), area(4, 2, 4, 2)],
+            "truncated": false,
+        })
+    );
+}
+
+#[test]
 fn serializes_sparklines_in_expected_shape() {
     let group = SparklineGroupInfo {
         kind: "line".into(),
@@ -4052,7 +4136,6 @@ fn malformed_cell_address_does_not_make_the_workbook_unopenable() {
     assert_eq!(number(value_at(1, 0)), 40.0);
     assert_eq!(number(value_at(1, 1)), 50.0);
 }
-
 
 /// A cancel already in flight when the open is dispatched must abandon it
 /// outright: the host has no session id to read-range or close against, so

@@ -42,6 +42,9 @@ export const th = {
     'โครงสร้างเวิร์กบุ๊กได้รับการป้องกันด้วยรหัสผ่าน จึงไม่สามารถเปลี่ยนได้ที่นี่',
   appWorkbookStructureLocked:
     'โครงสร้างเวิร์กบุ๊กได้รับการป้องกัน จึงไม่สามารถเพิ่ม ลบ เปลี่ยนชื่อ หรือย้ายแผ่นงานได้',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'ช่วงที่ยังแก้ไขได้ขณะที่แผ่นงานได้รับการป้องกัน',
   appRangesPasswordBlocked: 'แผ่นงานนี้มีช่วงการแก้ไขที่ป้องกันด้วยรหัสผ่าน จึงไม่รองรับการแก้ไข',
   appRangesRecorded: 'จะเขียนช่วงที่อนุญาตให้แก้ไข {count} ช่วงเมื่อบันทึก',

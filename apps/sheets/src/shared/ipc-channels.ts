@@ -5,6 +5,10 @@
 /// schema and the preload's hand-rolled validator (which stays zod-free).
 export const MAX_SAVE_EDITS = 1_000_000
 
+/// Protect Sheet lock areas per list in a range result: the sidecar's
+/// MAX_LOCK_AREAS plus one (it reports truncation only past the cap).
+export const MAX_CELL_LOCK_AREAS = 4_097
+
 /// Above this, the renderer stages edits through the chunked transfer
 /// instead of the inline request: live object graphs cross the context
 /// bridge property by property (~38s for a million edits measured on an M-

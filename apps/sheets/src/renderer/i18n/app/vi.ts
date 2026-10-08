@@ -43,6 +43,9 @@ export const vi = {
     'Cấu trúc sổ làm việc được bảo vệ bằng mật khẩu — không thể thay đổi tại đây.',
   appWorkbookStructureLocked:
     'Cấu trúc sổ làm việc được bảo vệ — không thể thêm, xóa, đổi tên hoặc di chuyển trang tính.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Các vùng vẫn có thể chỉnh sửa khi trang tính được bảo vệ',
   appRangesPasswordBlocked:
     'Trang tính này có các vùng chỉnh sửa được bảo vệ bằng mật khẩu — chưa hỗ trợ chỉnh sửa chúng.',

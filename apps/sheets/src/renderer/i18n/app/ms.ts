@@ -44,6 +44,9 @@ export const ms = {
     'Struktur buku kerja dilindungi kata laluan — tidak boleh diubah di sini.',
   appWorkbookStructureLocked:
     'Struktur buku kerja dilindungi — helaian tidak boleh ditambah, dialih keluar, dinamakan semula atau dialihkan.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Julat yang kekal boleh diedit semasa helaian dilindungi',
   appRangesPasswordBlocked:
     'Helaian ini mempunyai julat edit yang dilindungi kata laluan — mengeditnya tidak disokong.',

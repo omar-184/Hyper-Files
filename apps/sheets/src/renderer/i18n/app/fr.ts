@@ -48,6 +48,9 @@ export const fr = {
     'La structure du classeur est protégée par mot de passe — impossible de la modifier ici.',
   appWorkbookStructureLocked:
     "La structure du classeur est protégée — impossible d'ajouter, de supprimer, de renommer ou de déplacer des feuilles.",
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Plages qui restent modifiables quand la feuille est protégée',
   appRangesPasswordBlocked:
     "Cette feuille contient des plages modifiables protégées par mot de passe — leur modification n'est pas prise en charge.",

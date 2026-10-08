@@ -41,6 +41,9 @@ export const ko = {
     '통합 문서 구조가 암호로 보호되어 있어 여기서 변경할 수 없습니다.',
   appWorkbookStructureLocked:
     '통합 문서 구조가 보호되어 있어 시트를 추가, 삭제, 이름 바꾸기, 이동할 수 없습니다.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: '시트가 보호된 상태에서도 편집할 수 있는 범위',
   appRangesPasswordBlocked: '이 시트에는 암호로 보호된 편집 범위가 있어 편집이 지원되지 않습니다.',
   appRangesRecorded: '저장 시 편집 허용 범위 {count}개가 기록됩니다.',

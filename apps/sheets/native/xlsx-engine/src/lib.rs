@@ -377,6 +377,8 @@ impl WorkbookSessions {
                 .map(|style| style.styles_blank_cell(&default_style))
                 .collect(),
         );
+        let unlocked_xfs: Arc<Vec<bool>> =
+            Arc::new(styles.iter().map(|style| style.unlocked).collect());
         let mut source_formats = SourceFormats::new(sheet_names, &styles);
         let visual_objects = visuals::read_visual_objects(
             &mut archive,
@@ -413,6 +415,7 @@ impl WorkbookSessions {
                 runtimes,
                 shared_strings,
                 styled_xfs,
+                unlocked_xfs,
                 color_context: Arc::new(color_context),
                 visuals: visual_objects.clone(),
                 cache_directory: cache_directory.path().to_path_buf(),
@@ -552,6 +555,7 @@ struct WorkbookSession {
     runtimes: Vec<SheetRuntime>,
     shared_strings: Arc<Vec<SharedString>>,
     styled_xfs: Arc<Vec<bool>>,
+    unlocked_xfs: Arc<Vec<bool>>,
     color_context: Arc<ColorContext>,
     visuals: Vec<VisualObject>,
     cache_directory: PathBuf,
@@ -586,6 +590,7 @@ impl WorkbookSession {
         let state = Arc::clone(&runtime.state);
         let shared_strings = Arc::clone(&self.shared_strings);
         let styled_xfs = Arc::clone(&self.styled_xfs);
+        let unlocked_xfs = Arc::clone(&self.unlocked_xfs);
         let color_context = Arc::clone(&self.color_context);
         // The capped overlay list is the single source of truth: only cells
         // that actually got a picture record lose their cached error.
@@ -607,6 +612,7 @@ impl WorkbookSession {
                     &cache_directory,
                     &shared_strings,
                     &styled_xfs,
+                    &unlocked_xfs,
                     &color_context,
                     &rich_image_cells,
                     &state,
@@ -722,6 +728,11 @@ impl WorkbookSession {
         } else {
             Vec::new()
         };
+        let cell_locks = if indexing_complete {
+            index.cell_locks.clone()
+        } else {
+            CellLocks::default()
+        };
         let page_setup = if indexing_complete {
             index.page_setup.clone()
         } else {
@@ -772,6 +783,7 @@ impl WorkbookSession {
             row_breaks,
             col_breaks,
             protected_ranges,
+            cell_locks,
             page_setup,
             indexed_through_row,
             indexing_complete,
@@ -846,6 +858,7 @@ struct SheetIndex {
     row_breaks: Vec<usize>,
     col_breaks: Vec<usize>,
     protected_ranges: Vec<ProtectedRangeInfo>,
+    cell_locks: CellLocks,
     page_setup: Option<PagePrintInfo>,
     /// Formula cells collected while indexing, capped at MAX_FORMULA_CELLS.
     formula_cells: Vec<CellRecord>,

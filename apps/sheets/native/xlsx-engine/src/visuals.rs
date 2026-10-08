@@ -45,6 +45,10 @@ pub struct CellStyle {
     /// instead of clipping. Omitted when false to keep payloads small.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub shrink_to_fit: bool,
+    /// xf protection/@locked="0": the cell stays editable when its sheet is
+    /// protected (Excel locks every cell by default). Omitted when locked.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub unlocked: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font_color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -124,6 +128,7 @@ impl CellStyle {
             || self.text_rotation != default.text_rotation
             || self.wrap_text != default.wrap_text
             || self.shrink_to_fit != default.shrink_to_fit
+            || self.unlocked != default.unlocked
     }
 }
 

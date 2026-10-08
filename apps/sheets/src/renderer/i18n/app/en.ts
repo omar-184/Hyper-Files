@@ -42,6 +42,9 @@ export const en = {
     'The workbook structure is password-protected — it cannot be changed here.',
   appWorkbookStructureLocked:
     'The workbook structure is protected — sheets cannot be added, removed, renamed or moved.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Ranges that stay editable while the sheet is protected',
   appRangesPasswordBlocked:
     'This sheet has password-protected edit ranges — editing them is not supported.',

@@ -47,6 +47,9 @@ export const pt = {
     'A estrutura da pasta de trabalho está protegida por senha — não pode ser alterada aqui.',
   appWorkbookStructureLocked:
     'A estrutura da pasta de trabalho está protegida — não é possível adicionar, remover, renomear ou mover planilhas.',
+  appCellProtected: 'This cell is on a protected sheet. Use Review > Unprotect Sheet to change it.',
+  appSheetProtectedStructure:
+    'The sheet is protected, so rows, columns and merged cells cannot be changed.',
   appAllowEditRangesTitle: 'Intervalos que permanecem editáveis enquanto a planilha está protegida',
   appRangesPasswordBlocked:
     'Esta planilha tem intervalos de edição protegidos por senha — editá-los não é suportado.',
