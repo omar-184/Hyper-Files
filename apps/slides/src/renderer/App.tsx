@@ -610,9 +610,7 @@ export function App() {
       if (!s) return 1
       const el = stageWrapRef.current
       const viewportW =
-        el?.clientWidth ||
-        stageViewportSize.w ||
-        window.innerWidth - (showThumbs ? thumbsW : 0)
+        el?.clientWidth || stageViewportSize.w || window.innerWidth - (showThumbs ? thumbsW : 0)
       const viewportH = el?.clientHeight || stageViewportSize.h || window.innerHeight - 150
       const availW = viewportW - 56
       // -56: vertical padding is 32 + 32, minus the same 8px slack as width

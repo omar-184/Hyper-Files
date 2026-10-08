@@ -51,10 +51,7 @@ import {
   rendererUrl,
 } from '@genoffice/electron-utils'
 import { createI18n, getUiLang, type Lang, normalizeLang, setUiLang } from '@genoffice/i18n'
-import {
-  csvToXlsxBufferForOpen,
-  decodeCsvBuffer,
-} from '@genoffice/xlsx-gateway/gateway/csv-import'
+import { csvToXlsxBufferForOpen, decodeCsvBuffer } from '@genoffice/xlsx-gateway/gateway/csv-import'
 import type { CellEdit, SheetStructuralOps } from '@genoffice/xlsx-gateway/gateway/xlsx-gateway'
 import {
   readArchiveEntryText,
@@ -1746,9 +1743,7 @@ export async function exportSheetsPdfHeadless(
 }
 
 /** tab-mode equivalent of createSheetsWindow: same runtime/IPC wiring, no BrowserWindow of its own. */
-export function createSheetsView(
-  options: { openingWorkbook?: boolean } = {},
-): WebContentsView {
+export function createSheetsView(options: { openingWorkbook?: boolean } = {}): WebContentsView {
   const client = sidecar ?? new XlsxSidecarClient(resolveSidecarPath())
   sidecar = client
   client.start()

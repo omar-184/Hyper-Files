@@ -305,7 +305,8 @@ body.vib .home {
 
 .quick-card:hover {
   border-color: var(--border-hover);
-  box-shadow: 0 3px 12px rgb(0 0 0 / 8%);
+  --home-shadow-1: 0 3px 12px rgb(0 0 0 / 8%);
+  box-shadow: var(--home-shadow-1);
 }
 
 .quick-card svg {
@@ -673,7 +674,8 @@ body.vib .home {
 }
 
 .star-btn:hover {
-  color: #f5a623;
+  --home-fg-1: #f5a623;
+  color: var(--home-fg-1);
 }
 
 .rename-input {
@@ -753,7 +755,8 @@ body.vib .home {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 10px 28px rgb(0 0 0 / 14%);
+  --home-shadow-2: 0 10px 28px rgb(0 0 0 / 14%);
+  box-shadow: var(--home-shadow-2);
   animation: menu-in 0.1s ease;
 }
 
@@ -824,7 +827,8 @@ body.vib .home {
 
 .btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgb(35 36 37 / 20%);
+  --home-shadow-3: 0 0 0 3px rgb(35 36 37 / 20%);
+  box-shadow: var(--home-shadow-3);
 }
 
 .btn-secondary {
@@ -841,7 +845,8 @@ body.vib .home {
 .btn-danger {
   background: var(--color-error);
   border: none;
-  color: #fff;
+  --home-fg-2: #fff;
+  color: var(--home-fg-2);
 }
 
 .btn-danger:hover:not(:disabled) {
@@ -1133,7 +1138,8 @@ body.vib .home {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 13%);
+  --home-shadow-4: 0 8px 24px rgb(0 0 0 / 13%);
+  box-shadow: var(--home-shadow-4);
   animation: menu-in 0.1s ease;
 }
 
@@ -1336,7 +1342,8 @@ body.vib .home {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+  --home-shadow-5: 0 8px 24px rgb(0 0 0 / 10%);
+  box-shadow: var(--home-shadow-5);
   padding: 4px;
   z-index: 5;
 }

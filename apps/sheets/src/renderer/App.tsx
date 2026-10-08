@@ -626,10 +626,7 @@ export function App({
   /// Fresh handleSave for the AutoSave tick (assigned each render, like
   /// menuActionRef, so the interval closure never goes stale).
   const handleSaveRef = useRef<
-    (
-      mode: 'save' | 'save-as' | 'recovery',
-      quiet?: boolean,
-    ) => Promise<SaveOutcome>
+    (mode: 'save' | 'save-as' | 'recovery', quiet?: boolean) => Promise<SaveOutcome>
   >(() => Promise.resolve({ ok: false }))
   const closeSaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const commitActiveEditor = useCallback(async (): Promise<boolean> => {

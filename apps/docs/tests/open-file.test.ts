@@ -13,7 +13,9 @@ describe('findDocxPath', () => {
   })
 
   it('ignores Electron switches and unrelated files', () => {
-    expect(findDocxPath(['Hyper-Files Docs', '--inspect=document.docx', '/tmp/notes.txt'])).toBeNull()
+    expect(
+      findDocxPath(['Hyper-Files Docs', '--inspect=document.docx', '/tmp/notes.txt']),
+    ).toBeNull()
   })
 })
 

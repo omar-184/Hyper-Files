@@ -7,10 +7,7 @@ import type { WorkbookOperation } from '@genoffice/xlsx-gateway/domain/workbook-
 /// The BeforeCommandExecute gates in App.tsx cancel these facade commands
 /// silently; lazyGateFailure mirrors them so apply fails loud instead.
 
-function lazyGateError(
-  state: LazyWorkbookState,
-  operation: WorkbookOperation,
-): string | null {
+function lazyGateError(state: LazyWorkbookState, operation: WorkbookOperation): string | null {
   return lazyGateFailure(state, operation)?.reason ?? null
 }
 

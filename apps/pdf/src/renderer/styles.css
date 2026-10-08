@@ -998,11 +998,13 @@ button {
 }
 
 .pdf-night {
-  background: #1e1e1e;
+  --pdf-bg-1: #1e1e1e;
+  background: var(--pdf-bg-1);
 }
 
 .pdf-night .pdf-page {
-  box-shadow: 0 1px 4px rgb(0 0 0 / 55%);
+  --pdf-shadow-1: 0 1px 4px rgb(0 0 0 / 55%);
+  box-shadow: var(--pdf-shadow-1);
 }
 
 .pdf-sign-drop {

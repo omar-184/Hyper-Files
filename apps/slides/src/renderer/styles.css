@@ -6412,7 +6412,6 @@ body.show-curtain::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   /* full-viewport slideshow transitions are the highest vestibular risk */
   .slideshow [class*='ss-anim-'] {
     animation-duration: 0.01ms !important;

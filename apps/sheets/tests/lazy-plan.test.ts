@@ -62,7 +62,9 @@ describe('buildLazyChangePlan', () => {
   })
 
   it('rejects an invalid sheet name through the DSL schema', () => {
-    expect(() => planBatch([{ op: 'rename_sheet', sheetId: 'sheet-1', name: 'bad[name]' }])).toThrow()
+    expect(() =>
+      planBatch([{ op: 'rename_sheet', sheetId: 'sheet-1', name: 'bad[name]' }]),
+    ).toThrow()
   })
 })
 
