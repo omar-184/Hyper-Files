@@ -8,13 +8,16 @@ test.describe('home screen', () => {
     try {
       await expect(page.locator('.home-hero')).toBeVisible()
       // six quick-create cards plus the "Open file" browse card
-      await expect(page.locator('.quick-card')).toHaveCount(7)
-      await expect(page.locator('.quick-card').first()).toContainText('Docs')
-      await expect(page.locator('.quick-card').nth(1)).toContainText('Sheets')
-      await expect(page.locator('.quick-card').nth(2)).toContainText('Slides')
-      await expect(page.locator('.quick-card').nth(3)).toContainText('Markdown')
-      await expect(page.locator('.quick-card').nth(4)).toContainText('HTML')
-      await expect(page.locator('.quick-card').nth(5)).toContainText('PDF')
+      const quick = page.locator('.quick-cards:not(.template-cards) .quick-card')
+      await expect(quick).toHaveCount(7)
+      await expect(quick.first()).toContainText('Docs')
+      await expect(quick.nth(1)).toContainText('Sheets')
+      await expect(quick.nth(2)).toContainText('Slides')
+      await expect(quick.nth(3)).toContainText('Markdown')
+      await expect(quick.nth(4)).toContainText('HTML')
+      await expect(quick.nth(5)).toContainText('PDF')
+      // and the starter templates below them
+      await expect(page.locator('.template-card')).toHaveCount(5)
       await expect(page.locator('.tab-bar .tab-item.tab-home')).toBeVisible()
       await page.screenshot({ path: screenshotPath('home-overview') })
     } finally {
