@@ -34,7 +34,7 @@ describe('word count CJK rule', () => {
 
   it('half-width digits/latin embedded in CJK are words, full-width punctuation is a char', () => {
     expect(countWords('第1章：GenOffice 使用指南')).toBe(9)
-    // 7 asian chars (incl. the fullwidth colon) + "1" and "Hyper-Files" as 2 words
+    // 7 asian chars (incl. the fullwidth colon) + "1" and "Hypercube Office" as 2 words
   })
 
   it('counts space-delimited non-Latin scripts as words', () => {

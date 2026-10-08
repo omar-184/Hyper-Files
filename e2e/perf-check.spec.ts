@@ -153,7 +153,7 @@ test.describe('settings performance check', () => {
       const total = await open('pdf', '://pdf/')
       publish(
         'perf-memory.txt',
-        ['Hyper-Files memory (working set, MB) as tabs open', ...rows].join('\n'),
+        ['Hypercube Office memory (working set, MB) as tabs open', ...rows].join('\n'),
       )
       // sanity bound, not a target: all four editors together must stay well
       // under what a 4 GB machine can give one app

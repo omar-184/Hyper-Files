@@ -1,6 +1,6 @@
 /**
  * Update check. The background check is off until the user turns it on in
- * Settings → About; while off, Hyper-Files makes no network request of its
+ * Settings → About; while off, Hypercube Office makes no network request of its
  * own except when the user clicks "Check now". When on, it asks the GitHub
  * Releases API for the latest published release at most once a day and, if
  * that release is newer, shows one notification per version. Nothing is

@@ -13,7 +13,7 @@ const en = {
   missingTitle: 'Old Office formats add-on',
   missingMessage: '“{name}” is a {kind}. Opening it needs the free Old Office Formats add-on.',
   missingDetail:
-    'The add-on is LibreOffice, used only to convert the file to {target}. It is not part of the Hyper-Files install, so the base app stays small. Install LibreOffice (from libreoffice.org or any offline copy), then open the file again. If it is installed somewhere unusual, choose “Locate LibreOffice…”.',
+    'The add-on is LibreOffice, used only to convert the file to {target}. It is not part of the Hypercube Office install, so the base app stays small. Install LibreOffice (from libreoffice.org or any offline copy), then open the file again. If it is installed somewhere unusual, choose “Locate LibreOffice…”.',
   btnLocate: 'Locate LibreOffice…',
   btnGetAddon: 'Get LibreOffice',
   btnCancel: 'Cancel',
@@ -26,7 +26,7 @@ const en = {
   convertTitle: 'Convert to {target}',
   convertMessage: 'Convert “{name}” to {target}?',
   convertDetail:
-    'Hyper-Files edits this {kind} as a {target} file. The converted copy is saved as “{target_name}” next to the original. The original file is not changed.',
+    'Hypercube Office edits this {kind} as a {target} file. The converted copy is saved as “{target_name}” next to the original. The original file is not changed.',
   btnConvert: 'Convert and open',
   btnConvertElsewhere: 'Save copy elsewhere…',
   dontAskAgain: 'Always convert without asking',
@@ -37,7 +37,7 @@ const en = {
   failedGeneric: 'LibreOffice could not convert the file. It may be damaged or password protected.',
   statusFound: 'The Old Office Formats add-on is ready.',
   statusFoundDetail:
-    'Using LibreOffice at:\n{path}\n\nHyper-Files opens .doc, .xls, .ppt, .rtf, .odt, .ods and .odp files by converting them to .docx, .xlsx or .pptx. LibreOffice runs only while a file is converting.',
+    'Using LibreOffice at:\n{path}\n\nHypercube Office opens .doc, .xls, .ppt, .rtf, .odt, .ods and .odp files by converting them to .docx, .xlsx or .pptx. LibreOffice runs only while a file is converting.',
   statusMissing: 'The Old Office Formats add-on is not installed.',
   statusMissingDetail:
     'Install LibreOffice to open .doc, .xls (with formatting), .ppt, .rtf, .odt, .ods and .odp files. Without it, .xls files still open with values and formulas only.',

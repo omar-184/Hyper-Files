@@ -1,7 +1,7 @@
 /**
  * electron-builder configuration.
  *
- * Hyper-Files is fully offline: no auto-update feed, no analytics and no
+ * Hypercube Office is fully offline: no auto-update feed, no analytics and no
  * font CDN are configured, so nothing is injected into the packaged app.
  */
 
@@ -13,7 +13,7 @@ const { join } = require('node:path')
 // arm64. Off by default: Intel packages must only ever ship signed with the
 // company certificate (planned dual-track pipeline), so the current release
 // pipeline stays arm64-only and never produces a personally-signed Intel
-// artifact. The downstream layout (feed archive name, Hyper-Files-intel.dmg
+// artifact. The downstream layout (feed archive name, Hypercube Office-intel.dmg
 // alias) keys off which dmgs exist, so flipping this flag is the single
 // switch.
 const includeMacX64 = process.env.GENOFFICE_MAC_X64 === '1'
@@ -27,7 +27,7 @@ const includeMacX64 = process.env.GENOFFICE_MAC_X64 === '1'
 const winArm64 = process.env.GENOFFICE_WIN_ARM64 === '1'
 // 7-Zip packs ARM64 executables with its ARM64 branch filter, which the NSIS
 // install-time extractor (Nsis7z) cannot decode: it silently skips
-// Hyper-Files.exe and every dll (electron-builder#9983). BCJ it can decode.
+// Hypercube Office.exe and every dll (electron-builder#9983). BCJ it can decode.
 if (winArm64 && !process.env.ELECTRON_BUILDER_7Z_FILTER) {
   process.env.ELECTRON_BUILDER_7Z_FILTER = 'BCJ'
 }
@@ -213,7 +213,7 @@ function ensureThirdPartyNotices() {
 /** @type {import('electron-builder').Configuration} */
 const config = {
   appId: 'io.github.omar184.hyperfiles',
-  productName: 'Hyper-Files',
+  productName: 'Hypercube Office',
   // Resolved from the installed electron package so dependency bumps can
   // never leave a stale hard-coded pin behind (packaging would silently ship
   // the old runtime).
@@ -321,7 +321,7 @@ const config = {
   // build/ as <icon>.icns for the mac CFBundleDocumentTypes entry and
   // <icon>.ico for the NSIS DefaultIcon registry value. Without it both
   // platforms fall back to the app icon, so every associated file shows the
-  // bare Hyper-Files logo instead of a per-type document icon. The icns/ico
+  // bare Hypercube Office logo instead of a per-type document icon. The icns/ico
   // pairs are generated from the shell renderer's file-type tiles by
   // tools/gen-file-association-icons.mjs.
   fileAssociations: [
@@ -428,8 +428,8 @@ const config = {
     // Two separate arch packages (NOT universal): arm64 keeps the exact
     // artifact names and update-feed entries it always had, x64 (opt-in via
     // GENOFFICE_MAC_X64=1, see includeMacX64 above) adds Intel support with
-    // electron-builder's default arch-less names (Hyper-Files-<v>.dmg /
-    // Hyper-Files-<v>-mac.zip). Both zips land in one latest-mac.yml and
+    // electron-builder's default arch-less names (Hypercube Office-<v>.dmg /
+    // Hypercube Office-<v>-mac.zip). Both zips land in one latest-mac.yml and
     // electron-updater picks by process.arch. Dual-arch packs ship the same
     // lipo fat xlsx-sidecar (see assertUniversalSidecar above).
     target: [
@@ -476,9 +476,9 @@ const config = {
     allowToChangeInstallationDirectory: true,
     // the AGPL-3.0 text is the installer's license page
     license: '../../LICENSE',
-    artifactName: '${productName}-Setup-${version}-${arch}.${ext}',
-    shortcutName: 'Hyper-Files',
-    uninstallDisplayName: 'Hyper-Files',
+    artifactName: 'Hypercube-Office-Setup-${version}-${arch}.${ext}',
+    shortcutName: 'Hypercube Office',
+    uninstallDisplayName: 'Hypercube Office',
     deleteAppDataOnUninstall: false,
   },
   beforePack: async (context) => {
@@ -509,7 +509,7 @@ const config = {
 // signed. When CI exports GENOFFICE_WIN_SIGN_MODE ("test" = alpha
 // self-signed PFX, "production" = DigiCert KeyLocker — the two modes of
 // scripts/win-sign.cjs, whose env-var contract applies here too), every
-// binary electron-builder signs for win (Hyper-Files.exe, the NSIS
+// binary electron-builder signs for win (Hypercube Office.exe, the NSIS
 // uninstaller, and the installer) goes through that script. The static
 // extraResources binaries (xlsx-sidecar.exe, win-ocr.exe) are signed by the
 // workflow before packaging since electron-builder does not sign

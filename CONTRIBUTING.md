@@ -1,4 +1,4 @@
-# Contributing to Hyper-Files
+# Contributing to Hypercube Office
 
 Thanks for your interest in contributing. This document covers the local
 setup, the checks a change must pass, and the conventions used in this
@@ -180,7 +180,7 @@ All community spaces follow the
 
 ## License
 
-There is no CLA (contributor license agreement). Hyper-Files is licensed under
+There is no CLA (contributor license agreement). Hypercube Office is licensed under
 the [GNU AGPL-3.0](LICENSE); by contributing, you agree that your
 contributions are licensed under the same terms. Code imported from GenOffice
 keeps its Apache-2.0 notices (see [NOTICE](NOTICE)).

@@ -1,5 +1,5 @@
-Hyper-Files
-Copyright (C) 2026 The Hyper-Files contributors
+Hypercube Office
+Copyright (C) 2026 The Hypercube Office contributors
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
@@ -15,7 +15,7 @@ Each component keeps its own license.
   (full text in LICENSE-APACHE-2.0). Imported from commit
   2490e20db8a9e89feb95a6914211c9aad3b34a2b.
   The GenOffice `ee/` directory is NOT included. "GenOffice" and "Genspark"
-  are trademarks of Mainfunc, Inc.; Hyper-Files does not use them as branding.
+  are trademarks of Mainfunc, Inc.; Hypercube Office does not use them as branding.
   Files derived from GenOffice keep their original notices; changes are
   recorded in this repository's git history.
 

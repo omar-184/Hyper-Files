@@ -49,7 +49,7 @@ test('Slides copy provides an OS image while internal paste stays editable and s
     expect([...png.data].some((n, i) => i % 4 === 3 && n === 0)).toBe(true)
     await info.attach('clipboard-selection.png', { body: bytes, contentType: 'image/png' })
 
-    // A plain Chromium editor has no Hyper-Files code or clipboard cache.
+    // A plain Chromium editor has no Hypercube Office code or clipboard cache.
     const externalPagePromise = app.waitForEvent('window')
     const externalId = await app.evaluate(async ({ BrowserWindow }) => {
       const win = new BrowserWindow({ show: false })

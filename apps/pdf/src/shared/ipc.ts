@@ -199,7 +199,7 @@ export type DrawingInput =
       fontSize: number
       /** Text and border color, rgb 0-1 */
       color: [number, number, number]
-      /** Annotation author (/T); omitted → 'Hyper-Files' */
+      /** Annotation author (/T); omitted → 'Hypercube Office' */
       author?: string
       /** Creation time (ms since epoch); omitted → save time */
       createdMs?: number
@@ -239,7 +239,7 @@ export type DrawingInput =
       color: [number, number, number]
       at: [number, number]
       contents: string
-      /** Annotation author (/T); omitted → 'Hyper-Files' */
+      /** Annotation author (/T); omitted → 'Hypercube Office' */
       author?: string
       /** Creation time (ms since epoch) → /CreationDate and /M; omitted → save time */
       createdMs?: number

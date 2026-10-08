@@ -16,7 +16,7 @@
 *.woff binary
 *.woff2 binary
 
-# Windows scripts keep CRLF (Hyper-Files)
+# Windows scripts keep CRLF (Hypercube Office)
 *.bat text eol=crlf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
