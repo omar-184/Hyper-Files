@@ -79,7 +79,7 @@ async function openGeneral(api: Partial<HomeApi>): Promise<void> {
 function row(): HTMLElement | null {
   return (
     Array.from(host.querySelectorAll<HTMLElement>('.set-field')).find((el) =>
-      el.textContent?.includes('Default app for Office documents'),
+      el.textContent?.includes('Default app for PDF and Office files'),
     ) ?? null
   )
 }
@@ -115,7 +115,7 @@ describe('Settings default-app row', () => {
       getDefaultAppStatus: async () => ({ state: 'other', others: [], manualOnly: false }),
     })
     const field = row()!
-    expect(field.textContent).toContain('Open .docx, .xlsx and .pptx files in Hyper-Files')
+    expect(field.textContent).toContain('Open .pdf, .docx, .xlsx and .pptx files in Hyper-Files')
     expect(field.querySelector<HTMLButtonElement>('button')!.disabled).toBe(false)
   })
 

@@ -47,8 +47,23 @@ Requires Node 22+, npm 10+ and a Rust toolchain (for the sheets engine). See
 ```bash
 npm ci
 npm run dev        # all editors + shell against Vite dev servers
-npm run dist:win   # Windows installer
+npm run dist:win   # Windows installer (apps/shell/release/Hyper-Files-Setup-<version>-x64.exe)
 ```
+
+## Installing
+
+The **Windows installer** workflow (`.github/workflows/release-windows.yml`) builds the x64
+installer from a clean checkout on every version tag, on demand, and on pull requests that touch
+packaging, then smoke-tests a silent install and uninstall. Download it from the workflow run's
+artifacts. The installer:
+
+- installs per user by default (no admin prompt); "for all users" is offered on the first page;
+- shows the AGPL-3.0 license and ships `LICENSE.txt`, `NOTICE.txt` and
+  `THIRD-PARTY-NOTICES.txt` in the install folder;
+- registers Hyper-Files for PDF, Word, Excel, PowerPoint, CSV, Markdown and HTML files, and its
+  last page offers to make Hyper-Files the default app (Windows asks you to confirm in Settings);
+- is not code-signed yet, so Windows SmartScreen shows "Unknown publisher" until you choose
+  "More info" > "Run anyway".
 
 ## License
 

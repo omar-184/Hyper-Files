@@ -160,9 +160,9 @@ describe('createDefaultAppService', () => {
         if (key.includes('.pptx')) throw new Error('no user choice')
         return key.includes('.docx')
           ? '    ProgId    REG_SZ    Word.Document.12\r\n'
-          : '    ProgId    REG_SZ    Excel Workbook\r\n'
+          : '    ProgId    REG_SZ    HyperFiles.xlsx\r\n'
       }
-      if (key === 'HKCR\\.pptx') return '    (Default)    REG_SZ    PowerPoint Presentation\r\n'
+      if (key === 'HKCR\\.pptx') return '    (Default)    REG_SZ    HyperFiles.pptx\r\n'
       if (key === 'HKCR\\Word.Document.12')
         return '    (Default)    REG_SZ    Microsoft Word Document\r\n'
       throw new Error('missing')
@@ -176,6 +176,25 @@ describe('createDefaultAppService', () => {
     })
     await svc.set()
     expect(openExternal).toHaveBeenCalledWith('ms-settings:defaultapps')
+  })
+
+  it('windows: deep-links to the registered app page in the hive the installer used', async () => {
+    const run = vi.fn<RunCommand>(async (_cmd, args) => {
+      if (args[1] === 'HKCU\\Software\\RegisteredApplications')
+        return '    Hyper-Files    REG_SZ    Software\\Hyper-Files\\Capabilities\r\n'
+      throw new Error('missing')
+    })
+    const openExternal = vi.fn(async () => {})
+    const svc = createDefaultAppService({ ...base, platform: 'win32', run, openExternal })
+    await svc.set()
+    expect(openExternal).toHaveBeenCalledWith(
+      'ms-settings:defaultapps?registeredAppUser=Hyper-Files',
+    )
+  })
+
+  it('covers PDF alongside the Office types', () => {
+    expect(OFFICE_TYPES.map((t) => t.ext)).toContain('pdf')
+    for (const t of OFFICE_TYPES) expect(t.progId).toBe(`HyperFiles.${t.ext}`)
   })
 
   it('reports unknown instead of throwing when the probe fails', async () => {

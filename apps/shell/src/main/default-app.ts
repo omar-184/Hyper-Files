@@ -11,45 +11,67 @@ interface OfficeType {
   ext: string
   uti: string
   mime: string
-  /** Windows ProgId written by the NSIS installer = fileAssociations[].name in electron-builder.cjs */
+  /** Windows ProgId written by the NSIS installer = fileAssociations[].name in electron-builder.cjs (progId()) */
   progId: string
 }
 
 export const OFFICE_TYPES: readonly OfficeType[] = [
   {
+    ext: 'pdf',
+    uti: 'com.adobe.pdf',
+    mime: 'application/pdf',
+    progId: 'HyperFiles.pdf',
+  },
+  {
     ext: 'docx',
     uti: 'org.openxmlformats.wordprocessingml.document',
     mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    progId: 'Word Document',
+    progId: 'HyperFiles.docx',
   },
   {
     ext: 'xlsx',
     uti: 'org.openxmlformats.spreadsheetml.sheet',
     mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    progId: 'Excel Workbook',
+    progId: 'HyperFiles.xlsx',
   },
   {
     ext: 'xlsm',
     uti: 'org.openxmlformats.spreadsheetml.sheet.macroenabled',
     mime: 'application/vnd.ms-excel.sheet.macroEnabled.12',
-    progId: 'Excel Macro-Enabled Workbook',
+    progId: 'HyperFiles.xlsm',
   },
   {
     ext: 'xls',
     uti: 'com.microsoft.excel.xls',
     mime: 'application/vnd.ms-excel',
-    progId: 'Excel 97-2003 Workbook',
+    progId: 'HyperFiles.xls',
   },
   {
     ext: 'pptx',
     uti: 'org.openxmlformats.presentationml.presentation',
     mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    progId: 'PowerPoint Presentation',
+    progId: 'HyperFiles.pptx',
   },
 ]
 
 const LINUX_DESKTOP_ID = 'genoffice.desktop'
 const WINDOWS_DEFAULT_APPS_URL = 'ms-settings:defaultapps'
+/** RegisteredApplications value name written by build/installer.nsh */
+const WINDOWS_REGISTERED_APP = 'Hyper-Files'
+
+/**
+ * Windows 11 deep-links to the app's own Default apps page when the
+ * RegisteredApplications entry is named; Windows 10 ignores the query and
+ * opens the general page. The installer writes the entry under HKCU for a
+ * per-user install and HKLM for an all-users one.
+ */
+export function windowsDefaultAppsUrl(scope: 'user' | 'machine' | null): string {
+  if (scope === 'user')
+    return `${WINDOWS_DEFAULT_APPS_URL}?registeredAppUser=${WINDOWS_REGISTERED_APP}`
+  if (scope === 'machine')
+    return `${WINDOWS_DEFAULT_APPS_URL}?registeredAppMachine=${WINDOWS_REGISTERED_APP}`
+  return WINDOWS_DEFAULT_APPS_URL
+}
 
 export type RunCommand = (cmd: string, args: string[]) => Promise<string>
 
@@ -250,6 +272,22 @@ export function createDefaultAppService(deps: DefaultAppDeps): DefaultAppService
     }
   }
 
+  async function windowsRegistrationScope(): Promise<'user' | 'machine' | null> {
+    for (const [hive, scope] of [
+      ['HKCU', 'user'],
+      ['HKLM', 'machine'],
+    ] as const) {
+      try {
+        const key = `${hive}\\Software\\RegisteredApplications`
+        if (parseRegValue(await deps.run('reg', ['query', key, '/v', WINDOWS_REGISTERED_APP])))
+          return scope
+      } catch {
+        // not registered in this hive
+      }
+    }
+    return null
+  }
+
   async function set(): Promise<DefaultAppStatus> {
     if (!deps.packaged) return UNSUPPORTED
     try {
@@ -258,7 +296,7 @@ export function createDefaultAppService(deps: DefaultAppDeps): DefaultAppService
       } else if (deps.platform === 'linux') {
         await deps.run('xdg-mime', ['default', LINUX_DESKTOP_ID, ...mimes])
       } else if (deps.platform === 'win32') {
-        await deps.openExternal(WINDOWS_DEFAULT_APPS_URL)
+        await deps.openExternal(windowsDefaultAppsUrl(await windowsRegistrationScope()))
       }
     } catch {
       // status() below reports whatever actually stuck

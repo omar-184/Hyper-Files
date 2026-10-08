@@ -1,0 +1,140 @@
+name: Windows installer
+
+# Builds the Windows 10/11 x64 NSIS installer (Hyper-Files-Setup-<version>-x64.exe)
+# from a clean checkout and uploads it as a workflow artifact, with its SHA-256.
+# The installer is smoke-tested on the runner: silent per-user install, check the
+# files and the Default Programs registration, silent uninstall.
+#
+# Nothing is published: there is no GitHub Release step and electron-builder
+# runs with --publish never. A public release is a manual, separate decision.
+# The installer is unsigned until a code-signing certificate is configured
+# (GENOFFICE_WIN_SIGN_MODE, see apps/shell/electron-builder.cjs), so Windows
+# SmartScreen shows "Unknown publisher" on first run.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/release-windows.yml'
+      - 'apps/shell/electron-builder.cjs'
+      - 'apps/shell/build/**'
+      - 'apps/shell/package.json'
+      - 'tools/gen-third-party-notices.mjs'
+
+concurrency:
+  group: release-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      # native MSVC build of the sheets sidecar (statically linked CRT, see
+      # apps/sheets/native/xlsx-engine/.cargo/config.toml); electron-builder
+      # picks it up from the matching target dir
+      CARGO_BUILD_TARGET: x86_64-pc-windows-msvc
+      GENOFFICE_WIN_SIDECAR_TARGET: x86_64-pc-windows-msvc
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable branch, 2026-07
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache cargo (xlsx-sidecar)
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: apps/sheets/native/xlsx-engine
+
+      - name: Cache Electron and electron-builder downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-win-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-win-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check dependency licenses
+        run: npm run licenses
+
+      - name: Build installer
+        run: npm run dist:win
+
+      - name: Collect installer
+        id: collect
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem apps/shell/release -Filter 'Hyper-Files-Setup-*-x64.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'installer not found in apps/shell/release' }
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($exe.Name)" | Out-File -Encoding ascii "$($exe.FullName).sha256"
+          $mb = [math]::Round($exe.Length / 1MB, 1)
+          "Installer: $($exe.Name) ($mb MB)" | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "SHA-256: $hash" | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Smoke-test silent install and uninstall
+        shell: pwsh
+        run: |
+          $installer = '${{ steps.collect.outputs.path }}'
+          $p = Start-Process -FilePath $installer -ArgumentList '/S', '/currentuser' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\Hyper-Files'
+          foreach ($f in @(
+            'Hyper-Files.exe',
+            'resources\LICENSE.txt',
+            'resources\NOTICE.txt',
+            'resources\THIRD-PARTY-NOTICES.txt',
+            'resources\native\xlsx-sidecar.exe',
+            'resources\modules\pdf\renderer\index.html'
+          )) {
+            if (-not (Test-Path (Join-Path $dir $f))) { throw "missing after install: $f" }
+          }
+          $reg = Get-ItemProperty 'HKCU:\Software\RegisteredApplications' -Name 'Hyper-Files'
+          if ($reg.'Hyper-Files' -ne 'Software\Hyper-Files\Capabilities') { throw 'RegisteredApplications entry missing' }
+          $caps = Get-ItemProperty 'HKCU:\Software\Hyper-Files\Capabilities\FileAssociations'
+          foreach ($ext in '.pdf', '.docx', '.xlsx', '.pptx') {
+            if ($caps.$ext -ne "HyperFiles$ext") { throw "capability for $ext missing" }
+          }
+          if (-not (Test-Path 'HKCU:\Software\Classes\HyperFiles.pdf\shell\open\command')) { throw 'PDF ProgID missing' }
+          Write-Host 'install OK'
+
+          $uninstaller = Join-Path $dir 'Uninstall Hyper-Files.exe'
+          $u = Start-Process -FilePath $uninstaller -ArgumentList '/S', '/currentuser' -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "uninstaller exited with $($u.ExitCode)" }
+          # the NSIS uninstaller re-launches itself from %TEMP% and returns early
+          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $dir 'Hyper-Files.exe')); $i++) { Start-Sleep 1 }
+          if (Test-Path (Join-Path $dir 'Hyper-Files.exe')) { throw 'app still present after uninstall' }
+          if (Test-Path 'HKCU:\Software\Hyper-Files\Capabilities') { throw 'capabilities left after uninstall' }
+          Write-Host 'uninstall OK'
+
+      - name: Upload installer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hyper-files-windows-x64
+          path: |
+            apps/shell/release/Hyper-Files-Setup-*-x64.exe
+            apps/shell/release/Hyper-Files-Setup-*-x64.exe.sha256
+          if-no-files-found: error
+          retention-days: 30

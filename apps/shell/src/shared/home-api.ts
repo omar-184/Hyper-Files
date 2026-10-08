@@ -115,6 +115,24 @@ export interface DefaultAppStatus {
   manualOnly: boolean
 }
 
+export type UpdateCheckState = 'latest' | 'available' | 'failed'
+
+/** outcome of one opt-in update check (main/update-check.ts) */
+export interface UpdateCheckResult {
+  state: UpdateCheckState
+  /** latest published version, without the leading "v" */
+  version?: string
+  /** release page to open for 'available' */
+  url?: string
+  checkedAt: number
+}
+
+export interface UpdateCheckStatus {
+  /** off by default; no request is ever made while false */
+  enabled: boolean
+  last: UpdateCheckResult | null
+}
+
 export interface HomeApi {
   /** unified recents across document types, newest first (paged) */
   recents(query?: RecentQuery): Promise<RecentPage>
@@ -208,6 +226,14 @@ export interface HomeApi {
   onDocumentThemeChanged(handler: (theme: DocTheme) => void): () => void
   /** open the public GitHub repository in the default browser */
   openGitHubRepo(): Promise<void>
+  /** opt-in update check setting and the last result this session */
+  getUpdateCheck(): Promise<UpdateCheckStatus>
+  /** turn the opt-in update check on or off (persisted in userData/app-settings.json) */
+  setUpdateCheck(enabled: boolean): Promise<void>
+  /** ask GitHub for the latest release now; only works while the check is enabled */
+  checkForUpdates(): Promise<UpdateCheckResult>
+  /** open the release page of the last 'available' result in the browser */
+  openUpdatePage(): Promise<void>
 }
 
 export interface RenameResult {
@@ -322,4 +348,8 @@ export const HOME_CHANNELS = {
   setDefaultApp: 'home:set-default-app',
   pickDefaultSaveDir: 'home:pick-default-save-dir',
   openGitHubRepo: 'home:open-github-repo',
+  getUpdateCheck: 'home:get-update-check',
+  setUpdateCheck: 'home:set-update-check',
+  checkForUpdates: 'home:check-for-updates',
+  openUpdatePage: 'home:open-update-page',
 } as const
