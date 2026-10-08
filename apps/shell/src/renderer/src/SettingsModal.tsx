@@ -4,6 +4,7 @@ import { Dropdown } from '@genoffice/ui'
 import type { DefaultAppStatus, DocTheme, UiTheme, UpdateCheckResult } from '../../shared/home-api'
 import { useI18n } from './locale'
 import type { StringKey } from './locale'
+import { PerformancePane } from './PerformancePane'
 import './settings.css'
 
 // ── Settings modal (opened from the sidebar Settings entry) ─────────
@@ -51,10 +52,11 @@ const DOC_THEME_OPTIONS = [
   { value: 'dark', labelKey: 'themeDark' },
 ] as const satisfies readonly { value: DocTheme; labelKey: StringKey }[]
 
-type SectionId = 'general' | 'about'
+type SectionId = 'general' | 'performance' | 'about'
 
 const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
   { id: 'general', labelKey: 'setSecGeneral' },
+  { id: 'performance', labelKey: 'setSecPerformance' },
   { id: 'about', labelKey: 'setSecAbout' },
 ]
 
@@ -70,6 +72,20 @@ function SectionIcon({ id }: { id: SectionId }) {
         />
         <circle cx="11.5" cy="5" r="1.7" stroke="currentColor" strokeWidth="1.3" />
         <circle cx="4.5" cy="11" r="1.7" stroke="currentColor" strokeWidth="1.3" />
+      </svg>
+    )
+  }
+  if (id === 'performance') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path
+          d="M2.3 11.5a6 6 0 1 1 11.4 0"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+        <path d="M8 10l2.6-3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        <circle cx="8" cy="10" r="1" fill="currentColor" />
       </svg>
     )
   }
@@ -374,6 +390,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 </div>
               </>
             )}
+            {section === 'performance' && <PerformancePane />}
             {section === 'about' && (
               <>
                 <h3 className="set-pane-title">{t('setSecAbout')}</h3>

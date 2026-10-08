@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
+import { PERF_STEPS, type PerfProgress, type PerfReport } from '../shared/perf-check'
 import type {
   DefaultAppStatus,
   UpdateCheckResult,
@@ -293,6 +294,23 @@ const homeApi: HomeApi = {
   },
   async openUpdatePage() {
     await ipcRenderer.invoke(HOME_CHANNELS.openUpdatePage)
+  },
+  async getPerfCheck() {
+    const r = (await ipcRenderer.invoke(HOME_CHANNELS.getPerfCheck)) as PerfReport | null
+    return r && typeof r === 'object' ? r : null
+  },
+  async runPerfCheck() {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.runPerfCheck)) as PerfReport
+  },
+  onPerfCheckProgress(handler) {
+    const listener = (_event: IpcRendererEvent, p: Partial<PerfProgress> | null) => {
+      if (p && PERF_STEPS.includes(p.step as PerfProgress['step'])) handler(p as PerfProgress)
+    }
+    ipcRenderer.on(HOME_CHANNELS.perfCheckProgress, listener)
+    return () => ipcRenderer.removeListener(HOME_CHANNELS.perfCheckProgress, listener)
+  },
+  async copyPerfReport() {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.copyPerfReport)) === true
   },
 }
 

@@ -10,10 +10,12 @@ import {
 } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { basename, dirname, extname, join, resolve } from 'node:path'
+import { cpus, freemem, tmpdir, totalmem } from 'node:os'
 import {
   BrowserWindow,
   Menu,
   app,
+  clipboard,
   dialog,
   Notification,
   ipcMain,
@@ -71,6 +73,8 @@ import {
 } from './app-settings'
 import { createDefaultAppService, execFileRunner } from './default-app'
 import { createUpdateChecker, safeReleaseUrl } from './update-check'
+import { cpuBenchmark, diskFreeMB, osLabel, runPerfCheck, spawnHeadlessExport } from './perf-check'
+import { formatPerfReport, type PerfOpenKind, type PerfReport } from '../shared/perf-check'
 import { handleDroppedFiles } from './dropped-files'
 import { collectLaunchPaths } from './launch-paths'
 import {
@@ -3857,6 +3861,95 @@ function registerHomeIpc(): void {
   })
 }
 
+// ---- Settings → Performance: offline self-test (see perf-check.ts) ----
+
+/** Home templates double as the sample documents: they ship with every build */
+const PERF_SAMPLES: Record<PerfOpenKind, HomeTemplateId> = {
+  docx: 'resume',
+  xlsx: 'budget',
+  pptx: 'presentation',
+}
+
+let lastPerfReport: PerfReport | null = null
+let perfCheckRun: Promise<PerfReport> | null = null
+
+function headlessLeadingArgs(): string[] {
+  const args: string[] = []
+  // the e2e/CI launch flags the child needs too (no usable sandbox or GPU there)
+  for (const sw of ['no-sandbox', 'disable-gpu']) {
+    if (app.commandLine.hasSwitch(sw)) args.push(`--${sw}`)
+  }
+  // an unpacked run is `electron <app dir>`; the packaged exe is the app itself
+  if (!app.isPackaged) args.push(app.getAppPath())
+  return args
+}
+
+function startPerfCheck(sender: WebContents): Promise<PerfReport> {
+  perfCheckRun ??= runPerfCheck({
+    appVersion: app.getVersion(),
+    dataDir: app.getPath('userData'),
+    tempRoot: tmpdir(),
+    sampleBytes: (kind) => homeTemplateBytes(PERF_SAMPLES[kind]),
+    exportToPdf: (input, outPath, profileDir) => {
+      const { ELECTRON_RUN_AS_NODE: _runAsNode, ...env } = process.env
+      return spawnHeadlessExport(input, outPath, {
+        execPath: process.execPath,
+        leadingArgs: headlessLeadingArgs(),
+        // unpacked runs honor this, so the child never touches the dev profile
+        env: { ...env, GENOFFICE_USER_DATA: profileDir },
+      })
+    },
+    renderPdfPages: async (pdfPath, outDir) => {
+      const res = await pdfToolsRunner.run({
+        tool: 'pdf-to-images',
+        files: [{ path: pdfPath }],
+        outputDir: outDir,
+        options: { format: 'png', dpi: 150, quality: 85, pages: '' },
+      })
+      if (!res.ok) throw new Error(res.error.message)
+      const failed = res.items.find((item) => item.error)
+      if (failed?.error) throw new Error(failed.error.message)
+      return res.items.reduce((n, item) => n + item.outputs.length, 0)
+    },
+    appMemory: () => {
+      const metrics = app.getAppMetrics()
+      const kb = metrics.reduce((sum, m) => sum + m.memory.workingSetSize, 0)
+      return { totalMB: kb / 1024, processCount: metrics.length }
+    },
+    cpuBenchmark,
+    freeMemMB: () => freemem() / (1024 * 1024),
+    totalMemMB: () => totalmem() / (1024 * 1024),
+    diskFreeMB,
+    cpuInfo: () => {
+      const list = cpus()
+      return { model: list[0]?.model.trim() || 'unknown CPU', cores: list.length }
+    },
+    osLabel,
+    now: () => Date.now(),
+    onProgress: (progress) => {
+      if (!sender.isDestroyed()) sender.send(HOME_CHANNELS.perfCheckProgress, progress)
+    },
+  })
+    .then((report) => {
+      lastPerfReport = report
+      return report
+    })
+    .finally(() => {
+      perfCheckRun = null
+    })
+  return perfCheckRun
+}
+
+function registerPerfCheckIpc(): void {
+  ipcMain.handle(HOME_CHANNELS.getPerfCheck, (): PerfReport | null => lastPerfReport)
+  ipcMain.handle(HOME_CHANNELS.runPerfCheck, (event) => startPerfCheck(event.sender))
+  ipcMain.handle(HOME_CHANNELS.copyPerfReport, (): boolean => {
+    if (!lastPerfReport) return false
+    clipboard.writeText(formatPerfReport(lastPerfReport))
+    return true
+  })
+}
+
 // ---- opt-in update check (off by default; see update-check.ts) ----
 const updateChecker = createUpdateChecker({
   currentVersion: app.getVersion(),
@@ -4984,9 +5077,10 @@ installNavigationGuard(app)
 installContextMenu(app, () => contextMenuLabels(currentLang()))
 registerDocsIpc()
 registerHomeIpc()
+registerPerfCheckIpc()
 registerTabsIpc()
 registerDroppedFilesIpc()
-registerPdfToolsIpc(pdfToolsWorkerPath)
+const pdfToolsRunner = registerPdfToolsIpc(pdfToolsWorkerPath)
 
 /** Dev-only pid marker for the takeover below; scoped to userData like the lock itself. */
 const devPidFile = () => join(app.getPath('userData'), 'dev-instance.pid')

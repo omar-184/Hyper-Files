@@ -815,6 +815,10 @@ export default function App() {
   const [outlineEdit, setOutlineEdit] = useState<OutlineNode[] | null>(null)
   const outlineEditRef = useRef(outlineEdit)
   outlineEditRef.current = outlineEdit
+  /** Bookmark edits still resolving their base tree (editOutline awaits it). A save
+      queues behind them, or ⌘S right after a click writes the tree without that edit. */
+  const outlineEditsPendingRef = useRef(0)
+  const [, rerenderAfterOutlineEdit] = useState(0)
   const [stampDlg, setStampDlg] = useState(false)
   const [propsDlg, setPropsDlg] = useState(false)
   const [fileSize, setFileSize] = useState(0)
@@ -3553,7 +3557,12 @@ export default function App() {
     // (the prompt itself blurs the window). The ref is set synchronously, so this also
     // covers two triggers landing in the same frame, where the saveState snapshot
     // still reads 'idle' for both.
-    if (saveInFlightRef.current !== null) {
+    if (
+      saveInFlightRef.current !== null ||
+      // a bookmark edit is resolving, or landed after this render: save from the next one
+      outlineEditsPendingRef.current > 0 ||
+      outlineEditRef.current !== outlineEdit
+    ) {
       return new Promise<boolean>((resolve) => queuedSavesRef.current.push({ autosave, resolve }))
     }
     // Fold an open floating-editor draft in first: keyboard save and autosave can land
@@ -3661,7 +3670,12 @@ export default function App() {
   // follow-up writes only what is still pending (usually nothing) instead of
   // re-applying the previous payload.
   useEffect(() => {
-    if (queuedSavesRef.current.length === 0 || saveInFlightRef.current !== null) return
+    if (
+      queuedSavesRef.current.length === 0 ||
+      saveInFlightRef.current !== null ||
+      outlineEditsPendingRef.current > 0
+    )
+      return
     const queued = queuedSavesRef.current
     queuedSavesRef.current = []
     // One explicit request makes the whole drained batch explicit (autosave opt-in)
@@ -5581,15 +5595,22 @@ export default function App() {
   const editOutline = async (
     fn: (base: OutlineNode[]) => [OutlineNode[], OutlinePath | null] | null,
   ): Promise<OutlinePath | null> => {
-    let base = outlineEditRef.current
-    if (!base) {
-      const resolved = doc ? await normalizeOutline(doc, outline ?? []) : []
-      base = outlineEditRef.current ?? resolved
+    outlineEditsPendingRef.current++
+    try {
+      let base = outlineEditRef.current
+      if (!base) {
+        const resolved = doc ? await normalizeOutline(doc, outline ?? []) : []
+        base = outlineEditRef.current ?? resolved
+      }
+      const result = fn(base)
+      if (!result) return null
+      applyEditOps([{ op: 'setOutline', outline: result[0] }])
+      return result[1]
+    } finally {
+      outlineEditsPendingRef.current--
+      // a render lets the queued-save drain effect run with the edited tree
+      rerenderAfterOutlineEdit((n) => n + 1)
     }
-    const result = fn(base)
-    if (!result) return null
-    applyEditOps([{ op: 'setOutline', outline: result[0] }])
-    return result[1]
   }
 
   const outlineEditing = readOnly
