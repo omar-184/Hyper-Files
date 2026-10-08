@@ -276,6 +276,7 @@ import {
   SplitCellsDialog,
   type TableDialogKind,
 } from './components/TableDialogs'
+import { ConvertToTextDialog, SortDialog, TextToTableDialog } from './components/TableDataDialogs'
 import { TablePropertiesDialog } from './components/TablePropertiesDialog'
 import { showToast } from './components/toast-bus'
 import { setTableAutoFit, toggleRepeatHeaderRows } from './editor/table-properties'
@@ -5925,11 +5926,9 @@ export function App() {
     onParagraphDialog: () => setShowParaDialog(true),
     onPasteDefaults: () => setShowAutoCorrect(true),
     onTableDialog: (kind: TableDialogKind) => {
-      if (
-        editor &&
-        editableOrToast(editor) &&
-        ensureCaretInTable(editor.state, editor.view.dispatch)
-      )
+      if (!editor || !editableOrToast(editor)) return
+      // Convert Text to Table works on a text selection, not inside a table
+      if (kind === 'textToTable' || ensureCaretInTable(editor.state, editor.view.dispatch))
         setTableDialog(kind)
     },
     onToggleTableGridlines: toggleTableGridlines,
@@ -6848,6 +6847,15 @@ export function App() {
       )}
       {doc && tableDialog === 'deleteCells' && (
         <DeleteCellsDialog editor={editor} onClose={() => setTableDialog(null)} />
+      )}
+      {doc && tableDialog === 'sort' && (
+        <SortDialog editor={editor} onClose={() => setTableDialog(null)} />
+      )}
+      {doc && tableDialog === 'toText' && (
+        <ConvertToTextDialog editor={editor} onClose={() => setTableDialog(null)} />
+      )}
+      {doc && tableDialog === 'textToTable' && (
+        <TextToTableDialog editor={editor} onClose={() => setTableDialog(null)} />
       )}
       {doc && tableDialog === 'cellMargins' && (
         <CellMarginsDialog

@@ -100,6 +100,7 @@ import {
   IconGridlines,
   IconInsertCells,
   IconSelectCells,
+  IconConvertToText,
   IconSplitTable,
   IconTextDirection,
 } from './table-icons'
@@ -218,6 +219,7 @@ import {
   IconSuperscript,
   IconTableDelete,
   IconRepeatHeader,
+  IconSort,
   IconTableProperties,
   IconReplace,
   IconSearch,
@@ -3002,6 +3004,30 @@ function RibbonInner({
                   {t('ribbonRepeatHeaderRows')}
                 </button>
               </div>
+              <div className="table-tool-row">
+                <button
+                  className="table-tool-button"
+                  data-tip={t('ribbonSortTip')}
+                  onClick={() => {
+                    setDropdown(null)
+                    if (canEdit) onTableDialog?.('sort')
+                  }}
+                >
+                  <IconSort size={17} />
+                  {t('ribbonSort')}
+                </button>
+                <button
+                  className="table-tool-button"
+                  data-tip={t('ribbonConvertToTextTip')}
+                  onClick={() => {
+                    setDropdown(null)
+                    if (canEdit) onTableDialog?.('toText')
+                  }}
+                >
+                  <IconConvertToText size={17} />
+                  {t('ribbonConvertToText')}
+                </button>
+              </div>
               <div className="ribbon-group-label">{t('ribbonGroupData')}</div>
             </div>
           </div>
@@ -3958,6 +3984,7 @@ function RibbonInner({
             isProtected={isProtected}
             commentsAllowed={commentsAllowed}
             onTableInserted={() => setTab('tableDesign')}
+            onTextToTable={() => onTableDialog?.('textToTable')}
           />
         ) : tab === 'design' ? (
           <DesignTab

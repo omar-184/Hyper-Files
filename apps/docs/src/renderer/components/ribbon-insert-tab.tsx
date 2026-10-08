@@ -692,6 +692,7 @@ export function InsertTab({
   isProtected,
   commentsAllowed,
   onTableInserted,
+  onTextToTable,
 }: InsertTabProps) {
   const { t } = useI18n()
   const [grid, setGrid] = useState<{ r: number; c: number }>({ r: 0, c: 0 })
@@ -830,6 +831,17 @@ export function InsertTab({
                 >
                   {t('ribbonTableInsertDialog')}
                 </button>
+                {onTextToTable && (
+                  <button
+                    className="table-picker-custom"
+                    onClick={() => {
+                      setDropdown(() => null)
+                      onTextToTable()
+                    }}
+                  >
+                    {t('ribbonConvertTextToTable')}
+                  </button>
+                )}
               </div>
             )}
           </div>

@@ -132,3 +132,15 @@ export function IconCellMargins(props: IconProps) {
     </Svg>
   )
 }
+
+/** a small grid turning into text lines (Table Layout ▸ Convert to Text) */
+export function IconConvertToText(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2" y="2.9" width="6" height="5.6" rx="0.6" />
+      <path d="M 2 5.7 h 6 M 5 2.9 v 5.6" strokeWidth="1" />
+      <path d="M 9.6 5.7 h 3.6 M 12 4.5 l 1.2 1.2 -1.2 1.2" />
+      <path d="M 2.5 10.6 h 11 M 2.5 13.1 h 7.5" />
+    </Svg>
+  )
+}
