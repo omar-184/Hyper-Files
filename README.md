@@ -5,7 +5,8 @@ A light, fully offline office and PDF app for Windows. No AI features, no accoun
 Hyper-Files opens and edits PDF, Word, Excel and PowerPoint files, and includes a PDF toolbox
 (merge, split, compress, convert, protect, sign) plus Acrobat-style PDF editing.
 
-> **Status:** planning complete, development not started. See [docs/PLAN.md](docs/PLAN.md).
+> **Status:** Phase 0. The GenOffice code base is imported with its AI features, sign-in,
+> analytics and auto-update removed. See [docs/PLAN.md](docs/PLAN.md).
 
 ## Goals
 
@@ -23,18 +24,31 @@ Windows 10 and 11 (x64). Other platforms may follow later.
 
 ## Built on
 
-Hyper-Files will be built from [GenOffice](https://github.com/genspark-ai/genoffice) (Apache-2.0)
-with its AI features and sign-in removed, and with [MuPDF](https://mupdf.com/) (AGPL-3.0) at the
-core of the PDF side. Hyper-Files is not affiliated with or endorsed by Genspark, Mainfunc, Inc. or
+Hyper-Files is built from [GenOffice](https://github.com/genspark-ai/genoffice) (Apache-2.0)
+with its AI features and sign-in removed; [MuPDF](https://mupdf.com/) (AGPL-3.0) is planned for
+the core of the PDF side. Hyper-Files is not affiliated with or endorsed by Genspark, Mainfunc, Inc. or
 Artifex Software. See [NOTICE](NOTICE) for attributions.
 
 ## Repository layout
 
 ```
+apps/       Electron apps: shell (home + tabs), docs, sheets, slides, pdf, markdown, html
+packages/   Shared engines (docx, pptx, xlsx, pdf2docx, html2docx) and UI/Electron helpers
+e2e/        Playwright end-to-end tests for the shell
+tools/      Build, lint and asset scripts
 docs/       Plan and design notes
 ```
 
-More folders arrive with Phase 0 (importing the GenOffice code base).
+## Development
+
+Requires Node 22+, npm 10+ and a Rust toolchain (for the sheets engine). See
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+```bash
+npm ci
+npm run dev        # all editors + shell against Vite dev servers
+npm run dist:win   # Windows installer
+```
 
 ## License
 
