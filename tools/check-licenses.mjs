@@ -27,6 +27,10 @@ const ALLOWED = new Set([
   'Python-2.0',
   'Unicode-3.0',
   'OFL-1.1',
+  // Hyper-Files itself is AGPL-3.0, which is what lets it ship MuPDF
+  // (docs/PLAN.md, Licensing); other strong copyleft licenses still fail
+  'AGPL-3.0-only',
+  'AGPL-3.0-or-later',
 ])
 
 /** Packages whose published package.json lacks a license field; license
