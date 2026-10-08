@@ -100,18 +100,18 @@ Common mistakes
 - Drawing a free line with `addElement` and hoping it follows the shapes: only `addConnector` (or `setConnectorEndpoints` with `start`/`end`) attaches.
 - Using it between a group child and a shape: connect to the group (top-level ids only).
 
-### addPicture (not-ai-callable)
+### addPicture (internal)
 
-`{bytes:base64|dataURL,ext?,offset} — use insert_web_image instead`
+`{bytes:base64|dataURL,ext?,offset} — bytes payload`
 
-Embeds image bytes as a new picture. The model inserts images through
-`insert_web_image` (URL) so the main process downloads and center-crops them.
+Embeds image bytes as a new picture; bytes payload from the UI file picker or
+a paste.
 
-### replacePicture (not-ai-callable)
+### replacePicture (internal)
 
-`{bytes:base64|dataURL,ext?} — use replace_image instead`
+`{bytes:base64|dataURL,ext?} — bytes payload`
 
-Swaps a picture's bytes in place. The model uses `replace_image` with a URL.
+Swaps a picture's bytes in place; bytes payload from the UI's Change Picture command.
 
 ### addTable
 
@@ -165,17 +165,16 @@ Common mistakes
 
 Inserts a native, PowerPoint-editable chart.
 
-| Field       | Type                                              | Notes                                                                                                                                                                                                     |
-| ----------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| kind        | see signature                                     | `comboBarLine` draws the last series as a line on a secondary axis                                                                                                                                        |
-| categories  | string[]                                          | At least one; the x-axis labels                                                                                                                                                                           |
-| series      | array of `{name, values:number[]}`                | At least one; each `values` length should equal `categories` length                                                                                                                                       |
-| offset      | `{x, y, cx, cy}` EMU                              |                                                                                                                                                                                                           |
-| title       | string                                            | Optional chart title                                                                                                                                                                                      |
-| colorScheme | `"#RRGGBB"[]`                                     | Optional series colors, cycled; omit to follow the theme                                                                                                                                                  |
-| holeSizePct | number                                            | Doughnut hole size (10..90)                                                                                                                                                                               |
-| barDir      | `"bar"`                                           | Optional: horizontal bars instead of columns                                                                                                                                                              |
-| dataSource  | `"user"` / `"document"` / `"search"` / `"sample"` | Where the numbers came from; checked by apply_ops before the batch runs (not part of the op itself). `"search"` needs a web_search in this conversation; `"sample"` figures must be disclosed to the user |
+| Field       | Type                               | Notes                                                               |
+| ----------- | ---------------------------------- | ------------------------------------------------------------------- |
+| kind        | see signature                      | `comboBarLine` draws the last series as a line on a secondary axis  |
+| categories  | string[]                           | At least one; the x-axis labels                                     |
+| series      | array of `{name, values:number[]}` | At least one; each `values` length should equal `categories` length |
+| offset      | `{x, y, cx, cy}` EMU               |                                                                     |
+| title       | string                             | Optional chart title                                                |
+| colorScheme | `"#RRGGBB"[]`                      | Optional series colors, cycled; omit to follow the theme            |
+| holeSizePct | number                             | Doughnut hole size (10..90)                                         |
+| barDir      | `"bar"`                            | Optional: horizontal bars instead of columns                        |
 
 ```json
 {
@@ -185,8 +184,7 @@ Inserts a native, PowerPoint-editable chart.
   "title": "Revenue by quarter",
   "categories": ["Q1", "Q2", "Q3", "Q4"],
   "series": [{ "name": "Revenue", "values": [120, 135, 150, 170] }],
-  "offset": { "x": 914400, "y": 1371600, "cx": 7315200, "cy": 3657600 },
-  "dataSource": "user"
+  "offset": { "x": 914400, "y": 1371600, "cx": 7315200, "cy": 3657600 }
 }
 ```
 
@@ -205,9 +203,8 @@ Inserts a native, PowerPoint-editable chart.
 
 Common mistakes
 
-- Inventing numbers: every value needs a source (user, deck, or a search in this conversation); with none, use illustrative values and say so to the user.
 - `values` shorter or longer than `categories`.
-- Editing an existing chart with `addChart`: use the `edit_chart` tool, which keeps position and z-order.
+- Editing an existing chart with `addChart`: use `setChart`, which keeps position and z-order.
 
 ### addSmartArt
 
@@ -231,19 +228,19 @@ Inserts a SmartArt-style diagram built from grouped shapes.
 }
 ```
 
-### addMedia (not-ai-callable)
+### addMedia (internal)
 
 `{kind:"video"|"audio",bytes:base64|dataURL,ext,offset}`
 
 Embeds a video or audio file; bytes payload from the UI file picker.
 
-### addModel3d (not-ai-callable)
+### addModel3d (internal)
 
 `{bytes,ext,offset} — bytes payload`
 
 Embeds a 3D model; bytes payload from the UI file picker.
 
-### pasteElements (not-ai-callable)
+### pasteElements (internal)
 
 `{items,dx,dy} — clipboard payload`
 

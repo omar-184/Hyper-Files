@@ -36,7 +36,7 @@ async function click(button: HTMLButtonElement): Promise<void> {
 }
 
 async function openGeneral(api: Partial<HomeApi>): Promise<void> {
-  window.aiOffice = {
+  window.hyperFiles = {
     getTheme: async () => 'system',
     getDefaultSaveDir: async () => '',
     getAnalyticsEnabled: async () => true,

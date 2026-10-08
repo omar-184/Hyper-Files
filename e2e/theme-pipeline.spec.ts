@@ -10,7 +10,7 @@ function themeAttr(page: Page): Promise<string | null> {
 
 function hasHomeApi(page: Page): Promise<boolean> {
   return page
-    .evaluate(() => Boolean((window as unknown as { aiOffice?: unknown }).aiOffice))
+    .evaluate(() => Boolean((window as unknown as { hyperFiles?: unknown }).hyperFiles))
     .catch(() => false)
 }
 
@@ -22,14 +22,15 @@ async function findShellPage(app: ElectronApplication, timeoutMs = 15_000): Prom
       if (await hasHomeApi(candidate)) return candidate
     }
     const remaining = deadline - Date.now()
-    if (remaining <= 0) throw new Error('No window exposing window.aiOffice')
+    if (remaining <= 0) throw new Error('No window exposing window.hyperFiles')
     await app.waitForEvent('window', { timeout: Math.min(remaining, 1_000) }).catch(() => {})
   }
 }
 
 function setTheme(page: Page, theme: 'light' | 'dark' | 'system'): Promise<void> {
   return page.evaluate((t) => {
-    const api = (window as unknown as { aiOffice: { setTheme(v: string): Promise<void> } }).aiOffice
+    const api = (window as unknown as { hyperFiles: { setTheme(v: string): Promise<void> } })
+      .hyperFiles
     return api.setTheme(t)
   }, theme)
 }

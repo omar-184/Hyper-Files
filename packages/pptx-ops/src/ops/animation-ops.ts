@@ -1,7 +1,7 @@
 /**
  * Per-item animation ops. The engine models a slide's timeline as an ordered
  * SlideAnimation[] (spid-addressed); these ops address elements by id and edit
- * one item at a time, so an agent can add, drop or reorder a single effect
+ * one item at a time, so a caller can add, drop or reorder a single effect
  * without re-sending the whole list.
  */
 import {
@@ -62,7 +62,7 @@ function elementBySpid(elements: SlideElement[], spid: number): SlideElement | u
   return undefined
 }
 
-/** The slide's timeline flattened for read surfaces (CLI `slides read`, AI context). */
+/** The slide's timeline flattened for read surfaces. */
 export function listSlideAnimations(slide: Slide): AnimationEntry[] {
   return getSlideAnimations(slide).map((a, seq) => {
     const el = elementBySpid(slide.elements, a.spid)

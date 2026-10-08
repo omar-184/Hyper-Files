@@ -259,7 +259,7 @@ const homeApi: HomeApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('aiOffice', homeApi)
+contextBridge.exposeInMainWorld('hyperFiles', homeApi)
 
 const tabsApi: TabsApi = {
   async list() {
@@ -327,7 +327,7 @@ const tabsApi: TabsApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('aiOfficeTabs', tabsApi)
+contextBridge.exposeInMainWorld('hyperFilesTabs', tabsApi)
 
 // open documents dragged from the OS anywhere over Home or the tab strip
 installDropOpenBridge()

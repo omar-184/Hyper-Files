@@ -125,22 +125,22 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   useEffect(() => {
     let alive = true
-    void window.aiOffice.getTheme?.().then((th) => {
+    void window.hyperFiles.getTheme?.().then((th) => {
       if (alive) setTheme(th)
     })
-    void window.aiOffice.getDocumentTheme?.().then((th) => {
+    void window.hyperFiles.getDocumentTheme?.().then((th) => {
       if (alive) setDocTheme(th)
     })
-    void window.aiOffice.getDefaultSaveDir?.().then((dir) => {
+    void window.hyperFiles.getDefaultSaveDir?.().then((dir) => {
       if (alive && dir) setSaveDir(dir)
     })
-    void window.aiOffice.getAutoSaveDefault?.().then((v) => {
+    void window.hyperFiles.getAutoSaveDefault?.().then((v) => {
       if (alive) setAutoSaveOn(v.on)
     })
-    void window.aiOffice.getDefaultAppStatus?.().then((st) => {
+    void window.hyperFiles.getDefaultAppStatus?.().then((st) => {
       if (alive) setDefaultApp(st)
     })
-    void window.aiOffice.getAppVersion?.().then((v) => {
+    void window.hyperFiles.getAppVersion?.().then((v) => {
       if (alive && v) setAppVersion(v)
     })
     return () => {
@@ -158,18 +158,18 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   const applyTheme = (next: UiTheme) => {
     setTheme(next)
-    void window.aiOffice.setTheme(next)
+    void window.hyperFiles.setTheme(next)
     if (next === 'system') document.documentElement.removeAttribute('data-theme')
     else document.documentElement.setAttribute('data-theme', next)
   }
 
   const applyDocumentTheme = (next: DocTheme) => {
     setDocTheme(next)
-    void window.aiOffice.setDocumentTheme(next)
+    void window.hyperFiles.setDocumentTheme(next)
   }
 
   const changeSaveDir = () => {
-    void window.aiOffice.pickDefaultSaveDir?.().then((dir) => {
+    void window.hyperFiles.pickDefaultSaveDir?.().then((dir) => {
       if (dir) setSaveDir(dir)
     })
   }
@@ -178,7 +178,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   useEffect(() => {
     if (!defaultApp?.manualOnly) return
     const refresh = () => {
-      void window.aiOffice.getDefaultAppStatus?.().then(setDefaultApp)
+      void window.hyperFiles.getDefaultAppStatus?.().then(setDefaultApp)
     }
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)
@@ -187,7 +187,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const claimDefaultApp = () => {
     setDefaultAppBusy(true)
     setDefaultAppFailed(false)
-    void window.aiOffice
+    void window.hyperFiles
       .setDefaultApp()
       .then((st) => {
         setDefaultApp(st)
@@ -331,7 +331,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     onClick={() => {
                       const next = !autoSaveOn
                       setAutoSaveOn(next)
-                      void window.aiOffice.setAutoSaveDefault?.(next).catch(() => {})
+                      void window.hyperFiles.setAutoSaveDefault?.(next).catch(() => {})
                     }}
                   />
                 </div>
@@ -347,7 +347,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   action={
                     <button
                       className="set-btn"
-                      onClick={() => void window.aiOffice.openGitHubRepo?.()}
+                      onClick={() => void window.hyperFiles.openGitHubRepo?.()}
                     >
                       {t('openOnGitHub')}
                     </button>

@@ -28,7 +28,7 @@ export function subscribeChromePressed(handler: () => void): (() => void) | unde
     'desktop',
     'pdfApi',
     'markdownApi',
-    'aiOfficeTabs',
+    'hyperFilesTabs',
   ]) {
     const sub = w[name]?.onChromePressed
     if (typeof sub === 'function') return sub.call(w[name], handler)

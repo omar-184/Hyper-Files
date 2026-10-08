@@ -134,9 +134,8 @@ function hardenTargetIdentity(op: Op, ctx: OpContext): void {
   }
 }
 
-/** Guided errors teach the exact signature on first contact: a failing op's
-    message carries its one-line usage, so the model needs no resident field
-    reference — the vocabulary in the tool description plus this is enough. */
+/** Guided errors carry the failing op's one-line usage, so the exact
+    signature is visible without opening the op docs. */
 function withUsage(op: Op, msg: string): string {
   const usage = op && typeof op.op === 'string' ? opUsage(op.op) : undefined
   return usage ? `${msg}\n${usage}` : msg

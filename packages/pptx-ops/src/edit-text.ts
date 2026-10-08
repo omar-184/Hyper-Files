@@ -43,7 +43,7 @@ function fontKey(name?: string): string | undefined {
 /**
  * The old paragraph an edited paragraph is rebuilt from: its traced source, or
  * the paragraph at the same position. Untraced paragraphs past the end
- * (programmatic callers — the AI tools and scripts — send plain text with no
+ * (programmatic callers such as scripts send plain text with no
  * source indices) continue the last old paragraph, so a list that grows by two
  * items keeps its bullet, level and spacing instead of falling back to defaults.
  */
