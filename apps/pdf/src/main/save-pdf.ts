@@ -39,6 +39,7 @@ import {
 } from '../shared/text-box'
 import { redactPdf } from './redaction'
 import { addFormFields, type FieldDrawing } from './form-fields'
+import { writeOutline } from './outline-write'
 
 const num = (v: number) => Math.round(v * 100) / 100
 const STATIC_FORM_FILLS_KEY = PDFName.of('GenOfficeStaticFormFills')
@@ -1207,6 +1208,8 @@ export async function applySaveRequest(
     })
   }
   if (request.metadata) applyMetadata(pdfDoc, request.metadata)
+  if (request.outline)
+    writeOutline(pdfDoc, pages, request.outline, new Set(request.deletedPages ?? []))
   // Page thumbnails and producer piece-info can retain a pre-redaction rendering of
   // the same page. They are page-local derived data, so remove them for every affected
   // page before the native final serialization.

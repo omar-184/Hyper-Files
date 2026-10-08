@@ -130,6 +130,24 @@ export interface NoteEditInput {
   contents: string
 }
 
+/** One bookmark of an edited outline. Page indices are original (pre-reorder) indices. */
+export interface OutlineEntryInput {
+  title: string
+  /** Target page; null = no destination (e.g. its page was deleted) */
+  pageIndex: number | null
+  /** Destination fit type after the page (XYZ, Fit, FitH, ...) */
+  fit?: string
+  /** The fit type's numeric arguments; null leaves that coordinate unchanged */
+  args?: (number | null)[]
+  /** External link instead of a page destination */
+  url?: string
+  bold?: boolean
+  italic?: boolean
+  /** rgb 0-1; omitted = black */
+  color?: [number, number, number]
+  items: OutlineEntryInput[]
+}
+
 /** Field kinds the form designer can create */
 export type NewFieldType = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'signature'
 export const NEW_FIELD_TYPES: readonly NewFieldType[] = [
@@ -553,6 +571,8 @@ export interface SavePdfRequest {
   /** New page order (array of original page indices, excluding deleted); omitted if unreordered */
   pageOrder?: number[]
   metadata?: MetadataInput
+  /** Complete bookmark tree to write; omitted keeps the file's own, [] removes it */
+  outline?: OutlineEntryInput[]
 }
 
 /** A text edit that could not be matched to the document at save time and was skipped */

@@ -19,6 +19,7 @@ import type {
 } from '../../shared/ipc'
 import { NEW_FIELD_TYPES } from '../../shared/ipc'
 import type { LocalMarkup } from '../annotations'
+import type { OutlineNode } from '../OutlinePanel'
 import type { LocalDrawing } from '../DrawLayer'
 import type { LocalImageEdit } from '../ImageEditLayer'
 import { imageRectKey } from '../ImageEditLayer'
@@ -740,5 +741,17 @@ register({
   },
   apply(op) {
     return { metadata: op.metadata as MetadataInput | null }
+  },
+})
+
+register({
+  name: 'setOutline',
+  touches: ['outlineEdit'],
+  validate(op) {
+    if (op.outline !== null && !Array.isArray(op.outline))
+      throw new GuidedError('"outline" must be an array of bookmarks or null')
+  },
+  apply(op) {
+    return { outlineEdit: op.outline as OutlineNode[] | null }
   },
 })

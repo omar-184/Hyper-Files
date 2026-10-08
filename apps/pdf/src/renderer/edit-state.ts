@@ -1,4 +1,5 @@
 import type { LocalMarkup } from './annotations'
+import type { OutlineNode } from './OutlinePanel'
 import type { LocalDrawing } from './DrawLayer'
 import type { LocalImageEdit } from './ImageEditLayer'
 import type { SavedNoteAnnot } from './note-threads'
@@ -97,6 +98,8 @@ export interface EditSnapshot {
   deleted: Set<number>
   order: number[] | null
   metadata: MetadataInput | null
+  /** Edited bookmark tree (normalized destinations); null = the file's own outline */
+  outlineEdit: OutlineNode[] | null
 }
 
 /** What a running save wrote, captured when the save starts. The post-save reload
@@ -118,6 +121,7 @@ export interface SavedSnapshot {
   formEdits: Map<string, FormValueInput>
   rotations: Map<number, number>
   metadata: MetadataInput | null
+  outlineEdit: OutlineNode[] | null
   /** Old original page index → its index in the saved file (saved deletions/reorder applied) */
   pageMap: Map<number, number>
 }

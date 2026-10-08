@@ -64,6 +64,14 @@ export const editorStrings = {
   fieldRequired: 'Required',
   fieldNameEmpty: 'Enter a name.',
   fieldNameTaken: 'Another field already uses this name.',
+  bookmarkAdd: 'Add bookmark for the current page',
+  bookmarkRename: 'Rename bookmark',
+  bookmarkRemove: 'Delete bookmark',
+  bookmarkUp: 'Move up',
+  bookmarkDown: 'Move down',
+  bookmarkIndent: 'Make it a child of the bookmark above',
+  bookmarkOutdent: 'Move it out one level',
+  bookmarkUntitled: 'Untitled',
 }
 
 export const localizedEditorStrings: Partial<
@@ -127,5 +135,13 @@ export const localizedEditorStrings: Partial<
     fieldRequired: '必填',
     fieldNameEmpty: '请输入名称。',
     fieldNameTaken: '已有字段使用此名称。',
+    bookmarkAdd: '为当前页添加书签',
+    bookmarkRename: '重命名书签',
+    bookmarkRemove: '删除书签',
+    bookmarkUp: '上移',
+    bookmarkDown: '下移',
+    bookmarkIndent: '降级为上方书签的子项',
+    bookmarkOutdent: '升一级',
+    bookmarkUntitled: '无标题',
   },
 }

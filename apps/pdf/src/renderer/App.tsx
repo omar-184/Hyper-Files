@@ -65,6 +65,19 @@ import type { PdfViewState, ZoomAnchor } from './view-state'
 import { LinkLayer } from './LinkLayer'
 import { OutlinePanel } from './OutlinePanel'
 import type { OutlineNode } from './OutlinePanel'
+import {
+  indentAt,
+  insertAfter,
+  moveAt,
+  nodeAt,
+  normalizeOutline,
+  outdentAt,
+  pageBookmark,
+  removeAt,
+  renameAt,
+  toOutlineInput,
+  type OutlinePath,
+} from './outline-edit'
 import { buildHeadingOutline, remapOutlinePages } from './heading-outline'
 import { printPdf } from './print'
 import { PasswordDialog } from './PasswordDialog'
@@ -791,6 +804,9 @@ export default function App() {
   const [metadata, setMetadata] = useState<MetadataInput | null>(null)
   const metadataRef = useRef(metadata)
   metadataRef.current = metadata
+  const [outlineEdit, setOutlineEdit] = useState<OutlineNode[] | null>(null)
+  const outlineEditRef = useRef(outlineEdit)
+  outlineEditRef.current = outlineEdit
   const [stampDlg, setStampDlg] = useState(false)
   const [propsDlg, setPropsDlg] = useState(false)
   const [fileSize, setFileSize] = useState(0)
@@ -1128,6 +1144,7 @@ export default function App() {
         setDeleted(new Set())
         setOrder(null)
         setMetadata(null)
+        setOutlineEdit(null)
       } else {
         // Post-save reload: subtract exactly what the save wrote. Edits made while the
         // write was in flight stay pending, with page indices remapped through the
@@ -1236,6 +1253,7 @@ export default function App() {
         // it is in the file now, a new object means the user changed it during the save
         setStampCfg((prev) => (prev === saved.stampCfg ? null : prev))
         setMetadata((prev) => (prev === saved.metadata ? null : prev))
+        setOutlineEdit((prev) => (prev === saved.outlineEdit ? null : prev))
         setFormEdits((prev) => {
           const next = new Map<string, FormValueInput>()
           for (const [k, v] of prev) if (saved.formEdits.get(k) !== v) next.set(k, v)
@@ -1683,7 +1701,8 @@ export default function App() {
     rotations.size > 0 ||
     deleted.size > 0 ||
     order !== null ||
-    metadata !== null
+    metadata !== null ||
+    outlineEdit !== null
   const dirty = redactions.length > 0 || ordinaryDirty
 
   // Mirror dirty state to the main process (close-tab/close-window guard)
@@ -1730,6 +1749,7 @@ export default function App() {
     deleted: deletedRef.current,
     order: orderRef.current,
     metadata: metadataRef.current,
+    outlineEdit: outlineEditRef.current,
   })
 
   const pushUndo = (coalesceKey?: string) => {
@@ -1823,6 +1843,10 @@ export default function App() {
       orderRef.current = reduce('order', orderRef.current)
       setOrder(orderRef.current)
     }
+    if (touched.has('outlineEdit')) {
+      outlineEditRef.current = reduce('outlineEdit', outlineEditRef.current)
+      setOutlineEdit(outlineEditRef.current)
+    }
     if (touched.has('metadata')) {
       metadataRef.current = reduce('metadata', metadataRef.current)
       setMetadata(metadataRef.current)
@@ -1875,6 +1899,7 @@ export default function App() {
     deletedRef.current = s.deleted
     orderRef.current = s.order
     metadataRef.current = s.metadata
+    outlineEditRef.current = s.outlineEdit
     setMarkups(s.markups)
     setAnnotDeletes(s.annotDeletes)
     setNoteEdits(s.noteEdits)
@@ -1892,6 +1917,7 @@ export default function App() {
     setDeleted(s.deleted)
     setOrder(s.order)
     setMetadata(s.metadata)
+    setOutlineEdit(s.outlineEdit)
     // The selected annotation may no longer exist in the restored snapshot
     setSelected(null)
   }
@@ -3494,6 +3520,7 @@ export default function App() {
     deletedPages: [...deleted],
     ...(order ? { pageOrder: visList } : {}),
     ...(metadata ? { metadata } : {}),
+    ...(outlineEdit ? { outline: toOutlineInput(outlineEdit) } : {}),
   })
 
   /** Resolved when the running save() lands; queued saves and Save As serialize behind it */
@@ -3550,6 +3577,7 @@ export default function App() {
       formEdits,
       rotations,
       metadata,
+      outlineEdit,
       pageMap: new Map(visList.map((origIdx, i) => [origIdx, i])),
     }
     inFlightNoteWritesRef.current = snapshot.noteEditWritten
@@ -3767,7 +3795,8 @@ export default function App() {
       rotations.size > 0 ||
       deleted.size > 0 ||
       order !== null ||
-      metadata !== null
+      metadata !== null ||
+      outlineEdit !== null
     if (otherPending) {
       showNotice(t('redactSaveFirst'))
       return
@@ -5505,6 +5534,61 @@ export default function App() {
   }
 
   const curOrigIdx = visList[currentPage - 1] ?? -1
+  /** Bookmarks the panel shows; an editable file without any still opens the panel to add some */
+  const outlineShown = outlineEdit ?? outline ?? (readOnly || !doc ? null : [])
+
+  /** Change the pending bookmark tree. The first edit starts from what the panel
+      shows (the file's bookmarks, or the heading-derived tree) with destinations
+      resolved, so saving writes exactly the tree the user sees. */
+  const editOutline = async (
+    fn: (base: OutlineNode[]) => [OutlineNode[], OutlinePath | null] | null,
+  ): Promise<OutlinePath | null> => {
+    let base = outlineEditRef.current
+    if (!base) {
+      const resolved = doc ? await normalizeOutline(doc, outline ?? []) : []
+      base = outlineEditRef.current ?? resolved
+    }
+    const result = fn(base)
+    if (!result) return null
+    applyEditOps([{ op: 'setOutline', outline: result[0] }])
+    return result[1]
+  }
+
+  const outlineEditing = readOnly
+    ? undefined
+    : {
+        labels: {
+          add: t('bookmarkAdd'),
+          rename: t('bookmarkRename'),
+          remove: t('bookmarkRemove'),
+          up: t('bookmarkUp'),
+          down: t('bookmarkDown'),
+          indent: t('bookmarkIndent'),
+          outdent: t('bookmarkOutdent'),
+        },
+        onAdd: (after: OutlinePath | null) => {
+          if (curOrigIdx < 0) return Promise.resolve(null)
+          const node = pageBookmark(
+            t('bookmarkUntitled'),
+            curOrigIdx,
+            sizes[curOrigIdx]?.height ?? 0,
+          )
+          return editOutline((base) => insertAfter(base, after, node))
+        },
+        onRename: (path: OutlinePath, title: string) =>
+          void editOutline((base) =>
+            nodeAt(base, path) ? [renameAt(base, path, title), path] : null,
+          ),
+        onRemove: (path: OutlinePath) =>
+          void editOutline((base) => (nodeAt(base, path) ? [removeAt(base, path), null] : null)),
+        onMove: (path: OutlinePath, how: 'up' | 'down' | 'indent' | 'outdent') =>
+          editOutline((base) => {
+            if (!nodeAt(base, path)) return null
+            if (how === 'up') return moveAt(base, path, -1)
+            if (how === 'down') return moveAt(base, path, 1)
+            return how === 'indent' ? indentAt(base, path) : outdentAt(base, path)
+          }),
+      }
 
   // ── unified popover dismissal: a press outside the guard roots, a window
   // blur, or a press on the shell tab strip closes each popover ──
@@ -6035,7 +6119,7 @@ export default function App() {
         </button>
         <button
           className={`rb-big${sidebar === 'outline' ? ' active' : ''}`}
-          disabled={!outline}
+          disabled={!outlineShown}
           onClick={() => setSidebar((v) => (v === 'outline' ? null : 'outline'))}
         >
           <span className="rb-big-icon">
@@ -6864,7 +6948,7 @@ export default function App() {
                 />
               </div>
             )}
-            {sidebar === 'outline' && outline && (
+            {sidebar === 'outline' && outlineShown && (
               <div className="pdf-thumbs pdf-outline-pane" style={{ width: sidebarW }}>
                 <div className="pdf-outline-header">
                   <span>{t('outline')}</span>
@@ -6891,11 +6975,12 @@ export default function App() {
                   </button>
                 </div>
                 <OutlinePanel
-                  outline={outline}
-                  note={outlineGenerated ? t('outlineGenerated') : undefined}
+                  outline={outlineShown}
+                  note={outlineGenerated && !outlineEdit ? t('outlineGenerated') : undefined}
                   label={t('outline')}
                   emptyLabel={t('searchNoResults')}
                   onGoToDest={(dest) => void goToDest(dest)}
+                  editing={outlineEditing}
                 />
               </div>
             )}
@@ -7018,7 +7103,7 @@ export default function App() {
             )}
             {(sidebar === 'thumbs' ||
               sidebar === 'comments' ||
-              (sidebar === 'outline' && !!outline)) && (
+              (sidebar === 'outline' && !!outlineShown)) && (
               <div className="pdf-side-resizer" onPointerDown={startSidebarResize} />
             )}
             <div

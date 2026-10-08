@@ -1109,6 +1109,48 @@ button {
   background: var(--hover);
 }
 
+/* Wrapper is layout-neutral: the tree keeps scrolling inside the pane */
+.pdf-outline-wrap {
+  display: contents;
+}
+
+.pdf-outline-tools {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 0 4px 6px;
+}
+
+.pdf-outline-tools .rb-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-outline-tools-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--border);
+}
+
+.pdf-outline-item.is-selected {
+  background: var(--accent-soft);
+}
+
+.pdf-outline-rename {
+  flex-shrink: 0;
+  height: 26px;
+  margin-right: 4px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+}
+
 .pdf-outline-note {
   flex-shrink: 0;
   padding: 2px 8px 8px;
