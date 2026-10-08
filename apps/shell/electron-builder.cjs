@@ -40,6 +40,7 @@ function assertExtraResourceSources() {
     '../../node_modules/electron/dist/LICENSES.chromium.html',
     '../../node_modules/@embedpdf/pdfium/dist/pdfium.wasm',
     '../pdf/node_modules/harfbuzzjs/hb-subset.wasm',
+    '../../node_modules/mupdf/dist/mupdf-wasm.wasm',
   ]) {
     if (!existsSync(join(__dirname, rel))) {
       throw new Error(
@@ -253,6 +254,22 @@ const config = {
     {
       from: '../pdf/node_modules/harfbuzzjs/hb-subset.wasm',
       to: 'wasm/hb-subset.wasm',
+    },
+    // PDF tools engine: MuPDF.js loads its wasm from beside its own module, so
+    // the three files ship together (apps/shell/src/main/pdf-tools/runner.ts)
+    {
+      from: '../../node_modules/mupdf/dist',
+      to: 'mupdf',
+      filter: ['mupdf.js', 'mupdf-wasm.js', 'mupdf-wasm.wasm'],
+    },
+    {
+      from: '../../node_modules/mupdf/LICENSE',
+      to: 'mupdf/LICENSE',
+    },
+    // marks the copied .js files as ES modules, as mupdf's own package.json does
+    {
+      from: 'build/mupdf-package.json',
+      to: 'mupdf/package.json',
     },
     // platform system-OCR helpers for scanned-page recovery (each exists only
     // on its own build platform; electron-builder skips absent sources and the

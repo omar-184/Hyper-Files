@@ -1,0 +1,23 @@
+{
+  "name": "@genoffice/pdf-tools",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "type": "module",
+  "description": "PDF toolbox engine on MuPDF: merge, split, page operations, compress, images, passwords, watermark and page numbers",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "mupdf": "^1.28.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

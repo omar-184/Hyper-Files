@@ -22,6 +22,7 @@
     "@genoffice/docx-engine": "*",
     "@genoffice/electron-utils": "*",
     "@genoffice/i18n": "*",
+    "@genoffice/pdf-tools": "*",
     "@genoffice/pptx-engine": "*",
     "@genoffice/pptx-render": "*",
     "@genoffice/sheets": "*",

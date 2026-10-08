@@ -15,6 +15,8 @@ import type {
 } from '../shared/home-api'
 import { HOME_CHANNELS } from '../shared/home-api'
 import type { TabsApi, TabSummary } from '../shared/tabs-api'
+import type { PdfToolsApi, ToolProgress } from '../shared/pdf-tools-api'
+import { PDF_TOOLS_CHANNELS } from '../shared/pdf-tools-api'
 import { TABS_CHANNELS } from '../shared/tabs-api'
 
 const UI_LANGUAGES: readonly UiLanguage[] = [
@@ -328,6 +330,21 @@ const tabsApi: TabsApi = {
 }
 
 contextBridge.exposeInMainWorld('hyperFilesTabs', tabsApi)
+
+const pdfToolsApi: PdfToolsApi = {
+  pickFiles: (kind, multiple) => ipcRenderer.invoke(PDF_TOOLS_CHANNELS.pickFiles, kind, multiple),
+  pickFolder: () => ipcRenderer.invoke(PDF_TOOLS_CHANNELS.pickFolder),
+  info: (path, password) => ipcRenderer.invoke(PDF_TOOLS_CHANNELS.info, path, password),
+  run: (request) => ipcRenderer.invoke(PDF_TOOLS_CHANNELS.run, request),
+  onProgress(handler) {
+    const listener = (_event: IpcRendererEvent, progress: ToolProgress) => handler(progress)
+    ipcRenderer.on(PDF_TOOLS_CHANNELS.progress, listener)
+    return () => ipcRenderer.removeListener(PDF_TOOLS_CHANNELS.progress, listener)
+  },
+  pathForFile: (file) => webUtils.getPathForFile(file),
+}
+
+contextBridge.exposeInMainWorld('hyperPdfTools', pdfToolsApi)
 
 // open documents dragged from the OS anywhere over Home or the tab strip
 installDropOpenBridge()

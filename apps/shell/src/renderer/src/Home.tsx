@@ -24,6 +24,8 @@ import { useI18n } from './locale'
 import type { I18n, StringKey } from './locale'
 import { SettingsModal } from './SettingsModal'
 import { onFilesChanged } from './file-events'
+import { PdfToolsView } from './tools/PdfToolsView'
+import { useToolsI18n } from './tools/use-tools-i18n'
 
 declare global {
   interface Window {
@@ -797,6 +799,9 @@ export function Home() {
   const [navCounts, setNavCounts] = useState({ recent: 0, starred: 0 })
   const [loadingMore, setLoadingMore] = useState(false)
   const [view, setView] = useState<'recent' | 'starred'>('recent')
+  // the PDF tools area replaces the file lists while open
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const { t: tTools } = useToolsI18n()
   const [filter, setFilter] = useState('all')
   // ── File search (names + indexed content); active while the box has text ──
   const [searchQuery, setSearchQuery] = useState('')
@@ -1174,6 +1179,7 @@ export function Home() {
 
   const changeView = (next: 'recent' | 'starred') => {
     setView(next)
+    setToolsOpen(false)
     setSelectedFolder(null)
     setSelected(new Set())
     setRowMenu(null)
@@ -1187,6 +1193,7 @@ export function Home() {
 
   const selectFolder = (dir: string) => {
     setSelectedFolder(dir)
+    setToolsOpen(false)
     setSelected(new Set())
     setRowMenu(null)
     setFolderMenu(null)
@@ -2534,7 +2541,7 @@ export function Home() {
         </div>
         <nav className="sidebar-nav">
           <button
-            className={`nav-item${view === 'recent' && !selectedFolder ? ' active' : ''}`}
+            className={`nav-item${view === 'recent' && !selectedFolder && !toolsOpen ? ' active' : ''}`}
             onClick={() => changeView('recent')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -2550,7 +2557,7 @@ export function Home() {
             <span className="nav-count">{navCounts.recent}</span>
           </button>
           <button
-            className={`nav-item${view === 'starred' && !selectedFolder ? ' active' : ''}`}
+            className={`nav-item${view === 'starred' && !selectedFolder && !toolsOpen ? ' active' : ''}`}
             onClick={() => changeView('starred')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -2564,14 +2571,37 @@ export function Home() {
             <span className="nav-label">{t('navStarred')}</span>
             <span className="nav-count">{navCounts.starred}</span>
           </button>
+          <button
+            className={`nav-item${toolsOpen ? ' active' : ''}`}
+            onClick={() => {
+              setToolsOpen(true)
+              setSelectedFolder(null)
+              setSelected(new Set())
+              setRowMenu(null)
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M4 1.8h5.2L12 4.6v9.6H4z M9 1.8v3h3 M6 8.2h4 M6 10.6h4"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="nav-label">{tTools('navTools')}</span>
+          </button>
         </nav>
         <div className="sidebar-divider" />
         {renderFolderPanel()}
         <SettingsEntry />
       </aside>
-      {selectedFolder && rootOf(selectedFolder, roots)?.readable
-        ? renderFolderContent()
-        : renderGlobalContent()}
+      {toolsOpen ? (
+        <PdfToolsView />
+      ) : selectedFolder && rootOf(selectedFolder, roots)?.readable ? (
+        renderFolderContent()
+      ) : (
+        renderGlobalContent()
+      )}
       {confirmDelete && (
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
           <div

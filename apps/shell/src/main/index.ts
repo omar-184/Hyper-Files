@@ -229,6 +229,8 @@ import {
 } from './folder-roots'
 import extractWorkerPath from './file-index/extract-worker?modulePath'
 import { FileIndexer } from './file-index/indexer'
+import pdfToolsWorkerPath from './pdf-tools/worker?modulePath'
+import { registerPdfToolsIpc } from './pdf-tools/ipc'
 import { FileIndexStore } from './file-index/store'
 import { runHeadlessExport, type HeadlessExporters } from './headless-export'
 import { TabManager } from './tab-manager'
@@ -4842,6 +4844,7 @@ registerDocsIpc()
 registerHomeIpc()
 registerTabsIpc()
 registerDroppedFilesIpc()
+registerPdfToolsIpc(pdfToolsWorkerPath)
 
 /** Dev-only pid marker for the takeover below; scoped to userData like the lock itself. */
 const devPidFile = () => join(app.getPath('userData'), 'dev-instance.pid')
