@@ -2272,6 +2272,11 @@ export interface ParsedDoc {
   compatibilityMode?: number
   /** settings.xml <w:autoHyphenation/> — Word breaks words at line ends automatically */
   autoHyphenation?: boolean
+  /** settings.xml w:hyphenationZone (twips; absent = Word's 360): a line whose
+   *  unhyphenated gap is narrower than this is left ragged */
+  hyphenationZoneTwips?: number
+  /** settings.xml <w:doNotHyphenateCaps/> — words in all capitals never break */
+  doNotHyphenateCaps?: boolean
   /** settings.xml <w:balanceSingleByteDoubleByteWidth/> — rPr w:spacing counts double on double-byte characters */
   balanceDbcsSpacing?: boolean
   /** settings.xml w:characterSpacingControl compressPunctuation* — justified CJK lines compress trailing-blank punctuation */

@@ -87,6 +87,7 @@ import { hasPrintableHeaderFooter } from './pagination'
 import { clearPrintZoom, setPrintZoom } from './print-zoom'
 import { showToast } from './components/toast-bus'
 import { buildStandaloneHtml } from './html-export'
+import { hyphenationZonePx, refreshHyphenation } from './editor/hyphenation'
 
 /** An export waiting for the pagination preview to mount; resolve settles the caller's exportPdf promise. */
 export type PendingPdfExport = { outPath?: string; resolve: (ok: boolean) => void }
@@ -158,6 +159,10 @@ export interface FileActionContext {
   setEvenOddHfDirty: (dirty: boolean) => void
   setMirrorMargins: (on: boolean) => void
   setMirrorMarginsDirty: (dirty: boolean) => void
+  autoHyphenation: boolean
+  autoHyphenationDirty: boolean
+  setAutoHyphenation: (on: boolean) => void
+  setAutoHyphenationDirty: (dirty: boolean) => void
   pgNumEdit: { fmt?: string; start?: number } | null
   pgNumDirtySections: number[]
   setPgNumEdit: (value: { fmt?: string; start?: number } | null) => void
@@ -270,6 +275,20 @@ function resetEditorHistory(editor: Editor): void {
   editor.registerPlugin(history((plugin.spec as { config?: object }).config))
 }
 
+/** settings.xml hyphenation → the soft-hyphen layout pass (Electron has no
+ *  hyphenation dictionaries, so CSS hyphens:auto alone never breaks a word) */
+export function applyHyphenationSettings(editor: Editor, parsed: ParsedDocFull): void {
+  const storage = editor.storage.hyphenation
+  const enabled = parsed.autoHyphenation === true
+  const zonePx = hyphenationZonePx(parsed.hyphenationZoneTwips)
+  const noCaps = parsed.doNotHyphenateCaps === true
+  if (storage.enabled === enabled && storage.zonePx === zonePx && storage.noCaps === noCaps) return
+  storage.enabled = enabled
+  storage.zonePx = zonePx
+  storage.noCaps = noCaps
+  refreshHyphenation(editor.view)
+}
+
 /** doc-level layout inputs living outside CSS: default tab grid + hyphenation lang */
 function applyDocLayoutSettings(editor: Editor, parsed: ParsedDocFull): void {
   setNoteNumFmts({ footnote: parsed.footnoteProps, endnote: parsed.endnoteProps })
@@ -283,6 +302,7 @@ function applyDocLayoutSettings(editor: Editor, parsed: ParsedDocFull): void {
   editor.storage.cjkPunctShrink.hangPunct = parsed.compressPunctuation !== true
   editor.storage.cjkPunctShrink.legacyLayout = (parsed.compatibilityMode ?? 0) < 15
   editor.storage.cjkPunctShrink.docEastAsiaLang = parsed.docDefaults?.eastAsiaLang ?? null
+  applyHyphenationSettings(editor, parsed)
   // Chromium only hyphenates under an explicit lang (the app shell is zh-CN);
   // scoped to autoHyphenation docs so CJK font fallback is untouched elsewhere
   const lang = parsed.autoHyphenation ? parsed.docDefaults?.lang : undefined
@@ -462,6 +482,8 @@ export async function loadFile(
     ctx.setEvenOddHfDirty(false)
     ctx.setMirrorMargins(parsed.mirrorMargins ?? false)
     ctx.setMirrorMarginsDirty(false)
+    ctx.setAutoHyphenation(parsed.autoHyphenation ?? false)
+    ctx.setAutoHyphenationDirty(false)
     ctx.setShowComments(hasUnanchoredComments(parsed.comments, parsed.blocks))
     ctx.setReadMode(tier === 'readOnly')
     ctx.setLargeDocSpellOff(tier !== 'normal')
@@ -754,6 +776,7 @@ export async function buildDocBytes(ctx: FileActionContext): Promise<Uint8Array 
     titlePg: ctx.titlePgDirty ? ctx.titlePg : undefined,
     evenAndOddHeaders: ctx.evenOddHfDirty ? ctx.evenOddHf : undefined,
     mirrorMargins: ctx.mirrorMarginsDirty ? ctx.mirrorMargins : undefined,
+    autoHyphenation: ctx.autoHyphenationDirty ? ctx.autoHyphenation : undefined,
     partXml: Object.keys(partXml).length > 0 ? partXml : undefined,
     partBinary: Object.keys(partBinary).length > 0 ? partBinary : undefined,
     comments: ctx.commentsDirty ? ctx.comments : undefined,
@@ -1034,6 +1057,8 @@ async function saveOnce(ctx: FileActionContext, saveAs: boolean, auto: boolean):
     ctx.setEvenOddHfDirty(false)
     ctx.setMirrorMargins(reparsed.mirrorMargins ?? false)
     ctx.setMirrorMarginsDirty(false)
+    ctx.setAutoHyphenation(reparsed.autoHyphenation ?? false)
+    ctx.setAutoHyphenationDirty(false)
     ctx.setComments(reparsed.comments)
     ctx.setCommentsDirty(false)
     ctx.setWatermark(reparsed.watermarkText ?? null)

@@ -419,6 +419,8 @@ export interface SaveOptions {
   evenAndOddHeaders?: boolean
   /** mirrored facing pages: set/remove settings.xml w:mirrorMargins */
   mirrorMargins?: boolean
+  /** Layout > Hyphenation: set/remove settings.xml w:autoHyphenation */
+  autoHyphenation?: boolean
   /**
    * Inject the newly created header/footer references into EVERY body sectPr
    * that has none (not just the trailing one). Generated multi-section
@@ -686,6 +688,7 @@ export async function saveDocx(
     (options.styleUpserts === undefined || options.styleUpserts.length === 0) &&
     options.evenAndOddHeaders === undefined &&
     options.mirrorMargins === undefined &&
+    options.autoHyphenation === undefined &&
     options.comments === undefined &&
     options.protection === undefined &&
     options.writeProtection === undefined &&
@@ -1600,7 +1603,8 @@ export async function saveDocx(
     options.writeProtection !== undefined ||
     options.removePersonalInfo !== undefined ||
     options.evenAndOddHeaders !== undefined ||
-    options.mirrorMargins !== undefined
+    options.mirrorMargins !== undefined ||
+    options.autoHyphenation !== undefined
   ) {
     const file = zip.file(settingsPath)
     let xml: string
@@ -1646,6 +1650,10 @@ export async function saveDocx(
     }
     if (options.mirrorMargins !== undefined) {
       xml = applySettingsFlag(xml, 'w:mirrorMargins', options.mirrorMargins)
+      touched = true
+    }
+    if (options.autoHyphenation !== undefined) {
+      xml = applySettingsFlag(xml, 'w:autoHyphenation', options.autoHyphenation)
       touched = true
     }
     if (touched) settingsXml = xml

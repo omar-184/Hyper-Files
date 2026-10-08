@@ -1,6 +1,7 @@
 import { scriptFontHtml } from './editor/script-fonts'
 import { DOC_CSS_COMMITTED_EVENT } from './editor/cjk-punct-shrink'
 import { justifyShrinkPluginKey } from './editor/justify-shrink'
+import { hyphenationPluginKey } from './editor/hyphenate'
 import {
   useCallback,
   useEffect,
@@ -354,6 +355,7 @@ import {
   newFile as newFileImpl,
   printDoc as printDocImpl,
   save as saveImpl,
+  applyHyphenationSettings,
   writeRecoveryCopy as writeRecoveryCopyImpl,
   type FileActionContext,
   type PendingPdfExport,
@@ -792,6 +794,9 @@ export function App() {
   const [evenOddHfDirty, setEvenOddHfDirty] = useState(false)
   const [mirrorMargins, setMirrorMargins] = useState(false)
   const [mirrorMarginsDirty, setMirrorMarginsDirty] = useState(false)
+  /** settings.xml w:autoHyphenation (Layout > Hyphenation) */
+  const [autoHyphenation, setAutoHyphenation] = useState(false)
+  const [autoHyphenationDirty, setAutoHyphenationDirty] = useState(false)
   const [pageInfo, setPageInfo] = useState({ current: 1, total: 1 })
   // last page's number for the document-end footer: text for the page marker, num for
   // even/odd parity (section restarts / pageNumberFmt make both differ from the physical count)
@@ -1909,6 +1914,10 @@ export function App() {
     mirrorMarginsDirty,
     setMirrorMargins,
     setMirrorMarginsDirty,
+    autoHyphenation,
+    autoHyphenationDirty,
+    setAutoHyphenation,
+    setAutoHyphenationDirty,
     pgNumEdit,
     pgNumDirtySections,
     setPgNumEdit,
@@ -4824,6 +4833,7 @@ export function App() {
     // the shrink list covers every justified paragraph; only the entries that
     // differ from the last list moved a wrap point, so the pass resumes there
     let shrinkSig = new Map<number, string>()
+    let hyphenSig = new Set<number>()
     const onShrinkTr = (props: { transaction: Transaction }) => {
       const decos = props.transaction.getMeta(justifyShrinkPluginKey) as
         Array<{ from: number; to: number; type?: { attrs?: { style?: string } } }> | undefined
@@ -4840,6 +4850,21 @@ export function App() {
         if (minPos === Infinity) return
         const { doc: pmDoc } = editor.state
         followUpAt('justify-shrink', pmDoc.resolve(Math.min(minPos, pmDoc.content.size)).index(0))
+        return
+      }
+      // automatic hyphenation's soft hyphens move wrap points the same way
+      const hyphens = props.transaction.getMeta(hyphenationPluginKey) as
+        Array<{ from: number } | null> | undefined
+      if (hyphens && editor) {
+        const next = new Set<number>()
+        for (const d of hyphens) if (d) next.add(d.from)
+        let minPos = Infinity
+        for (const p of next) if (!hyphenSig.has(p)) minPos = Math.min(minPos, p)
+        for (const p of hyphenSig) if (!next.has(p)) minPos = Math.min(minPos, p)
+        hyphenSig = next
+        if (minPos === Infinity) return
+        const { doc: pmDoc } = editor.state
+        followUpAt('hyphenation', pmDoc.resolve(Math.min(minPos, pmDoc.content.size)).index(0))
         return
       }
       if (props.transaction.getMeta(floatFlowChangedMeta)) followUp('float-flow')
@@ -5970,6 +5995,21 @@ export function App() {
       setMirrorMargins(on)
       setMirrorMarginsDirty(true)
     },
+    onAutoHyphenation: (on: boolean) => {
+      const parsed = doc?.parsed
+      if (!parsed || on === autoHyphenation) return
+      setAutoHyphenation(on)
+      setAutoHyphenationDirty(true)
+      // the parsed settings drive the doc stylesheet's hyphens:auto rules and
+      // the soft-hyphen pass; a save re-parses them from the written file
+      parsed.autoHyphenation = on
+      setDocCss(
+        docStyleCss(
+          liveStyles?.parsed === parsed ? { ...parsed, styles: liveStyles.styles } : parsed,
+        ),
+      )
+      applyHyphenationSettings(editor, parsed)
+    },
     onInsertSectionBreak: (type: 'nextPage' | 'continuous' | 'evenPage' | 'oddPage') =>
       insertSectionBreak(type),
     onPageColor: (next: string | null) => {
@@ -6292,6 +6332,7 @@ export function App() {
         tableGridlines={tableGridlines}
         activeSection={sections.length > 1 ? activeSection : null}
         mirrorMargins={mirrorMargins}
+        autoHyphenation={autoHyphenation}
         pageColor={pageColor}
         watermark={watermark}
         themeFonts={themeFonts}

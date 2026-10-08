@@ -6,6 +6,7 @@ import { rangeSlot } from '../dom-range'
 import { SettledParagraphCache, noteFloatTransaction } from './settled-measure'
 import { PHASED_CONTENT_SETTLED_EVENT, isPhasedContentPending } from '../phased-content'
 import { DOC_CSS_COMMITTED_EVENT } from './cjk-punct-shrink'
+import { hyphenPointsIn, hyphenationPluginKey } from './hyphenate'
 
 /**
  * Word 2013+ (settings compatibilityMode >= 15) justified line breaking pulls
@@ -285,7 +286,9 @@ class JustifyShrinkView {
       // untouched paragraphs keep their settled results (keyed on node identity)
       this.restartConvergence()
     } else if (
-      justifyShrinkPluginKey.getState(view.state) === justifyShrinkPluginKey.getState(prevState)
+      justifyShrinkPluginKey.getState(view.state) === justifyShrinkPluginKey.getState(prevState) &&
+      // automatic hyphenation moves wrap points too
+      hyphenationPluginKey.getState(view.state) === hyphenationPluginKey.getState(prevState)
     ) {
       return
     }
@@ -348,6 +351,7 @@ class JustifyShrinkView {
     let measurable = paras.length === 0
     this.results.beginPass(view)
     const topLevel = SettledParagraphCache.topLevelDom(view)
+    const hyphens = hyphenationPluginKey.getState(view.state)
     for (const para of paras) {
       const measured = this.results.measure(
         view,
@@ -355,6 +359,7 @@ class JustifyShrinkView {
         para.pos,
         (el) => this.measureParagraph(para.node, para.pos, el),
         topLevel.get(para.node),
+        hyphenPointsIn(hyphens, para.pos, para.pos + para.node.nodeSize).join(),
       )
       if (!measured) continue
       measurable = true
@@ -399,6 +404,7 @@ class JustifyShrinkView {
     if (el.offsetWidth === 0) return null
     const rect = el.getBoundingClientRect()
     if (rect.width === 0) return null
+    const hyphens = hyphenationPluginKey.getState(view.state)
     // rects are screen px (page zoom transform); emitted widths are layout px
     const zoom = rect.width / el.offsetWidth
     const cs = window.getComputedStyle(el)
@@ -507,7 +513,8 @@ class JustifyShrinkView {
       const rest = rects.filter((r) => r.top - top > r.height / 2)
       const headLen = t.text ? breakOpportunity(t.text) : 0
       if (rest.length > 0) {
-        if (!headLen) return 'wrapped'
+        // automatic hyphenation's soft hyphens break a word like a typed hyphen
+        if (!headLen && !hyphenPointsIn(hyphens, t.from + 1, t.to - 1).length) return 'wrapped'
         const tail = boxOf(rest)
         for (const r of rest) if (r.top - tail.top > r.height / 2) return 'wrapped'
         return { head: boxOf(first), tail }

@@ -17,6 +17,7 @@ import { useMeasurement } from '../use-measurement'
 import {
   IconCaret,
   IconColumns,
+  IconHyphenation,
   IconLineNumbers,
   IconMargins,
   IconOrientation,
@@ -156,6 +157,9 @@ interface LayoutTabProps extends TabProps {
   ) => void
   mirrorMargins: boolean
   onMirrorMargins: (on: boolean) => void
+  /** settings.xml w:autoHyphenation */
+  autoHyphenation: boolean
+  onAutoHyphenation: (on: boolean) => void
 }
 
 export function LayoutTab({
@@ -170,6 +174,8 @@ export function LayoutTab({
   onPaperSizeAll,
   mirrorMargins,
   onMirrorMargins,
+  autoHyphenation,
+  onAutoHyphenation,
 }: LayoutTabProps) {
   const { t } = useI18n()
   const { format } = useMeasurement()
@@ -646,6 +652,41 @@ export function LayoutTab({
                 >
                   {t('ribbonLineNumbersOptions')}
                 </button>
+              </div>
+            )}
+          </div>
+          <div className="rb-split-wrap">
+            <button
+              className={`rb-big ${autoHyphenation ? 'active' : ''}`}
+              disabled={!hasDoc}
+              data-tip={t('ribbonHyphenationTip')}
+              onClick={() => toggleDropdown(setDropdown, 'hyphenation')}
+            >
+              <span className="rb-big-icon">
+                <IconHyphenation size={BIG} />
+                <IconCaret />
+              </span>
+              <span>{t('ribbonHyphenation')}</span>
+            </button>
+            {dropdown === 'hyphenation' && (
+              <div data-rb-panel="" className="layout-menu">
+                {(
+                  [
+                    [false, 'ribbonHyphenationNone'],
+                    [true, 'ribbonHyphenationAutomatic'],
+                  ] as const
+                ).map(([on, labelKey]) => (
+                  <button
+                    key={labelKey}
+                    className={autoHyphenation === on ? 'active' : ''}
+                    onClick={() => {
+                      onAutoHyphenation(on)
+                      setDropdown(() => null)
+                    }}
+                  >
+                    {t(labelKey)}
+                  </button>
+                ))}
               </div>
             )}
           </div>

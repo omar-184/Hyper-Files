@@ -205,6 +205,7 @@ import {
   WsRunLineHeightExtension,
 } from './decoration-extensions'
 import { JustifyShrinkExtension } from './justify-shrink'
+import { HyphenationExtension } from './hyphenation'
 import { CjkPunctShrinkExtension } from './cjk-punct-shrink'
 import { AutoDirectionExtension } from './direction'
 import { AutoCorrectExtension } from './autocorrect'
@@ -6547,6 +6548,7 @@ export const editorExtensions = [
   ColumnLayoutExtension,
   TabStopExtension,
   JustifyShrinkExtension,
+  HyphenationExtension,
   CjkPunctShrinkExtension,
   WsRunLineHeightExtension,
   EaHintQuotesExtension,

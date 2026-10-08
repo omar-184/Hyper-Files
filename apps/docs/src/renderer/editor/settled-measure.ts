@@ -110,10 +110,12 @@ export class SettledParagraphCache<T> {
    * @param stableNow a result that changes nothing about the paragraph's
    *   own decorations (nothing to shrink) cannot alter its layout, so it is
    *   settled after a single pass
+   * @param maxRounds results after which the last one stays
    */
   constructor(
     private shift: (result: T, delta: number) => T,
     private stableNow: (result: T) => boolean = () => false,
+    private maxRounds = MAX_PARA_ROUNDS,
   ) {}
 
   clear(): void {
@@ -148,11 +150,13 @@ export class SettledParagraphCache<T> {
     pos: number,
     measureParagraph: (el: HTMLElement) => T | null,
     dom?: HTMLElement,
+    /** other decorations of the paragraph that move its wrap points */
+    layoutKey = '',
   ): T | null {
     const el = dom ?? view.nodeDOM(pos)
     if (!(el instanceof HTMLElement)) return null
     // layout px: a page-zoom transform changes no line break
-    let rectKey = `${el.offsetHeight}:${el.offsetWidth}`
+    let rectKey = `${el.offsetHeight}:${el.offsetWidth}:${layoutKey}`
     if (this.floatBands.length > 0) {
       const r = el.getBoundingClientRect()
       if (this.floatBands.some(([top, bottom]) => r.top < bottom && r.bottom > top))
@@ -178,7 +182,7 @@ export class SettledParagraphCache<T> {
       settled:
         (prev !== undefined && prev.key === key) ||
         this.stableNow(result) ||
-        rounds >= MAX_PARA_ROUNDS,
+        rounds >= this.maxRounds,
       rounds,
       gen: this.gen,
     })
