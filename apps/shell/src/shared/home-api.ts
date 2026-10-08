@@ -130,9 +130,26 @@ export interface UpdateCheckResult {
 }
 
 export interface UpdateCheckStatus {
-  /** off by default; no request is ever made while false */
+  /** background check, off by default; while false only "Check now" makes a request */
   enabled: boolean
   last: UpdateCheckResult | null
+}
+
+/**
+ * In-app download and install of a newer release (main/update-install.ts).
+ * 'unsupported': this build cannot install updates itself (not a packaged
+ * Windows build, or the release has no verifiable installer); the release
+ * page is the fallback.
+ */
+export type UpdateInstallState = 'unsupported' | 'idle' | 'downloading' | 'ready' | 'failed'
+
+export interface UpdateInstallStatus {
+  state: UpdateInstallState
+  /** version being downloaded or ready to install */
+  version?: string
+  /** bytes received so far and the expected total (0 when unknown) */
+  received: number
+  total: number
 }
 
 export interface HomeApi {
@@ -234,10 +251,18 @@ export interface HomeApi {
   getUpdateCheck(): Promise<UpdateCheckStatus>
   /** turn the opt-in update check on or off (persisted in userData/app-settings.json) */
   setUpdateCheck(enabled: boolean): Promise<void>
-  /** ask GitHub for the latest release now; only works while the check is enabled */
+  /** ask GitHub for the latest release now (an explicit user action, so it works with the background check off) */
   checkForUpdates(): Promise<UpdateCheckResult>
   /** open the release page of the last 'available' result in the browser */
   openUpdatePage(): Promise<void>
+  /** whether the last 'available' release can be downloaded and installed in-app, and how far that got */
+  getUpdateInstall(): Promise<UpdateInstallStatus>
+  /** download the last 'available' installer and verify its SHA-256; resolves when done or failed */
+  downloadUpdate(): Promise<UpdateInstallStatus>
+  /** ask to confirm, then quit and run the verified installer; false when cancelled or not ready */
+  installUpdate(): Promise<boolean>
+  /** download progress (broadcast from the main process) */
+  onUpdateInstallProgress(handler: (status: UpdateInstallStatus) => void): () => void
   /** Settings → Performance: the last offline self-test this session, null before the first */
   getPerfCheck(): Promise<PerfReport | null>
   /** run the offline self-test (main/perf-check.ts); a call while one runs joins it */
@@ -369,6 +394,10 @@ export const HOME_CHANNELS = {
   setUpdateCheck: 'home:set-update-check',
   checkForUpdates: 'home:check-for-updates',
   openUpdatePage: 'home:open-update-page',
+  getUpdateInstall: 'home:get-update-install',
+  downloadUpdate: 'home:download-update',
+  installUpdate: 'home:install-update',
+  updateInstallProgress: 'home:update-install-progress',
   getPerfCheck: 'home:get-perf-check',
   runPerfCheck: 'home:run-perf-check',
   perfCheckProgress: 'home:perf-check-progress',

@@ -1,10 +1,11 @@
 /**
- * Opt-in update check. Off until the user turns it on in Settings → About;
- * while off, Hyper-Files makes no network request of its own. When on, it
- * asks the GitHub Releases API for the latest published release at most once
- * a day and, if that release is newer, shows one notification per version.
- * Nothing is downloaded or installed: the user follows the link to the
- * release page. The request carries no identifiers beyond what any HTTPS
+ * Update check. The background check is off until the user turns it on in
+ * Settings → About; while off, Hyper-Files makes no network request of its
+ * own except when the user clicks "Check now". When on, it asks the GitHub
+ * Releases API for the latest published release at most once a day and, if
+ * that release is newer, shows one notification per version. Nothing is
+ * downloaded here: downloading and installing is a separate, user-started
+ * step (update-install.ts). The request carries no identifiers beyond what any HTTPS
  * request to api.github.com does (IP address, a User-Agent with the version).
  */
 
@@ -14,7 +15,7 @@ export const UPDATE_CHECK_KEY = 'updateCheck'
 export const UPDATE_LAST_CHECK_KEY = 'updateCheckLastAt'
 export const UPDATE_NOTIFIED_KEY = 'updateNotifiedVersion'
 
-const REPO = 'omar-184/Hyper-Files'
+export const REPO = 'omar-184/Hyper-Files'
 export const LATEST_RELEASE_API = `https://api.github.com/repos/${REPO}/releases/latest`
 export const RELEASES_PAGE = `https://github.com/${REPO}/releases`
 
@@ -80,6 +81,8 @@ export interface UpdateChecker {
   enabled(): boolean
   setEnabled(on: boolean): void
   last(): UpdateCheckResult | null
+  /** raw GitHub release payload behind last(); update-install.ts picks the installer from it */
+  lastRelease(): unknown
   /** run a check now (Settings "Check now"); never throws */
   checkNow(): Promise<UpdateCheckResult>
   /** begin the background schedule; it does nothing while the setting is off */
@@ -90,6 +93,7 @@ export interface UpdateChecker {
 export function createUpdateChecker(deps: UpdateCheckDeps): UpdateChecker {
   const now = deps.now ?? Date.now
   let lastResult: UpdateCheckResult | null = null
+  let lastReleaseBody: unknown = null
   let inflight: Promise<UpdateCheckResult> | null = null
   let startupTimer: ReturnType<typeof setTimeout> | null = null
   let tickTimer: ReturnType<typeof setInterval> | null = null
@@ -98,8 +102,10 @@ export function createUpdateChecker(deps: UpdateCheckDeps): UpdateChecker {
 
   async function run(): Promise<UpdateCheckResult> {
     let result: UpdateCheckResult
+    lastReleaseBody = null
     try {
       const res = await deps.fetchJson(LATEST_RELEASE_API)
+      if (res.status >= 200 && res.status < 300) lastReleaseBody = res.body
       // 404 = the repository has no published release yet
       result =
         res.status === 404
@@ -167,6 +173,7 @@ export function createUpdateChecker(deps: UpdateCheckDeps): UpdateChecker {
       if (!on) lastResult = null
     },
     last: () => lastResult,
+    lastRelease: () => lastReleaseBody,
     checkNow,
     start,
     stop,

@@ -85,8 +85,8 @@ function row(): HTMLElement | null {
 }
 
 describe('Settings update-check row', () => {
-  it('is off by default and offers no check while off', async () => {
-    const check = vi.fn()
+  it('is off by default but still checks on demand', async () => {
+    const check = vi.fn(async () => ({ state: 'latest' as const, checkedAt: 1 }))
     await openSection('About', {
       getUpdateCheck: async () => ({ enabled: false, last: null }),
       checkForUpdates: check,
@@ -94,24 +94,30 @@ describe('Settings update-check row', () => {
     const field = row()!
     expect(field.textContent).toContain('Off by default.')
     expect(field.querySelector('[role="switch"]')!.getAttribute('aria-checked')).toBe('false')
-    expect(field.querySelector('.set-btn')).toBeNull()
     expect(check).not.toHaveBeenCalled()
+    const checkNow = field.querySelector<HTMLButtonElement>('.set-btn')!
+    expect(checkNow.textContent).toBe('Check now')
+    await click(checkNow)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(check).toHaveBeenCalledTimes(1)
+    expect(row()!.textContent).toContain('You have the latest version.')
   })
 
-  it('turns on, checks on demand and offers the download page', async () => {
+  it('turns on and offers the download page when the app cannot install itself', async () => {
     const setUpdateCheck = vi.fn(async () => {})
     const openUpdatePage = vi.fn(async () => {})
     await openSection('About', {
       getUpdateCheck: async () => ({ enabled: false, last: null }),
       setUpdateCheck,
       checkForUpdates: async () => ({ state: 'available', version: '0.2.0', checkedAt: 1 }),
+      getUpdateInstall: async () => ({ state: 'unsupported', received: 0, total: 0 }),
       openUpdatePage,
     })
     await click(row()!.querySelector<HTMLButtonElement>('[role="switch"]')!)
     expect(setUpdateCheck).toHaveBeenCalledWith(true)
-    const checkNow = row()!.querySelector<HTMLButtonElement>('.set-btn')!
-    expect(checkNow.textContent).toBe('Check now')
-    await click(checkNow)
+    await click(row()!.querySelector<HTMLButtonElement>('.set-btn')!)
     await act(async () => {
       await Promise.resolve()
     })
@@ -120,5 +126,39 @@ describe('Settings update-check row', () => {
     expect(download.textContent).toBe('Download')
     await click(download)
     expect(openUpdatePage).toHaveBeenCalledTimes(1)
+  })
+
+  it('downloads and installs in the app', async () => {
+    const downloadUpdate = vi.fn(async () => ({
+      state: 'ready' as const,
+      version: '0.2.0',
+      received: 10,
+      total: 10,
+    }))
+    const installUpdate = vi.fn(async () => true)
+    await openSection('About', {
+      getUpdateCheck: async () => ({
+        enabled: true,
+        last: { state: 'available', version: '0.2.0', checkedAt: 1 },
+      }),
+      getUpdateInstall: async () => ({ state: 'idle', version: '0.2.0', received: 0, total: 0 }),
+      downloadUpdate,
+      installUpdate,
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    const start = row()!.querySelector<HTMLButtonElement>('.set-btn')!
+    expect(start.textContent).toBe('Download and install')
+    await click(start)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(downloadUpdate).toHaveBeenCalledTimes(1)
+    expect(row()!.textContent).toContain('Version 0.2.0 is downloaded and verified.')
+    const restart = row()!.querySelector<HTMLButtonElement>('.set-btn')!
+    expect(restart.textContent).toBe('Restart and install')
+    await click(restart)
+    expect(installUpdate).toHaveBeenCalledTimes(1)
   })
 })

@@ -138,6 +138,11 @@ export const strings = {
     setUpdatesAvailable: '新版本 {version} 已发布。',
     setUpdatesFailed: '无法检查更新，请检查网络连接。',
     setUpdatesDownload: '下载',
+    setUpdatesInstall: '下载并安装',
+    setUpdatesDownloading: '正在下载版本 {version}… {percent}%',
+    setUpdatesReady: '版本 {version} 已下载并通过校验。应用将关闭、安装更新并重新打开。',
+    setUpdatesRestart: '重启并安装',
+    setUpdatesInstallFailed: '下载失败或未通过校验。请重试，或从发布页面下载。',
     setSecPerformance: '性能',
     perfTitle: '性能检测',
     perfIntro:
@@ -332,6 +337,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -527,6 +539,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -731,6 +750,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -934,6 +960,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -1141,6 +1174,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -1350,6 +1390,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -1557,6 +1604,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -1760,6 +1814,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -1966,6 +2027,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -2171,6 +2239,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -2375,6 +2450,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'الأداء',
     perfTitle: 'فحص الأداء',
     perfIntro:
@@ -2569,6 +2651,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -2766,6 +2855,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -2964,6 +3060,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -3149,6 +3252,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -3355,6 +3465,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -3552,6 +3669,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -3746,6 +3870,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -3943,6 +4074,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
@@ -4137,6 +4275,13 @@ export const strings = {
     setUpdatesAvailable: 'Version {version} is available.',
     setUpdatesFailed: 'Could not check for updates. Check your internet connection.',
     setUpdatesDownload: 'Download',
+    setUpdatesInstall: 'Download and install',
+    setUpdatesDownloading: 'Downloading version {version}… {percent}%',
+    setUpdatesReady:
+      'Version {version} is downloaded and verified. The app will close, install it and open again.',
+    setUpdatesRestart: 'Restart and install',
+    setUpdatesInstallFailed:
+      'The download failed or could not be verified. Try again, or download it from the release page.',
     setSecPerformance: 'Performance',
     perfTitle: 'Performance check',
     perfIntro:
