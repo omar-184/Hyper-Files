@@ -144,6 +144,51 @@ jobs:
           npm run fixtures -w @genoffice/sheets
           npm run compat -w @genoffice/sheets
 
+  ocr-windows:
+    # The PDF Tools OCR job end to end with the real engine: the text
+    # recognition built into Windows (win-ocr.exe), which no Linux job can run
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # the test needs MuPDF and vitest only, not Electron or the native builds
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
+      # Server runner images may ship without an OCR language; add English so
+      # recognition is really checked. When the image cannot add it, the test
+      # still runs the job but skips the recognition check and says so.
+      - name: Add the English OCR language
+        id: ocrlang
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $name = 'Language.OCR~~~en-US~0.0.1.0'
+          $cap = Get-WindowsCapability -Online -Name $name
+          Write-Host "OCR capability state: $($cap.State)"
+          if ($cap.State -ne 'Installed') { Add-WindowsCapability -Online -Name $name | Out-Null }
+          'ready=1' >> $env:GITHUB_OUTPUT
+
+      - name: Build the OCR helper
+        run: node packages/pdf2docx/ocr-helper/build-win.mjs
+
+      - name: OCR tool end to end
+        working-directory: apps/shell
+        run: npx vitest run tests/pdf-tools-ocr.test.ts
+        env:
+          HF_REQUIRE_OCR: ${{ steps.ocrlang.outputs.ready }}
+
   e2e:
     # 22.04, not -latest: 24.04's AppArmor hardening blocks Electron renderer
     # spawn under xvfb even with --no-sandbox and the userns sysctl lifted
