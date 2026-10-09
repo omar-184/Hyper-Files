@@ -7265,7 +7265,7 @@ body.docs-crop-active
   background: var(--surface);
 }
 
-/* Genspark DS modal footer buttons: secondary = bg-subtle, primary = black (#232425) */
+/* modal footer buttons: secondary = bg-subtle, primary = black (#232425) */
 .modal-actions button {
   display: inline-flex;
   align-items: center;
@@ -7399,7 +7399,7 @@ body.docs-crop-active
   margin-top: 18px;
 }
 
-/* ---- Genspark DS form dialogs (password prompts + Protect Document) ---- */
+/* ---- form dialogs (password prompts + Protect Document) ---- */
 
 .modal.gs-form {
   padding: 24px;
@@ -7609,7 +7609,7 @@ body.docs-crop-active
 }
 
 /* checkbox / radio rows: the native input is visually replaced by the .ctl
-   box (18px, black checked state per the Genspark DS palette) */
+   box (18px, black checked state, matching the primary button) */
 .protect-dialog label.protect-check {
   position: relative;
   display: flex;

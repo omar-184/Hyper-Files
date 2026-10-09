@@ -1485,7 +1485,7 @@ body.vib .slide-list {
   margin-top: 18px;
 }
 
-/* Genspark DS modal footer buttons: secondary = bg-subtle, primary = black (#232425) */
+/* modal footer buttons: secondary = bg-subtle, primary = black (#232425) */
 .modal-actions button {
   display: inline-flex;
   align-items: center;
@@ -1579,7 +1579,7 @@ body.vib .slide-list {
   margin-top: 5.6px;
 }
 
-/* 形状选项 / 文本选项 primary tabs under the pane header (Genspark style:
+/* 形状选项 / 文本选项 primary tabs under the pane header (style:
    left-aligned text tabs, active = bold + text-colored underline) */
 .fp-tabs {
   display: flex;
@@ -1613,7 +1613,7 @@ body.vib .slide-list {
   border-bottom-color: var(--accent);
 }
 
-/* Second-level tabs (填充与线条 / 效果 / 大小与属性 …): Genspark segmented pill track —
+/* Second-level tabs (填充与线条 / 效果 / 大小与属性 …): segmented pill track —
    pills sit in one rounded gray track; active = accent-filled pill. Long locales
    (fr/de/es labels exceed the 260px pane) wrap onto a second row instead of
    clipping at the pane edge; 16px ≈ the stadium radius at single-row height. */

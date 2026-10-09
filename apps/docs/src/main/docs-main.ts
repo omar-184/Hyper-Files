@@ -4794,9 +4794,9 @@ export function startDocsStandalone(): void {
   // dev runs must not share the packaged app's userData (recent files, settings)
   // or its single-instance lock — otherwise `npm run dev` silently quits whenever
   // the installed Hypercube Office Docs is open and forwards its argv there instead.
-  // AI_OFFICE_USER_DATA: E2E/screenshot runs isolate userData (and the
-  // single-instance lock) so parallel automation sessions don't evict each other
-  if (process.env.AI_OFFICE_USER_DATA) app.setPath('userData', process.env.AI_OFFICE_USER_DATA)
+  // GENOFFICE_USER_DATA (the shell's variable too): E2E/screenshot runs isolate userData
+  // (and the single-instance lock) so parallel automation sessions don't evict each other
+  if (process.env.GENOFFICE_USER_DATA) app.setPath('userData', process.env.GENOFFICE_USER_DATA)
   else if (isDev) app.setPath('userData', join(app.getPath('appData'), 'Hypercube Office Docs Dev'))
 
   const hasSingleInstanceLock = app.requestSingleInstanceLock()

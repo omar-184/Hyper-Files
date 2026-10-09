@@ -9,16 +9,9 @@ import {
 const png = () => new Response('img', { status: 200 })
 
 describe('remoteImageHeaders', () => {
-  it('sends a Referer for genspark hosts', () => {
-    expect(remoteImageHeaders('https://sspark.genspark.ai/a.png').Referer).toBe(
-      'https://www.genspark.ai/',
-    )
-    expect(remoteImageHeaders('https://genspark.ai/a.png').Referer).toBe('https://www.genspark.ai/')
-  })
-
-  it('sends no Referer for other hosts (including lookalikes)', () => {
+  it('sends no Referer to any host', () => {
     expect(remoteImageHeaders('https://example.com/a.png').Referer).toBeUndefined()
-    expect(remoteImageHeaders('https://evilgenspark.ai/a.png').Referer).toBeUndefined()
+    expect(remoteImageHeaders('https://sspark.genspark.ai/a.png').Referer).toBeUndefined()
   })
 
   it('always sends a browser-like User-Agent and image Accept', () => {
@@ -37,14 +30,14 @@ describe('remoteImageHeaders', () => {
 describe('fetchRemoteImage', () => {
   it('returns the response on first success', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(png())
-    const resp = await fetchRemoteImage('https://sspark.genspark.ai/a.png', {
+    const resp = await fetchRemoteImage('https://example.com/a.png', {
       fetchImpl,
       retryDelaysMs: [0, 0],
     })
     expect(resp?.ok).toBe(true)
     expect(fetchImpl).toHaveBeenCalledTimes(1)
     const headers = fetchImpl.mock.calls[0]![1].headers as Record<string, string>
-    expect(headers.Referer).toBe('https://www.genspark.ai/')
+    expect(headers.Referer).toBeUndefined()
   })
 
   it('retries transient statuses until success', async () => {
@@ -53,7 +46,7 @@ describe('fetchRemoteImage', () => {
       .mockResolvedValueOnce(new Response('nope', { status: 503 }))
       .mockResolvedValueOnce(new Response('nope', { status: 403 }))
       .mockResolvedValueOnce(png())
-    const resp = await fetchRemoteImage('https://sspark.genspark.ai/a.png', {
+    const resp = await fetchRemoteImage('https://example.com/a.png', {
       fetchImpl,
       retryDelaysMs: [0, 0],
     })
@@ -63,7 +56,7 @@ describe('fetchRemoteImage', () => {
 
   it('retries network errors and returns null when the budget is exhausted', async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error('ECONNRESET'))
-    const resp = await fetchRemoteImage('https://sspark.genspark.ai/a.png', {
+    const resp = await fetchRemoteImage('https://example.com/a.png', {
       fetchImpl,
       retryDelaysMs: [0],
     })
@@ -73,7 +66,7 @@ describe('fetchRemoteImage', () => {
 
   it('does not retry permanent statuses like 404', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response('gone', { status: 404 }))
-    const resp = await fetchRemoteImage('https://sspark.genspark.ai/a.png', {
+    const resp = await fetchRemoteImage('https://example.com/a.png', {
       fetchImpl,
       retryDelaysMs: [0, 0],
     })
