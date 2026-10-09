@@ -9,19 +9,18 @@ import {
 const png = () => new Response('img', { status: 200 })
 
 describe('remoteImageHeaders', () => {
-  it('sends no Referer to any host', () => {
-    expect(remoteImageHeaders('https://example.com/a.png').Referer).toBeUndefined()
-    expect(remoteImageHeaders('https://sspark.genspark.ai/a.png').Referer).toBeUndefined()
+  it('sends no Referer', () => {
+    expect(remoteImageHeaders().Referer).toBeUndefined()
   })
 
   it('always sends a browser-like User-Agent and image Accept', () => {
-    const headers = remoteImageHeaders('https://example.com/a.png')
+    const headers = remoteImageHeaders()
     expect(headers['User-Agent']).toBeTruthy()
     expect(headers.Accept).toContain('image/')
   })
 
   it('does not advertise formats the insert pipelines mislabel (avif/webp)', () => {
-    const accept = remoteImageHeaders('https://example.com/a.png').Accept!
+    const accept = remoteImageHeaders().Accept!
     expect(accept).not.toContain('avif')
     expect(accept).not.toContain('webp')
   })

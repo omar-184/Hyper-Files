@@ -62,7 +62,7 @@ export async function readBodyCapped(resp: Response, maxBytes: number): Promise<
   return out
 }
 
-export function remoteImageHeaders(rawUrl: string): Record<string, string> {
+export function remoteImageHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     'User-Agent': 'Mozilla/5.0',
     // Only advertise formats the insert pipelines can label correctly: callers
@@ -88,7 +88,7 @@ export async function fetchRemoteImage(
   const { retryDelaysMs = RETRY_DELAYS_MS, ...guardOptions } = options
   // only network images: local file URLs are never read through this path
   if (rawUrl.startsWith('file:')) return null
-  const headers = remoteImageHeaders(rawUrl)
+  const headers = remoteImageHeaders()
   for (let attempt = 0; ; attempt++) {
     let resp: Response | null = null
     let threw = false
