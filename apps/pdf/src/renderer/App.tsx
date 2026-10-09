@@ -3576,6 +3576,10 @@ export default function App() {
       promise would reuse the pre-reload render's closure — dirty still true, the saved
       edits still listed — and write them onto the file a second time. */
   const queuedSavesRef = useRef<{ autosave: boolean; resolve: (ok: boolean) => void }[]>([])
+  /** Saves finished so far. The ref moves when a save ends; the state copy moves in the same
+      batch as that save's post-reload updates, so a commit carrying the new count has them. */
+  const savesFinishedRef = useRef(0)
+  const [savesFinished, setSavesFinished] = useState(0)
 
   const save = (autosave = false): Promise<boolean> => {
     if (redactionRequestInFlightRef.current) return Promise.resolve(false)
@@ -3693,19 +3697,24 @@ export default function App() {
         inFlightNoteWritesRef.current = new Map()
         inFlightPageMapRef.current = null
       }
+      // Also guarantees a commit after the ref clears, so a queued save always drains
+      savesFinishedRef.current += 1
+      setSavesFinished(savesFinishedRef.current)
     })
     saveInFlightRef.current = tracked
     return tracked
   }
 
-  // Drain queued saves. This effect runs after every commit, so by the time it fires
-  // the in-flight save's reload has rendered and `save` reads post-reload state: the
-  // follow-up writes only what is still pending (usually nothing) instead of
-  // re-applying the previous payload.
+  // Drain queued saves once a commit carries the finished save's reload, so `save` reads
+  // post-reload state: the follow-up writes only what is still pending (usually nothing)
+  // instead of re-applying the previous payload. Any commit is not enough: a scroll or
+  // input event renders at a higher priority without the reload's updates, and draining
+  // from that render wrote the just-saved edits into the file a second time.
   useEffect(() => {
     if (
       queuedSavesRef.current.length === 0 ||
       saveInFlightRef.current !== null ||
+      savesFinished !== savesFinishedRef.current ||
       outlineEditsPendingRef.current > 0
     )
       return

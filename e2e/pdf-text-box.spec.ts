@@ -52,17 +52,65 @@ test('a text-box comment is typed on the page, edited, saved and listed', async 
 
     await editor.keyboard.press('ControlOrMeta+s')
     await expect.poll(() => freeTexts(source)).toEqual(['Check the grand total'])
-    await expect(editor.getByText('Unsaved', { exact: true })).toHaveCount(0)
 
-    // After the reload it is a saved annotation: listed with its text
+    // After the reload it is a saved annotation: listed with its text. Until the reload
+    // finishes the list can briefly show the saved copy beside the pending "Unsaved" one.
     await editor.getByRole('button', { name: 'View', exact: true }).click()
     await editor.getByRole('button', { name: 'Comments', exact: true }).click()
+    await expect(editor.locator('.pdf-comment-unsaved')).toHaveCount(0)
     const row = editor.locator('.pdf-comment-row')
     await expect(row).toHaveCount(1)
     await expect(row).toContainText('Text box')
     await expect(row).toContainText('Check the grand total')
   } finally {
     await closeAndSaveVideo(launched, 'pdf-text-box')
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('a text box added right after a save is written once, beside the saved one', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'hyperfiles-text-box-twice-'))
+  const source = join(dir, 'sample.pdf')
+  const pdf = await PDFDocument.create()
+  pdf.addPage([400, 300])
+  await writeFile(source, await pdf.save())
+  const launched = await launchShell({
+    onboardingSeen: true,
+    videoDir: 'pdf-text-box-twice',
+    openFile: source,
+  })
+  try {
+    const editor = await waitForPageWithUrl(launched.app, '://pdf/')
+    await expect(editor.locator('.pdf-page').first()).toBeVisible()
+    await editor.getByRole('button', { name: 'Annotate', exact: true }).click()
+    // The tool stays armed after each box
+    await editor.getByRole('button', { name: 'Text box', exact: true }).click()
+    const layer = editor.locator('.pdf-page .pdf-draw-layer').first()
+    const box = await layer.boundingBox()
+    if (!box) throw new Error('Missing draw layer')
+    const input = editor.getByRole('textbox', { name: 'Text box' })
+    const addBox = async (text: string, at: number) => {
+      await editor.mouse.click(box.x + box.width * at, box.y + box.height * at)
+      await expect(input).toBeFocused()
+      await input.fill(text)
+      await input.press('ControlOrMeta+Enter')
+      await expect(input).toHaveCount(0)
+    }
+
+    await addBox('First note', 0.2)
+    await editor.keyboard.press('ControlOrMeta+s')
+    await expect.poll(() => freeTexts(source), { intervals: [20] }).toEqual(['First note'])
+    // Add and save again while the first save's reload is still settling: the second save
+    // queues behind it and must not write the first box again
+    await addBox('Second note', 0.6)
+    await editor.keyboard.press('ControlOrMeta+s')
+    await expect.poll(() => freeTexts(source)).toContain('Second note')
+    await editor.getByRole('button', { name: 'View', exact: true }).click()
+    await editor.getByRole('button', { name: 'Comments', exact: true }).click()
+    await expect(editor.locator('.pdf-comment-unsaved')).toHaveCount(0)
+    expect(await freeTexts(source)).toEqual(['First note', 'Second note'])
+  } finally {
+    await closeAndSaveVideo(launched, 'pdf-text-box-twice')
     await rm(dir, { recursive: true, force: true })
   }
 })
