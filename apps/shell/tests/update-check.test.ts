@@ -15,7 +15,7 @@ import type { UpdateCheckDeps } from '../src/main/update-check'
 
 const RELEASE = {
   tag_name: 'v0.2.0',
-  html_url: 'https://github.com/omar-184/Hyper-Files/releases/tag/v0.2.0',
+  html_url: 'https://github.com/omar-184/Hypercube-Office/releases/tag/v0.2.0',
   draft: false,
 }
 

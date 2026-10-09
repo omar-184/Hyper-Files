@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Dropdown } from '@genoffice/ui'
-import type { DefaultAppStatus, DocTheme, UiTheme, UpdateCheckResult } from '../../shared/home-api'
+import type {
+  DefaultAppStatus,
+  DocTheme,
+  UiTheme,
+  UpdateCheckResult,
+  UpdateInstallStatus,
+} from '../../shared/home-api'
 import { useI18n } from './locale'
 import type { StringKey } from './locale'
 import { PerformancePane } from './PerformancePane'
@@ -141,6 +147,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const [updatesOn, setUpdatesOn] = useState(false)
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null)
   const [updateBusy, setUpdateBusy] = useState(false)
+  const [install, setInstall] = useState<UpdateInstallStatus | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -166,9 +173,16 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       if (!alive) return
       setUpdatesOn(st.enabled)
       setUpdateResult(st.last)
+      if (st.last?.state === 'available') {
+        void window.hyperFiles.getUpdateInstall?.().then((s) => {
+          if (alive) setInstall(s)
+        })
+      }
     })
+    const offProgress = window.hyperFiles.onUpdateInstallProgress?.(setInstall)
     return () => {
       alive = false
+      offProgress?.()
     }
   }, [])
 
@@ -225,7 +239,14 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     setUpdateBusy(true)
     void window.hyperFiles
       .checkForUpdates()
-      .then(setUpdateResult)
+      .then(async (result) => {
+        setUpdateResult(result)
+        setInstall(
+          result.state === 'available'
+            ? ((await window.hyperFiles.getUpdateInstall?.()) ?? null)
+            : null,
+        )
+      })
       .catch(() => setUpdateResult({ state: 'failed', checkedAt: Date.now() }))
       .finally(() => setUpdateBusy(false))
   }
@@ -234,20 +255,66 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     const next = !updatesOn
     void window.hyperFiles
       .setUpdateCheck(next)
-      .then(() => {
-        setUpdatesOn(next)
-        if (!next) setUpdateResult(null)
-      })
+      .then(() => setUpdatesOn(next))
       .catch(() => {})
   }
 
+  const downloadUpdate = () => {
+    void window.hyperFiles
+      .downloadUpdate()
+      .then(setInstall)
+      .catch(() => setInstall((s) => (s ? { ...s, state: 'failed' } : s)))
+  }
+
+  const canInstall =
+    updateResult?.state === 'available' && !!install && install.state !== 'unsupported'
+
   const updateDesc = (() => {
     if (updateBusy) return t('setUpdatesChecking')
-    if (!updatesOn || !updateResult) return t('setUpdatesDesc')
-    if (updateResult.state === 'available')
-      return t('setUpdatesAvailable', { version: updateResult.version ?? '' })
+    const version = install?.version ?? updateResult?.version ?? ''
+    if (canInstall && install.state === 'downloading') {
+      const percent = install.total > 0 ? Math.floor((install.received / install.total) * 100) : 0
+      return t('setUpdatesDownloading', { version, percent: String(percent) })
+    }
+    if (canInstall && install.state === 'ready') return t('setUpdatesReady', { version })
+    if (canInstall && install.state === 'failed') return t('setUpdatesInstallFailed')
+    if (!updateResult) return t('setUpdatesDesc')
+    if (updateResult.state === 'available') return t('setUpdatesAvailable', { version })
     if (updateResult.state === 'latest') return t('setUpdatesLatest')
     return t('setUpdatesFailed')
+  })()
+
+  const updateAction = (() => {
+    if (updateResult?.state !== 'available') {
+      return (
+        <button className="set-btn" disabled={updateBusy} onClick={checkUpdates}>
+          {t('setUpdatesCheckNow')}
+        </button>
+      )
+    }
+    if (!canInstall) {
+      return (
+        <button className="set-btn" onClick={() => void window.hyperFiles.openUpdatePage?.()}>
+          {t('setUpdatesDownload')}
+        </button>
+      )
+    }
+    if (install.state === 'ready') {
+      return (
+        <button className="set-btn" onClick={() => void window.hyperFiles.installUpdate()}>
+          {t('setUpdatesRestart')}
+        </button>
+      )
+    }
+    return (
+      <button
+        className="set-btn"
+        disabled={install.state === 'downloading'}
+        onClick={downloadUpdate}
+      >
+        {t('setUpdatesInstall')}
+      </button>
+    )
   })()
 
   const defaultAppDesc = (() => {
@@ -402,20 +469,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                       <div className="set-field-desc">{updateDesc}</div>
                     </div>
                   </div>
-                  {updatesOn && updateResult?.state === 'available' ? (
-                    <button
-                      className="set-btn"
-                      onClick={() => void window.hyperFiles.openUpdatePage?.()}
-                    >
-                      {t('setUpdatesDownload')}
-                    </button>
-                  ) : (
-                    updatesOn && (
-                      <button className="set-btn" disabled={updateBusy} onClick={checkUpdates}>
-                        {t('setUpdatesCheckNow')}
-                      </button>
-                    )
-                  )}
+                  {updateAction}
                   <button
                     className="set-switch"
                     role="switch"

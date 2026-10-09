@@ -5,6 +5,7 @@ import { PERF_STEPS, type PerfProgress, type PerfReport } from '../shared/perf-c
 import type {
   DefaultAppStatus,
   UpdateCheckResult,
+  UpdateInstallStatus,
   FolderListing,
   FolderRoot,
   MoveResult,
@@ -79,6 +80,19 @@ function normalizeUpdateResult(result: unknown): UpdateCheckResult {
     version: typeof r.version === 'string' ? r.version : undefined,
     url: typeof r.url === 'string' ? r.url : undefined,
     checkedAt: typeof r.checkedAt === 'number' ? r.checkedAt : 0,
+  }
+}
+
+const INSTALL_STATES = ['unsupported', 'idle', 'downloading', 'ready', 'failed'] as const
+
+function normalizeInstallStatus(result: unknown): UpdateInstallStatus {
+  const r = (result ?? {}) as Partial<UpdateInstallStatus>
+  const state = INSTALL_STATES.find((s) => s === r.state) ?? 'unsupported'
+  return {
+    state,
+    version: typeof r.version === 'string' ? r.version : undefined,
+    received: typeof r.received === 'number' ? r.received : 0,
+    total: typeof r.total === 'number' ? r.total : 0,
   }
 }
 
@@ -294,6 +308,21 @@ const homeApi: HomeApi = {
   },
   async openUpdatePage() {
     await ipcRenderer.invoke(HOME_CHANNELS.openUpdatePage)
+  },
+  async getUpdateInstall() {
+    return normalizeInstallStatus(await ipcRenderer.invoke(HOME_CHANNELS.getUpdateInstall))
+  },
+  async downloadUpdate() {
+    return normalizeInstallStatus(await ipcRenderer.invoke(HOME_CHANNELS.downloadUpdate))
+  },
+  async installUpdate() {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.installUpdate)) === true
+  },
+  onUpdateInstallProgress(handler) {
+    const listener = (_event: IpcRendererEvent, status: unknown) =>
+      handler(normalizeInstallStatus(status))
+    ipcRenderer.on(HOME_CHANNELS.updateInstallProgress, listener)
+    return () => ipcRenderer.removeListener(HOME_CHANNELS.updateInstallProgress, listener)
   },
   async getPerfCheck() {
     const r = (await ipcRenderer.invoke(HOME_CHANNELS.getPerfCheck)) as PerfReport | null
