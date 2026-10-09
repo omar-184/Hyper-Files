@@ -15,6 +15,15 @@ function textPdf(): Uint8Array {
   return bytes
 }
 
+/** Character boxes for one word, its box split evenly (as win-ocr.exe reports them). */
+function splitWord(word: string, x0: number, x1: number) {
+  const w = (x1 - x0) / word.length
+  return word.split('').map((text, i) => ({
+    text,
+    box: { x0: x0 + i * w, y0: 0.8, x1: x0 + (i + 1) * w, y1: 0.84 },
+  }))
+}
+
 /** A fake engine: two lines in the upper half of every page it is shown. */
 function fakeEngine(calls: { width: number; height: number }[]): OcrRecognizer {
   return (png, page) => {
@@ -27,14 +36,11 @@ function fakeEngine(calls: { width: number; height: number }[]): OcrRecognizer {
           text: 'Invoice 2041',
           confidence: 0.95,
           box: { x0: 0.1, y0: 0.8, x1: 0.5, y1: 0.84 },
+          // like the Windows helper: each word's box split evenly over its characters
           chars: [
-            ...'Invoice'
-              .split('')
-              .map((t) => ({ text: t, box: { x0: 0.1, y0: 0.8, x1: 0.32, y1: 0.84 } })),
+            ...splitWord('Invoice', 0.1, 0.32),
             { text: ' ', box: { x0: 0, y0: 0, x1: 0, y1: 0 } },
-            ...'2041'
-              .split('')
-              .map((t) => ({ text: t, box: { x0: 0.35, y0: 0.8, x1: 0.5, y1: 0.84 } })),
+            ...splitWord('2041', 0.35, 0.5),
           ],
         },
         { text: 'Total due', confidence: 0.9, box: { x0: 0.1, y0: 0.7, x1: 0.4, y1: 0.73 } },

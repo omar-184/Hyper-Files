@@ -72,16 +72,24 @@ function lineWords(line: OcrLine): Word[] {
     return text && !emptyBox(line.box) ? [{ text, box: line.box }] : []
   }
   if (!line.chars || line.chars.length === 0) return whole()
+  // a word is the run of characters between separators (spaces, empty boxes);
+  // engines box each character (Windows splits the word's box evenly), so the
+  // word's box is the union of its characters
   const words: Word[] = []
   let cur: Word | null = null
   for (const c of line.chars) {
     if (c.text.trim() === '' || emptyBox(c.box)) {
       if (cur) words.push(cur)
       cur = null
-    } else if (cur && c.box.x0 === cur.box.x0 && c.box.x1 === cur.box.x1) {
+    } else if (cur) {
       cur.text += c.text
+      cur.box = {
+        x0: Math.min(cur.box.x0, c.box.x0),
+        y0: Math.min(cur.box.y0, c.box.y0),
+        x1: Math.max(cur.box.x1, c.box.x1),
+        y1: Math.max(cur.box.y1, c.box.y1),
+      }
     } else {
-      if (cur) words.push(cur)
       cur = { text: c.text, box: { ...c.box } }
     }
   }
