@@ -8,7 +8,8 @@ name: Windows installer
 # Publishing is a deliberate, separate step: the `publish` job runs only on a
 # manual "Run workflow" with publish=true (or a pushed v* tag). It creates the
 # GitHub Release v<version> (version from apps/shell/package.json) on the
-# built commit and attaches the installer and its SHA-256. electron-builder
+# built commit and attaches the installer and its SHA-256. The notes start
+# with docs/release-notes/v<version>.md when that file exists. electron-builder
 # itself always runs with --publish never.
 # The installer is unsigned until a code-signing certificate is configured
 # (GENOFFICE_WIN_SIGN_MODE, see apps/shell/electron-builder.cjs), so Windows
@@ -184,13 +185,18 @@ jobs:
 
           Download **$(basename "$exe")** below and run it. It installs for your user account (no admin needed); "for all users" is offered on the first page. The last page offers to make Hypercube Office the default app for PDF and Office files.
 
-          - Fully offline: no accounts, no telemetry. The update check is off until you turn it on in Settings > About.
+          - Fully offline: no accounts, no telemetry. Updates: Settings > About > Check now, then Download and install. The daily background check stays off until you turn it on.
           - The installer is not code-signed yet. Windows SmartScreen may say "Windows protected your PC": choose **More info** > **Run anyway**.
           - SHA-256: \`$sha\`
           - Code signing policy: https://github.com/${GITHUB_REPOSITORY}/blob/main/CODE_SIGNING_POLICY.md
 
           Hypercube Office is free software under the GNU AGPL-3.0. Source code: this repository at tag $tag.
           NOTES
+          # what's new in this version, written by hand: docs/release-notes/v<version>.md
+          if [ -f "docs/release-notes/$tag.md" ]; then
+            { cat "docs/release-notes/$tag.md"; echo; echo '---'; echo; cat notes.md; } > notes-full.md
+            mv notes-full.md notes.md
+          fi
           gh release create "$tag" "$exe" "$exe.sha256" \
             --target "$GITHUB_SHA" \
             --title "Hypercube Office $version" \
