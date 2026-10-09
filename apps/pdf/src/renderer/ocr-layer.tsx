@@ -227,6 +227,8 @@ export async function runAutoOcr(opts: {
       the pages that pass never reached: the order is already settled, so it is
       followed rather than rebuilt, and a page is not paid for a second time. */
   pending?: readonly number[]
+  /** Pages an earlier pass already recognized; a new pass leaves them alone */
+  skip?: ReadonlySet<number>
   signal: AbortSignal
   limit?: number
   geom: (origIdx: number) => PageGeom
@@ -237,7 +239,9 @@ export async function runAutoOcr(opts: {
 }): Promise<AutoOcrResult> {
   const limit = opts.limit ?? AUTO_OCR_PAGE_CAP
   const index = await opts.cache.get(opts.doc)
-  const scanned = index.map((entry, i) => (isScannedEntry(entry) ? i : -1)).filter((i) => i >= 0)
+  const scanned = index
+    .map((entry, i) => (isScannedEntry(entry) && !opts.skip?.has(i) ? i : -1))
+    .filter((i) => i >= 0)
   // A continuation walks the queue it was handed as it stands. A first pass
   // builds one from the whole document, rotating so the pages after the reading
   // position come first; pages that rotation had already walked before the cap

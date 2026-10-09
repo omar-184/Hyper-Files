@@ -22,6 +22,7 @@ const GLYPHS: Record<ToolId, ReactElement> = {
   watermark: <path d="M8.5 16l7-7M10 9.5h2M13 15.5h2" />,
   'page-numbers': <path d="M11 15.5h2M12 15.5v-4.5l-1 .8M8.5 9h7" />,
   properties: <path d="M9 10h6M9 12.5h6M9 15h3.5" />,
+  ocr: <path d="M8.5 11V9.5H10M14 9.5h1.5V11M15.5 15v1.5H14M10 16.5H8.5V15M10.5 12h3M10.5 14h2" />,
 }
 
 export function ToolIcon({ id, size = 28 }: { id: ToolId; size?: number }) {

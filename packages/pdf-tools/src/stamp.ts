@@ -27,7 +27,7 @@ export function parseHexColor(hex: string): Rgb {
  * WinAnsiEncoding; anything else becomes "?" until Arabic text gets a shaped
  * font path (Phase 6).
  */
-function encodeLatin(text: string): number[] {
+export function encodeLatin(text: string): number[] {
   const out: number[] = []
   for (const ch of text) {
     const c = ch.codePointAt(0)!
@@ -37,7 +37,7 @@ function encodeLatin(text: string): number[] {
 }
 
 /** A PDF literal string for the bytes, with the three special characters escaped. */
-function pdfString(bytes: readonly number[]): string {
+export function pdfString(bytes: readonly number[]): string {
   let s = '('
   for (const b of bytes) {
     if (b === 0x28 || b === 0x29 || b === 0x5c) s += '\\' + String.fromCharCode(b)
@@ -47,13 +47,13 @@ function pdfString(bytes: readonly number[]): string {
   return s + ')'
 }
 
-function textWidth(font: Font, bytes: readonly number[], size: number): number {
+export function textWidth(font: Font, bytes: readonly number[], size: number): number {
   let w = 0
   for (const b of bytes) w += font.advanceGlyph(font.encodeCharacter(b))
   return w * size
 }
 
-const num = (v: number) => (Math.abs(v) < 1e-6 ? '0' : v.toFixed(4).replace(/\.?0+$/, ''))
+export const num = (v: number) => (Math.abs(v) < 1e-6 ? '0' : v.toFixed(4).replace(/\.?0+$/, ''))
 
 /** Put `value` under a fresh key in `dict`, returning the key used. */
 function addUnique(doc: PDFDocument, res: PDFObject, kind: string, base: string, value: PDFObject) {
@@ -83,7 +83,7 @@ interface OverlayContext {
  * whatever the page's /Rotate or crop box. The existing content is wrapped in
  * q/Q so its leftover graphics state cannot leak into the overlay.
  */
-function overlayPage(
+export function overlayPage(
   m: Mupdf,
   doc: PDFDocument,
   index: number,
@@ -129,7 +129,7 @@ function overlayPage(
   }
 }
 
-function fontFor(m: Mupdf, doc: PDFDocument, bold: boolean) {
+export function fontFor(m: Mupdf, doc: PDFDocument, bold: boolean) {
   const font = new m.Font(bold ? 'Helvetica-Bold' : 'Helvetica')
   return { font, ref: doc.addSimpleFont(font, 'Latin') }
 }

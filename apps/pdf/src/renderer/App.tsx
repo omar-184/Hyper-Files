@@ -294,6 +294,7 @@ import {
   IconCrop,
   IconCutout,
   IconOpacity,
+  IconRecognizeText,
 } from './icons'
 
 GlobalWorkerOptions.workerSrc = workerUrl
@@ -915,18 +916,21 @@ export default function App() {
   docFontsRef.current = docFonts
   /** OCR results for scanned pages, keyed by original page index (reset per doc) */
   const [ocrPages, setOcrPages] = useState<Map<number, OcrPageData>>(new Map())
+  const ocrPagesRef = useRef(ocrPages)
+  ocrPagesRef.current = ocrPages
   /** One text extraction per loaded document, shared by search, paragraph boxes
       and the auto-OCR pass */
   const [searchIndexCache] = useState(createSearchIndexCache)
-  /** In-flight auto-OCR pass, so its toast can stop it */
+  /** In-flight OCR pass, so its toast can stop it */
   const ocrAbortRef = useRef<AbortController | null>(null)
-  /** Auto-OCR progress: `stop: null` while the pass runs (the toast offers Stop),
-      then the reason it ended, for the cap and a user cancel alike. `pending` is
+  /** OCR progress: `stop: null` while the pass runs (the toast offers Stop),
+      then the reason it ended: the cap, a user cancel, a document with no
+      scanned pages (`none`) or a computer with no OCR engine. `pending` is
       the queue a capped pass can be continued over. */
   const [ocrRun, setOcrRun] = useState<{
     done: number
     total: number
-    stop: Extract<AutoOcrStop, 'cap' | 'cancelled'> | null
+    stop: Exclude<AutoOcrStop, 'complete'> | 'none' | null
     /** The pages the pass left, which its Continue button hands to the next pass */
     pending?: number[] | null
   } | null>(null)
@@ -1967,9 +1971,10 @@ export default function App() {
     return base.then((idx) => idx.map((entry, i) => ocrPages.get(i)?.entry ?? entry))
   }, [doc, ocrPages, searchIndexCache])
 
-  // Auto-OCR for scanned pages (issue #119): once the base index shows pages with
-  // no extractable text, recognize them sequentially in the background, starting
-  // at the current page. Boxes are stored in PDF space, so later zooms/rotations
+  // OCR for scanned pages (issue #119), run on demand from the ribbon's Recognize
+  // text button (opening a PDF no longer starts it): pages with no extractable
+  // text are recognized sequentially in the background, starting at the
+  // current page. Boxes are stored in PDF space, so later zooms/rotations
   // reproject. The pass runs renderer-side, one page at a time, so the user's
   // Stop only has to abort this signal.
 
@@ -2002,6 +2007,7 @@ export default function App() {
             cache: searchIndexCache,
             fromPage: () => currentOrigIdxRef.current,
             ...(pending === null ? {} : { pending }),
+            skip: new Set(ocrPagesRef.current.keys()),
             signal: controller.signal,
             geom: (origIdx) => pageGeomRef.current(origIdx),
             render: renderPageForOcr,
@@ -2014,14 +2020,19 @@ export default function App() {
           // the document is gone or unreadable: nothing left to recognize
         }
         if (ocrAbortRef.current !== controller) return // a newer pass took over
-        // A finished pass and a platform without an OCR engine are not worth a
-        // toast; a cap or a user cancel is, and it says how far the pass got
+        // The user asked for this pass, so every ending says how it went except
+        // a clean finish, whose text is now searchable on the pages themselves
+        if (!result) {
+          setOcrRun(null)
+          return
+        }
+        const stop = result.stop === 'complete' ? (result.total === 0 ? 'none' : null) : result.stop
         setOcrRun(
-          result && (result.stop === 'cap' || result.stop === 'cancelled')
+          stop
             ? {
                 done: doneBefore + result.done,
                 total: result.total,
-                stop: result.stop,
+                stop,
                 pending: result.pending,
               }
             : null,
@@ -2035,17 +2046,26 @@ export default function App() {
       and a scan that ran out has nothing left to resume. */
   const ocrPending = ocrRun?.stop === 'cap' ? (ocrRun.pending ?? null) : null
 
+  /** Ribbon command: recognize the scanned pages now. A pass already running
+      keeps going instead of starting over. */
+  const ocrReady = !!doc && sizes.length === doc.numPages
+  const recognizeText = () => {
+    if (!ocrReady || ocrRun?.stop === null) return
+    // a pass that already recognized pages resumes from what is left
+    if (ocrRun?.stop === 'cap' && ocrRun.pending) startOcrPass(ocrRun.pending, ocrRun.done)
+    else startOcrPass(null)
+  }
+
+  // A new document (or a page-count change) drops the recognized text and stops
+  // a running pass; recognition only starts again when the user asks for it.
   useEffect(() => {
     setOcrPages(new Map())
     setOcrRun(null)
-    if (!doc || sizes.length !== doc.numPages) return
-    startOcrPass(null)
     return () => {
-      // tears down the pass this effect started, so its teardown still cancels
       ocrAbortRef.current?.abort()
       ocrAbortRef.current = null
     }
-  }, [doc, sizes.length, searchIndexCache, startOcrPass])
+  }, [doc, sizes.length, searchIndexCache])
 
   /** Paragraph boxes are keyed to the loaded doc; drop them on save-reload */
   useEffect(() => {
@@ -6066,6 +6086,20 @@ export default function App() {
     </button>
   )
 
+  const recognizeTextBtn = (
+    <button
+      className={`rb-big${ocrRun?.stop === null ? ' active' : ''}`}
+      data-tip={t('ocrRecognizeHint')}
+      disabled={!ocrReady || ocrRun?.stop === null}
+      onClick={recognizeText}
+    >
+      <span className="rb-big-icon">
+        <IconRecognizeText />
+      </span>
+      {t('ocrRecognize')}
+    </button>
+  )
+
   const editTextBtn = (
     <button
       className={`rb-big${editTextMode ? ' active' : ''}`}
@@ -6346,6 +6380,7 @@ export default function App() {
               <div className="ribbon-group">
                 <div className="ribbon-group-items">
                   {searchBtn}
+                  {recognizeTextBtn}
                   <button
                     className="rb-big"
                     data-tip={`${t('print')} (${platformShortcuts('⌘P')})`}
@@ -8766,7 +8801,11 @@ export default function App() {
                           total: ocrRun.total,
                           limit: AUTO_OCR_PAGE_CAP,
                         })
-                      : t('ocrStopped', { done: ocrRun.done, total: ocrRun.total })}
+                      : ocrRun.stop === 'none'
+                        ? t('ocrNoScannedPages')
+                        : ocrRun.stop === 'noEngine'
+                          ? t('ocrNoEngine')
+                          : t('ocrStopped', { done: ocrRun.done, total: ocrRun.total })}
                 </span>
                 {ocrRun.stop === null ? (
                   <button type="button" onClick={() => ocrAbortRef.current?.abort()}>

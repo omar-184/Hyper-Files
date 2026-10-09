@@ -596,6 +596,21 @@ export function ToolOptionsForm<T extends ToolId>(props: Props<T>) {
         </>
       )
     }
+    case 'ocr': {
+      const opts = o as ToolOptions['ocr']
+      return (
+        <>
+          <p className="pt-note">{t('ocrHint')}</p>
+          <PagesInput
+            label="pages"
+            value={opts.pages}
+            disabled={disabled}
+            t={t}
+            onChange={(pages) => set({ pages })}
+          />
+        </>
+      )
+    }
     case 'properties': {
       const opts = o as ToolOptions['properties']
       const fields: { key: keyof ToolOptions['properties']; label: ToolStringKey }[] = [

@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { BrowserWindow, app, dialog, ipcMain } from 'electron'
 import {
   IMAGE_EXTENSIONS,
@@ -19,6 +20,23 @@ export function mupdfModulePath(): string {
   return createRequire(import.meta.url).resolve('mupdf')
 }
 
+/**
+ * The system OCR helper (Windows.Media.Ocr on Windows, Vision on macOS), the
+ * same binary the PDF viewer and PDF to Word use. Packaged under Resources/ocr;
+ * in dev it is the compiled helper in packages/pdf2docx/ocr-helper. Null when
+ * this platform or build has none.
+ */
+export function ocrHelperPath(): string | null {
+  if (process.platform !== 'win32' && process.platform !== 'darwin') return null
+  const helper = process.platform === 'darwin' ? 'vision-ocr' : 'win-ocr.exe'
+  const here = dirname(fileURLToPath(import.meta.url))
+  const candidates = [
+    ...(process.resourcesPath ? [join(process.resourcesPath, 'ocr', helper)] : []),
+    join(here, '../../../../packages/pdf2docx/ocr-helper', helper),
+  ]
+  return candidates.find((p) => existsSync(p)) ?? null
+}
+
 function badRequest(message: string): ToolResult {
   return { ok: false, error: { code: 'bad-input', message } }
 }
@@ -35,7 +53,10 @@ function validRequest(raw: unknown): raw is ToolRequest {
 }
 
 export function registerPdfToolsIpc(workerPath: string): PdfToolsRunner {
-  const runner = new PdfToolsRunner(workerPath, () => ({ mupdfPath: mupdfModulePath() }))
+  const runner = new PdfToolsRunner(workerPath, () => ({
+    mupdfPath: mupdfModulePath(),
+    ocrHelperPath: ocrHelperPath(),
+  }))
 
   ipcMain.handle(PDF_TOOLS_CHANNELS.pickFiles, async (event, kind: unknown, multiple: unknown) => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? undefined

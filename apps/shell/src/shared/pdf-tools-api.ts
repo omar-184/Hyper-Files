@@ -22,6 +22,7 @@ export type ToolId =
   | 'flatten'
   | 'repair'
   | 'properties'
+  | 'ocr'
 
 export const TOOL_IDS: readonly ToolId[] = [
   'merge',
@@ -41,6 +42,7 @@ export const TOOL_IDS: readonly ToolId[] = [
   'flatten',
   'repair',
   'properties',
+  'ocr',
 ]
 
 /** Tools that combine every input into one output; the rest run once per file. */
@@ -106,6 +108,8 @@ export interface ToolOptions {
   flatten: Record<string, never>
   repair: Record<string, never>
   properties: { title?: string; author?: string; subject?: string; keywords?: string }
+  /** recognize text on scanned pages; empty pages means every page */
+  ocr: { pages: string }
 }
 
 export type ToolRequest = {
@@ -165,7 +169,7 @@ export type FileInfo =
   | { ok: false; error: ToolError }
 
 export interface ToolProgress {
-  /** input files finished so far */
+  /** input files finished so far (OCR: pages of the current file) */
   done: number
   total: number
 }

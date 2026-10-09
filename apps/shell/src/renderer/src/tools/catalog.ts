@@ -96,6 +96,14 @@ export const TOOLS: ToolDef[] = [
     minFiles: 1,
   },
   {
+    id: 'ocr',
+    group: 'convert',
+    name: 'toolOcr',
+    desc: 'toolOcrDesc',
+    input: 'pdf',
+    minFiles: 1,
+  },
+  {
     id: 'images-to-pdf',
     group: 'convert',
     name: 'toolImagesToPdf',
@@ -206,5 +214,6 @@ export function defaultOptions(): { [T in ToolId]: ToolOptions[T] } {
     flatten: {},
     repair: {},
     properties: {},
+    ocr: { pages: '' },
   }
 }
