@@ -66,6 +66,12 @@ artifacts. The installer:
 - is not code-signed yet, so Windows SmartScreen shows "Unknown publisher" until you choose
   "More info" > "Run anyway".
 
+## Code signing policy
+
+See [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md): who builds, reviews and approves signed
+releases, and what the installer may send over the network. Signing through the SignPath
+Foundation has been applied for; releases stay unsigned until it is approved.
+
 ## License
 
 Hypercube Office is free software under the [GNU Affero General Public License v3.0](LICENSE).
