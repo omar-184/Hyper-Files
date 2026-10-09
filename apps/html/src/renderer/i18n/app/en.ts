@@ -52,6 +52,8 @@ export const en = {
   fmtBold: 'Bold',
   fmtItalic: 'Italic',
   openExternal: 'Link opened in your browser',
+  remoteBlocked: 'Pictures, fonts and scripts from the internet are blocked in this preview.',
+  remoteLoad: 'Load web content',
   save: 'Save (⌘S)',
   saveAs: 'Save As…',
   ribbonCollapse: 'Collapse the Ribbon',

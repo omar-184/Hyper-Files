@@ -58,7 +58,9 @@ import {
   captureViewState,
   captureZoomAnchor,
   loadViewState,
+  rowIndexAt,
   saveViewState,
+  wheelZoomScale,
   zoomAnchorY,
 } from './view-state'
 import type { PdfViewState, ZoomAnchor } from './view-state'
@@ -138,7 +140,8 @@ import { platformShortcuts } from '@genoffice/i18n'
 import { Dropdown, useDismissablePopover, useRibbonCollapse } from '@genoffice/ui'
 import { useI18n } from './i18n/locale'
 import { useAutosave } from './useAutosave'
-import { MAX_REDACTION_REGIONS } from '../shared/ipc'
+import { containsAscii } from '../shared/ascii-search'
+import { MAX_REDACTION_REGIONS, STATIC_FORM_FILLS_KEY_NAME } from '../shared/ipc'
 import type { NewFieldType } from '../shared/ipc'
 import type {
   AnnotDeleteInput,
@@ -1053,7 +1056,11 @@ export default function App() {
     ) => {
       const data = await window.pdfApi.readFile(path)
       const bytes = new Uint8Array(data)
-      setFormHasXfa(hasXfaMarker(bytes))
+      // getDocument transfers the buffer to the pdf.js worker, leaving `bytes` detached
+      // (empty): every scan of the file's bytes has to happen before it
+      const xfaMarker = hasXfaMarker(bytes)
+      const mayHaveStaticFormFills = containsAscii(bytes, STATIC_FORM_FILLS_KEY_NAME)
+      setFormHasXfa(xfaMarker)
       if (!saved) {
         setFormCatalog(null)
         setSavedStaticFormFills([])
@@ -1084,7 +1091,7 @@ export default function App() {
           EncryptFilterName?: string | null
           IsXFAPresent?: boolean
         }
-        const formFeatures = documentFormFeatures(documentInfo, bytes)
+        const formFeatures = documentFormFeatures(documentInfo, xfaMarker)
         setFormHasXfa(formFeatures.hasXfa)
         setDocumentEncrypted(formFeatures.encrypted)
         for (let i = 1; i <= loaded.numPages; i++) {
@@ -1110,7 +1117,11 @@ export default function App() {
         setFormCatalog({ widgets: [], fields: new Map(), byPage: new Map() })
       }
       try {
-        setSavedStaticFormFills(await window.pdfApi.listStaticFormFills(path))
+        // Reading the records parses the whole file in the main process; skip the round trip
+        // for the (nearly all) files that carry none
+        setSavedStaticFormFills(
+          mayHaveStaticFormFills ? await window.pdfApi.listStaticFormFills(path) : [],
+        )
       } catch {
         setSavedStaticFormFills([])
       }
@@ -1587,16 +1598,12 @@ export default function App() {
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
     if (!el || rows.length === 0) return
-    const anchor = el.scrollTop + el.clientHeight * 0.4
-    let rowIdx = 0
-    for (let i = 0; i < rows.length; i++) {
-      if (rowTop(i) <= anchor) rowIdx = i
-      else break
-    }
+    // rowIndexAt is one running sum: calling rowTop(i) per row was quadratic in the page count
+    const rowIdx = rowIndexAt(el.scrollTop + el.clientHeight * 0.4, rowHeights, PAGE_GAP, scale)
     const page = visList.indexOf(rows[rowIdx]![0]!) + 1
     setCurrentPage(page)
     setPageInput(String(page))
-  }, [rows, rowTop, visList])
+  }, [rows, rowHeights, scale, visList])
 
   const scrollToPage = (n: number) => {
     const el = scrollRef.current
@@ -3569,6 +3576,10 @@ export default function App() {
       promise would reuse the pre-reload render's closure — dirty still true, the saved
       edits still listed — and write them onto the file a second time. */
   const queuedSavesRef = useRef<{ autosave: boolean; resolve: (ok: boolean) => void }[]>([])
+  /** Saves finished so far. The ref moves when a save ends; the state copy moves in the same
+      batch as that save's post-reload updates, so a commit carrying the new count has them. */
+  const savesFinishedRef = useRef(0)
+  const [savesFinished, setSavesFinished] = useState(0)
 
   const save = (autosave = false): Promise<boolean> => {
     if (redactionRequestInFlightRef.current) return Promise.resolve(false)
@@ -3621,9 +3632,15 @@ export default function App() {
     inFlightPageMapRef.current = snapshot.pageMap
     const run = (async (): Promise<boolean> => {
       setSaveState('saving')
-      const result = await window.pdfApi.save({ path: filePath, ...editsPayload(edits, noteFlush) })
+      const result = await window.pdfApi.save({
+        path: filePath,
+        autosave,
+        ...editsPayload(edits, noteFlush),
+      })
       if (!result.ok) {
-        opFailed(result.error)
+        // The user kept a signed original intact: nothing was written, the edits stay pending
+        if ('canceled' in result) setSaveState('idle')
+        else opFailed(result.error)
         return false
       }
       if (result.skippedTextEdits && result.skippedTextEdits.length > 0) {
@@ -3680,19 +3697,24 @@ export default function App() {
         inFlightNoteWritesRef.current = new Map()
         inFlightPageMapRef.current = null
       }
+      // Also guarantees a commit after the ref clears, so a queued save always drains
+      savesFinishedRef.current += 1
+      setSavesFinished(savesFinishedRef.current)
     })
     saveInFlightRef.current = tracked
     return tracked
   }
 
-  // Drain queued saves. This effect runs after every commit, so by the time it fires
-  // the in-flight save's reload has rendered and `save` reads post-reload state: the
-  // follow-up writes only what is still pending (usually nothing) instead of
-  // re-applying the previous payload.
+  // Drain queued saves once a commit carries the finished save's reload, so `save` reads
+  // post-reload state: the follow-up writes only what is still pending (usually nothing)
+  // instead of re-applying the previous payload. Any commit is not enough: a scroll or
+  // input event renders at a higher priority without the reload's updates, and draining
+  // from that render wrote the just-saved edits into the file a second time.
   useEffect(() => {
     if (
       queuedSavesRef.current.length === 0 ||
       saveInFlightRef.current !== null ||
+      savesFinished !== savesFinishedRef.current ||
       outlineEditsPendingRef.current > 0
     )
       return
@@ -3776,7 +3798,10 @@ export default function App() {
     setSaveState('saving')
     const result = await window.pdfApi.save({ path: filePath, targetPath, ...edits })
     if (!result.ok) {
-      opFailed(result.error)
+      // Only an in-place save stops at the signed-file prompt (the shell never passes the
+      // open file as a Save As target); a cancel wrote nothing
+      if ('canceled' in result) setSaveState('idle')
+      else opFailed(result.error)
       return false
     }
     if (result.skippedTextEdits && result.skippedTextEdits.length > 0) {
@@ -5869,7 +5894,9 @@ export default function App() {
       // Accumulate against the queued scale so a fast pinch loses no ticks between renders
       const committed = layoutRef.current.scale
       const current = queuedScaleRef.current ?? committed
-      const next = clampScale(current - e.deltaY * 0.006)
+      let next = clampScale(wheelZoomScale(current, e.deltaY))
+      // in-then-out must land exactly back on the committed scale (float drift)
+      if (Math.abs(next - committed) < 1e-6) next = committed
       if (next === current) return
       if (next === committed) {
         // nets out to no change: the queue must still be overridden, else an intermediate

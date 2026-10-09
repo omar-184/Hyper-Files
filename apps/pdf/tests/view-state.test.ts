@@ -5,7 +5,9 @@ import {
   captureViewState,
   captureZoomAnchor,
   loadViewState,
+  rowIndexAt,
   saveViewState,
+  wheelZoomScale,
   zoomAnchorY,
 } from '../src/renderer/view-state'
 import type { PdfViewState } from '../src/renderer/view-state'
@@ -208,5 +210,59 @@ describe('captureZoomAnchor / zoomAnchorY', () => {
     expect(anchor?.content).toBe(800)
     expect(captureZoomAnchor({ y: 100, rowHeights: [], gap, scale: 1 })).toBeNull()
     expect(captureZoomAnchor({ y: 100, rowHeights: heights, gap, scale: 0 })).toBeNull()
+  })
+})
+
+describe('rowIndexAt', () => {
+  const heights = [100, 200, 100]
+  const gap = 10
+
+  it('finds the row whose laid-out top is at or above y', () => {
+    // tops at scale 2: 10, 220, 630
+    expect(rowIndexAt(0, heights, gap, 2)).toBe(0)
+    expect(rowIndexAt(219, heights, gap, 2)).toBe(0)
+    expect(rowIndexAt(220, heights, gap, 2)).toBe(1)
+    expect(rowIndexAt(629, heights, gap, 2)).toBe(1)
+    expect(rowIndexAt(10_000, heights, gap, 2)).toBe(2)
+  })
+
+  it('matches the per-row top sum it replaced', () => {
+    const many = Array.from({ length: 500 }, (_, i) => 500 + (i % 7) * 40)
+    const scale = 1.37
+    const rowTop = (idx: number) => {
+      let y = gap
+      for (let i = 0; i < idx; i++) y += many[i]! * scale + gap
+      return y
+    }
+    for (const y of [0, 5_000, 123_456, 300_000, 10_000_000]) {
+      let expected = 0
+      for (let i = 0; i < many.length; i++) {
+        if (rowTop(i) <= y) expected = i
+        else break
+      }
+      expect(rowIndexAt(y, many, gap, scale)).toBe(expected)
+    }
+  })
+
+  it('returns 0 for an empty document', () => {
+    expect(rowIndexAt(500, [], gap, 1)).toBe(0)
+  })
+})
+
+describe('wheelZoomScale', () => {
+  it('zooms by the same ratio per mouse notch at any level', () => {
+    expect(wheelZoomScale(1, -100)).toBeCloseTo(1.2)
+    expect(wheelZoomScale(4, -100)).toBeCloseTo(4.8)
+    expect(wheelZoomScale(1, 100)).toBeCloseTo(1 / 1.2)
+  })
+
+  it('returns to the start after equal steps in and out', () => {
+    expect(wheelZoomScale(wheelZoomScale(1.5, -100), 100)).toBeCloseTo(1.5, 10)
+  })
+
+  it('takes small steps for small pinch deltas', () => {
+    const next = wheelZoomScale(1, -4)
+    expect(next).toBeGreaterThan(1)
+    expect(next).toBeLessThan(1.01)
   })
 })

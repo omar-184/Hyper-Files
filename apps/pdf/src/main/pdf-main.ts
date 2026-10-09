@@ -83,6 +83,7 @@ import {
 } from './signature-store'
 import { uniqueGeneratedPdfPath } from './generated-output'
 import { validateRedactionRegions } from './redaction'
+import { decideSignedWrite, hasSignatureMarker, type SignedWriteKind } from './signed-guard'
 
 const tDlg = createI18n({
   zh: {
@@ -102,6 +103,14 @@ const tDlg = createI18n({
     btnSave: '保存',
     btnDontSave: '不保存',
     btnCancel: '取消',
+    signedMsg: '此 PDF 带有数字签名。',
+    signedSaveDetail:
+      '将更改保存到此文件会使其数字签名失效。若要保持已签名的原件有效，请改为将更改另存为副本。',
+    signedChangeDetail:
+      '此更改会直接写入文件，并使其数字签名失效。若要保持已签名的原件有效，请先保存副本，再在副本中进行更改。',
+    btnSaveCopy: '另存为副本…',
+    btnSaveAnyway: '仍然保存',
+    btnChangeAnyway: '仍然更改',
   },
   en: {
     dlgExportImages: 'Export Images to Folder',
@@ -120,6 +129,14 @@ const tDlg = createI18n({
     btnSave: 'Save',
     btnDontSave: "Don't Save",
     btnCancel: 'Cancel',
+    signedMsg: 'This PDF is digitally signed.',
+    signedSaveDetail:
+      'Saving your changes into this file will make its digital signature invalid. To keep the signed original valid, save your changes as a copy instead.',
+    signedChangeDetail:
+      'This change is written straight into the file and will make its digital signature invalid. To keep the signed original valid, save a copy first and make the change there.',
+    btnSaveCopy: 'Save as a Copy…',
+    btnSaveAnyway: 'Save Anyway',
+    btnChangeAnyway: 'Change Anyway',
   },
   vi: {
     dlgExportImages: 'Xuất hình ảnh vào thư mục',
@@ -138,6 +155,14 @@ const tDlg = createI18n({
     btnSave: 'Lưu',
     btnDontSave: 'Không lưu',
     btnCancel: 'Hủy',
+    signedMsg: 'Tệp PDF này có chữ ký số.',
+    signedSaveDetail:
+      'Lưu thay đổi vào tệp này sẽ làm chữ ký số của nó mất hiệu lực. Để bản gốc đã ký vẫn hợp lệ, hãy lưu thay đổi thành một bản sao.',
+    signedChangeDetail:
+      'Thay đổi này được ghi thẳng vào tệp và sẽ làm chữ ký số mất hiệu lực. Để bản gốc đã ký vẫn hợp lệ, hãy lưu một bản sao trước rồi thay đổi trên bản sao đó.',
+    btnSaveCopy: 'Lưu thành bản sao…',
+    btnSaveAnyway: 'Vẫn lưu',
+    btnChangeAnyway: 'Vẫn thay đổi',
   },
   ja: {
     dlgExportImages: '画像をフォルダに書き出す',
@@ -156,6 +181,14 @@ const tDlg = createI18n({
     btnSave: '保存',
     btnDontSave: '保存しない',
     btnCancel: 'キャンセル',
+    signedMsg: 'この PDF にはデジタル署名があります。',
+    signedSaveDetail:
+      'このファイルに変更を保存すると、デジタル署名が無効になります。署名済みの元のファイルを有効なまま残すには、変更をコピーとして保存してください。',
+    signedChangeDetail:
+      'この変更はファイルに直接書き込まれ、デジタル署名が無効になります。署名済みの元のファイルを有効なまま残すには、先にコピーを保存し、そのコピーで変更してください。',
+    btnSaveCopy: 'コピーとして保存…',
+    btnSaveAnyway: 'このまま保存',
+    btnChangeAnyway: 'このまま変更',
   },
   ko: {
     dlgExportImages: '이미지를 폴더로 내보내기',
@@ -174,6 +207,14 @@ const tDlg = createI18n({
     btnSave: '저장',
     btnDontSave: '저장 안 함',
     btnCancel: '취소',
+    signedMsg: '이 PDF에는 디지털 서명이 있습니다.',
+    signedSaveDetail:
+      '이 파일에 변경 내용을 저장하면 디지털 서명이 무효가 됩니다. 서명된 원본을 유효하게 유지하려면 변경 내용을 사본으로 저장하세요.',
+    signedChangeDetail:
+      '이 변경 내용은 파일에 바로 기록되며 디지털 서명이 무효가 됩니다. 서명된 원본을 유효하게 유지하려면 먼저 사본을 저장한 다음 사본에서 변경하세요.',
+    btnSaveCopy: '사본으로 저장…',
+    btnSaveAnyway: '그래도 저장',
+    btnChangeAnyway: '그래도 변경',
   },
   fr: {
     dlgExportImages: 'Exporter les images vers un dossier',
@@ -192,6 +233,14 @@ const tDlg = createI18n({
     btnSave: 'Enregistrer',
     btnDontSave: 'Ne pas enregistrer',
     btnCancel: 'Annuler',
+    signedMsg: 'Ce PDF est signé numériquement.',
+    signedSaveDetail:
+      'Enregistrer vos modifications dans ce fichier rendra sa signature numérique non valide. Pour que l’original signé reste valide, enregistrez plutôt vos modifications dans une copie.',
+    signedChangeDetail:
+      'Cette modification est écrite directement dans le fichier et rendra sa signature numérique non valide. Pour que l’original signé reste valide, enregistrez d’abord une copie et faites la modification dans celle-ci.',
+    btnSaveCopy: 'Enregistrer une copie…',
+    btnSaveAnyway: 'Enregistrer quand même',
+    btnChangeAnyway: 'Modifier quand même',
   },
   de: {
     dlgExportImages: 'Bilder in Ordner exportieren',
@@ -210,6 +259,14 @@ const tDlg = createI18n({
     btnSave: 'Speichern',
     btnDontSave: 'Nicht speichern',
     btnCancel: 'Abbrechen',
+    signedMsg: 'Dieses PDF ist digital signiert.',
+    signedSaveDetail:
+      'Wenn Sie Ihre Änderungen in dieser Datei speichern, wird ihre digitale Signatur ungültig. Damit das signierte Original gültig bleibt, speichern Sie Ihre Änderungen stattdessen als Kopie.',
+    signedChangeDetail:
+      'Diese Änderung wird direkt in die Datei geschrieben und macht ihre digitale Signatur ungültig. Damit das signierte Original gültig bleibt, speichern Sie zuerst eine Kopie und nehmen Sie die Änderung dort vor.',
+    btnSaveCopy: 'Als Kopie speichern…',
+    btnSaveAnyway: 'Trotzdem speichern',
+    btnChangeAnyway: 'Trotzdem ändern',
   },
   es: {
     dlgExportImages: 'Exportar imágenes a una carpeta',
@@ -228,6 +285,14 @@ const tDlg = createI18n({
     btnSave: 'Guardar',
     btnDontSave: 'No guardar',
     btnCancel: 'Cancelar',
+    signedMsg: 'Este PDF tiene una firma digital.',
+    signedSaveDetail:
+      'Guardar los cambios en este archivo invalidará su firma digital. Para que el original firmado siga siendo válido, guarde los cambios como una copia.',
+    signedChangeDetail:
+      'Este cambio se escribe directamente en el archivo e invalidará su firma digital. Para que el original firmado siga siendo válido, guarde primero una copia y haga el cambio en ella.',
+    btnSaveCopy: 'Guardar como copia…',
+    btnSaveAnyway: 'Guardar de todos modos',
+    btnChangeAnyway: 'Cambiar de todos modos',
   },
   th: {
     dlgExportImages: 'ส่งออกรูปภาพไปยังโฟลเดอร์',
@@ -246,6 +311,14 @@ const tDlg = createI18n({
     btnSave: 'บันทึก',
     btnDontSave: 'ไม่บันทึก',
     btnCancel: 'ยกเลิก',
+    signedMsg: 'PDF นี้มีลายเซ็นดิจิทัล',
+    signedSaveDetail:
+      'การบันทึกการเปลี่ยนแปลงลงในไฟล์นี้จะทำให้ลายเซ็นดิจิทัลไม่ถูกต้อง หากต้องการให้ต้นฉบับที่ลงนามแล้วยังคงถูกต้อง ให้บันทึกการเปลี่ยนแปลงเป็นสำเนาแทน',
+    signedChangeDetail:
+      'การเปลี่ยนแปลงนี้จะเขียนลงในไฟล์โดยตรงและทำให้ลายเซ็นดิจิทัลไม่ถูกต้อง หากต้องการให้ต้นฉบับที่ลงนามแล้วยังคงถูกต้อง ให้บันทึกสำเนาก่อนแล้วจึงเปลี่ยนแปลงในสำเนานั้น',
+    btnSaveCopy: 'บันทึกเป็นสำเนา…',
+    btnSaveAnyway: 'บันทึกต่อไป',
+    btnChangeAnyway: 'เปลี่ยนแปลงต่อไป',
   },
   id: {
     dlgExportImages: 'Ekspor gambar ke folder',
@@ -264,6 +337,14 @@ const tDlg = createI18n({
     btnSave: 'Simpan',
     btnDontSave: 'Jangan Simpan',
     btnCancel: 'Batal',
+    signedMsg: 'PDF ini ditandatangani secara digital.',
+    signedSaveDetail:
+      'Menyimpan perubahan ke file ini akan membuat tanda tangan digitalnya tidak valid. Agar dokumen asli yang ditandatangani tetap valid, simpan perubahan sebagai salinan.',
+    signedChangeDetail:
+      'Perubahan ini ditulis langsung ke file dan akan membuat tanda tangan digitalnya tidak valid. Agar dokumen asli yang ditandatangani tetap valid, simpan salinan terlebih dahulu lalu lakukan perubahan di sana.',
+    btnSaveCopy: 'Simpan sebagai Salinan…',
+    btnSaveAnyway: 'Tetap Simpan',
+    btnChangeAnyway: 'Tetap Ubah',
   },
   ru: {
     dlgExportImages: 'Экспорт изображений в папку',
@@ -282,6 +363,14 @@ const tDlg = createI18n({
     btnSave: 'Сохранить',
     btnDontSave: 'Не сохранять',
     btnCancel: 'Отмена',
+    signedMsg: 'Этот PDF подписан цифровой подписью.',
+    signedSaveDetail:
+      'Если сохранить изменения в этот файл, его цифровая подпись станет недействительной. Чтобы подписанный оригинал остался действительным, сохраните изменения в копию.',
+    signedChangeDetail:
+      'Это изменение записывается прямо в файл, и его цифровая подпись станет недействительной. Чтобы подписанный оригинал остался действительным, сначала сохраните копию и внесите изменение в неё.',
+    btnSaveCopy: 'Сохранить как копию…',
+    btnSaveAnyway: 'Всё равно сохранить',
+    btnChangeAnyway: 'Всё равно изменить',
   },
   ar: {
     dlgExportImages: 'تصدير الصور إلى مجلد',
@@ -300,6 +389,14 @@ const tDlg = createI18n({
     btnSave: 'حفظ',
     btnDontSave: 'عدم الحفظ',
     btnCancel: 'إلغاء',
+    signedMsg: 'ملف PDF هذا موقّع رقميًا.',
+    signedSaveDetail:
+      'حفظ التغييرات في هذا الملف سيجعل توقيعه الرقمي غير صالح. للإبقاء على الأصل الموقّع صالحًا، احفظ التغييرات في نسخة بدلًا من ذلك.',
+    signedChangeDetail:
+      'يُكتب هذا التغيير مباشرةً في الملف وسيجعل توقيعه الرقمي غير صالح. للإبقاء على الأصل الموقّع صالحًا، احفظ نسخة أولًا وأجرِ التغيير عليها.',
+    btnSaveCopy: 'حفظ كنسخة…',
+    btnSaveAnyway: 'الحفظ على أي حال',
+    btnChangeAnyway: 'التغيير على أي حال',
   },
   pt: {
     dlgExportImages: 'Exportar imagens para pasta',
@@ -318,6 +415,14 @@ const tDlg = createI18n({
     btnSave: 'Salvar',
     btnDontSave: 'Não Salvar',
     btnCancel: 'Cancelar',
+    signedMsg: 'Este PDF tem uma assinatura digital.',
+    signedSaveDetail:
+      'Salvar as alterações neste arquivo invalidará a assinatura digital. Para manter o original assinado válido, salve as alterações como uma cópia.',
+    signedChangeDetail:
+      'Esta alteração é gravada diretamente no arquivo e invalidará a assinatura digital. Para manter o original assinado válido, salve primeiro uma cópia e faça a alteração nela.',
+    btnSaveCopy: 'Salvar como cópia…',
+    btnSaveAnyway: 'Salvar mesmo assim',
+    btnChangeAnyway: 'Alterar mesmo assim',
   },
   it: {
     dlgExportImages: 'Esporta immagini in una cartella',
@@ -336,6 +441,14 @@ const tDlg = createI18n({
     btnSave: 'Salva',
     btnDontSave: 'Non salvare',
     btnCancel: 'Annulla',
+    signedMsg: 'Questo PDF ha una firma digitale.',
+    signedSaveDetail:
+      'Salvare le modifiche in questo file renderà non valida la firma digitale. Per mantenere valido l’originale firmato, salva invece le modifiche in una copia.',
+    signedChangeDetail:
+      'Questa modifica viene scritta direttamente nel file e renderà non valida la firma digitale. Per mantenere valido l’originale firmato, salva prima una copia ed esegui la modifica lì.',
+    btnSaveCopy: 'Salva come copia…',
+    btnSaveAnyway: 'Salva comunque',
+    btnChangeAnyway: 'Modifica comunque',
   },
   pl: {
     dlgExportImages: 'Eksportuj obrazy do folderu',
@@ -354,6 +467,14 @@ const tDlg = createI18n({
     btnSave: 'Zapisz',
     btnDontSave: 'Nie zapisuj',
     btnCancel: 'Anuluj',
+    signedMsg: 'Ten plik PDF jest podpisany cyfrowo.',
+    signedSaveDetail:
+      'Zapisanie zmian w tym pliku unieważni jego podpis cyfrowy. Aby podpisany oryginał pozostał ważny, zapisz zmiany jako kopię.',
+    signedChangeDetail:
+      'Ta zmiana jest zapisywana bezpośrednio w pliku i unieważni jego podpis cyfrowy. Aby podpisany oryginał pozostał ważny, najpierw zapisz kopię i wprowadź zmianę w niej.',
+    btnSaveCopy: 'Zapisz jako kopię…',
+    btnSaveAnyway: 'Zapisz mimo to',
+    btnChangeAnyway: 'Zmień mimo to',
   },
   cs: {
     dlgExportImages: 'Exportovat obrázky do složky',
@@ -372,6 +493,14 @@ const tDlg = createI18n({
     btnSave: 'Uložit',
     btnDontSave: 'Neukládat',
     btnCancel: 'Zrušit',
+    signedMsg: 'Tento PDF je digitálně podepsaný.',
+    signedSaveDetail:
+      'Uložením změn do tohoto souboru se jeho digitální podpis stane neplatným. Aby podepsaný originál zůstal platný, uložte změny jako kopii.',
+    signedChangeDetail:
+      'Tato změna se zapíše přímo do souboru a jeho digitální podpis se stane neplatným. Aby podepsaný originál zůstal platný, nejprve uložte kopii a změnu proveďte v ní.',
+    btnSaveCopy: 'Uložit jako kopii…',
+    btnSaveAnyway: 'Přesto uložit',
+    btnChangeAnyway: 'Přesto změnit',
   },
   nl: {
     dlgExportImages: 'Afbeeldingen naar map exporteren',
@@ -390,6 +519,14 @@ const tDlg = createI18n({
     btnSave: 'Opslaan',
     btnDontSave: 'Niet opslaan',
     btnCancel: 'Annuleren',
+    signedMsg: 'Deze pdf is digitaal ondertekend.',
+    signedSaveDetail:
+      'Als u de wijzigingen in dit bestand opslaat, wordt de digitale handtekening ongeldig. Sla de wijzigingen op als kopie om het ondertekende origineel geldig te houden.',
+    signedChangeDetail:
+      'Deze wijziging wordt direct in het bestand geschreven en maakt de digitale handtekening ongeldig. Sla eerst een kopie op en breng de wijziging daarin aan om het ondertekende origineel geldig te houden.',
+    btnSaveCopy: 'Opslaan als kopie…',
+    btnSaveAnyway: 'Toch opslaan',
+    btnChangeAnyway: 'Toch wijzigen',
   },
   ms: {
     dlgExportImages: 'Eksport imej ke folder',
@@ -408,6 +545,14 @@ const tDlg = createI18n({
     btnSave: 'Simpan',
     btnDontSave: 'Jangan Simpan',
     btnCancel: 'Batal',
+    signedMsg: 'PDF ini ditandatangani secara digital.',
+    signedSaveDetail:
+      'Menyimpan perubahan ke dalam fail ini akan menjadikan tandatangan digitalnya tidak sah. Untuk mengekalkan dokumen asal yang ditandatangani sebagai sah, simpan perubahan sebagai salinan.',
+    signedChangeDetail:
+      'Perubahan ini ditulis terus ke dalam fail dan akan menjadikan tandatangan digitalnya tidak sah. Untuk mengekalkan dokumen asal yang ditandatangani sebagai sah, simpan salinan dahulu dan buat perubahan di situ.',
+    btnSaveCopy: 'Simpan sebagai Salinan…',
+    btnSaveAnyway: 'Simpan Juga',
+    btnChangeAnyway: 'Ubah Juga',
   },
   he: {
     dlgExportImages: 'ייצוא תמונות לתיקייה',
@@ -426,6 +571,14 @@ const tDlg = createI18n({
     btnSave: 'שמירה',
     btnDontSave: 'אל תשמור',
     btnCancel: 'ביטול',
+    signedMsg: 'קובץ PDF זה חתום דיגיטלית.',
+    signedSaveDetail:
+      'שמירת השינויים בקובץ זה תבטל את תוקף החתימה הדיגיטלית שלו. כדי שהמקור החתום יישאר תקף, שמור את השינויים כעותק.',
+    signedChangeDetail:
+      'שינוי זה נכתב ישירות לקובץ ויבטל את תוקף החתימה הדיגיטלית שלו. כדי שהמקור החתום יישאר תקף, שמור קודם עותק ובצע בו את השינוי.',
+    btnSaveCopy: 'שמור כעותק…',
+    btnSaveAnyway: 'שמור בכל זאת',
+    btnChangeAnyway: 'שנה בכל זאת',
   },
   hi: {
     dlgExportImages: 'चित्र फ़ोल्डर में निर्यात करें',
@@ -444,6 +597,14 @@ const tDlg = createI18n({
     btnSave: 'सहेजें',
     btnDontSave: 'न सहेजें',
     btnCancel: 'रद्द करें',
+    signedMsg: 'इस PDF पर डिजिटल हस्ताक्षर है।',
+    signedSaveDetail:
+      'इस फ़ाइल में बदलाव सहेजने से इसका डिजिटल हस्ताक्षर अमान्य हो जाएगा। हस्ताक्षरित मूल फ़ाइल को मान्य रखने के लिए, बदलाव एक प्रति के रूप में सहेजें।',
+    signedChangeDetail:
+      'यह बदलाव सीधे फ़ाइल में लिखा जाता है और इसका डिजिटल हस्ताक्षर अमान्य हो जाएगा। हस्ताक्षरित मूल फ़ाइल को मान्य रखने के लिए, पहले एक प्रति सहेजें और उसी में बदलाव करें।',
+    btnSaveCopy: 'प्रति के रूप में सहेजें…',
+    btnSaveAnyway: 'फिर भी सहेजें',
+    btnChangeAnyway: 'फिर भी बदलें',
   },
   'zh-TW': {
     dlgExportImages: '匯出圖片到資料夾',
@@ -462,6 +623,14 @@ const tDlg = createI18n({
     btnSave: '儲存',
     btnDontSave: '不儲存',
     btnCancel: '取消',
+    signedMsg: '此 PDF 含有數位簽章。',
+    signedSaveDetail:
+      '將變更儲存到此檔案會使其數位簽章失效。若要讓已簽署的原始檔保持有效，請改將變更另存為副本。',
+    signedChangeDetail:
+      '此變更會直接寫入檔案，並使其數位簽章失效。若要讓已簽署的原始檔保持有效，請先儲存副本，再於副本中進行變更。',
+    btnSaveCopy: '另存為副本…',
+    btnSaveAnyway: '仍要儲存',
+    btnChangeAnyway: '仍要變更',
   },
 })
 
@@ -503,6 +672,12 @@ type DlgKey =
   | 'btnSave'
   | 'btnDontSave'
   | 'btnCancel'
+  | 'signedMsg'
+  | 'signedSaveDetail'
+  | 'signedChangeDetail'
+  | 'btnSaveCopy'
+  | 'btnSaveAnyway'
+  | 'btnChangeAnyway'
 const tm = (key: DlgKey) => tDlg(getUiLang(), key)
 
 interface RuntimePaths {
@@ -552,6 +727,67 @@ let pdfRedactionSavedHook: ((wc: WebContents, path: string) => void) | null = nu
 
 export function setPdfRedactionSavedHook(hook: (wc: WebContents, path: string) => void): void {
   pdfRedactionSavedHook = hook
+}
+
+/** Paths whose bytes, as each view last read them, carry a digital signature */
+const signedPathsByWc = new Map<number, Set<string>>()
+/** Signed paths the user chose to write into anyway, so each file asks only once per view */
+const signedWriteOkByWc = new Map<number, Set<string>>()
+let pdfSaveAsCopyHook: ((wc: WebContents, path: string) => void) | null = null
+
+/** The shell's Save As flow for one view, offered when the user keeps a signed original intact */
+export function setPdfSaveAsCopyHook(hook: (wc: WebContents, path: string) => void): void {
+  pdfSaveAsCopyHook = hook
+}
+
+/**
+ * Ask before a write into a signed file invalidates its signature. A "copy" answer writes
+ * nothing and starts Save As once the caller has returned (the renderer must first see
+ * its own save end, or the Save As request would queue behind it).
+ */
+async function confirmSignedWrite(
+  sender: WebContents,
+  path: string,
+  kind: SignedWriteKind,
+): Promise<'proceed' | 'stop'> {
+  const wcId = sender.id
+  const decision = await decideSignedWrite({
+    signed: signedPathsByWc.get(wcId)?.has(path) ?? false,
+    acknowledged: signedWriteOkByWc.get(wcId)?.has(path) ?? false,
+    kind,
+    ask: async (askKind) => {
+      const win = BrowserWindow.fromWebContents(sender) ?? BrowserWindow.getFocusedWindow()
+      const options = {
+        type: 'warning' as const,
+        message: tm('signedMsg'),
+        detail: tm(askKind === 'save' ? 'signedSaveDetail' : 'signedChangeDetail'),
+        buttons: [
+          tm('btnSaveCopy'),
+          tm(askKind === 'save' ? 'btnSaveAnyway' : 'btnChangeAnyway'),
+          tm('btnCancel'),
+        ],
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true,
+      }
+      const { response } = win
+        ? await dialog.showMessageBox(win, options)
+        : await dialog.showMessageBox(options)
+      return response === 0 ? 'copy' : response === 1 ? 'anyway' : 'cancel'
+    },
+  })
+  if (decision === 'proceed') {
+    const ok = signedWriteOkByWc.get(wcId) ?? new Set<string>()
+    if (signedPathsByWc.get(wcId)?.has(path)) ok.add(path)
+    signedWriteOkByWc.set(wcId, ok)
+    return 'proceed'
+  }
+  if (decision === 'copy') {
+    setTimeout(() => {
+      if (!sender.isDestroyed()) pdfSaveAsCopyHook?.(sender, path)
+    }, 0)
+  }
+  return 'stop'
 }
 
 export function pdfIsDirty(webContentsId: number): boolean {
@@ -891,6 +1127,11 @@ function registerPdfIpc(): void {
       throw new Error('pdf: path not granted to this view')
     }
     const buf = await readFile(path)
+    // Every open and every post-save reload comes through here, so the record stays current
+    const signed = signedPathsByWc.get(e.sender.id) ?? new Set<string>()
+    if (hasSignatureMarker(buf)) signed.add(path)
+    else signed.delete(path)
+    signedPathsByWc.set(e.sender.id, signed)
     return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
   })
 
@@ -903,6 +1144,14 @@ function registerPdfIpc(): void {
     const target = typeof request.targetPath === 'string' ? request.targetPath : path
     if (target !== path && saveAsTargetByWc.get(e.sender.id) !== target) {
       return { ok: false, error: 'pdf: target path not granted to this view' }
+    }
+    // Writing into a signed file invalidates its signature. A Save As copy never touches the
+    // original, and a redaction working copy is already this view's own derived file.
+    if (target === path && redactionPathByWc.get(e.sender.id) !== path) {
+      const kind = request.autosave === true ? 'autosave' : 'save'
+      if ((await confirmSignedWrite(e.sender, path, kind)) === 'stop') {
+        return { ok: false, canceled: true }
+      }
     }
     if (request.redactions !== undefined) {
       let regions
@@ -1222,6 +1471,10 @@ function registerPdfIpc(): void {
       if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
         return { ok: false, error: 'pdf: path not granted to this view' }
       }
+      // Written straight into the open file: ask first when that would break a signature
+      if ((await confirmSignedWrite(e.sender, path, 'pageOp')) === 'stop') {
+        return { ok: true, canceled: true }
+      }
       const win =
         BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
       const picked = await showOpenDialogWithMemory(dialog, win, {
@@ -1251,6 +1504,10 @@ function registerPdfIpc(): void {
       const { path, afterPageIndex } = request ?? {}
       if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
         return { ok: false, error: 'pdf: path not granted to this view' }
+      }
+      // Written straight into the open file: ask first when that would break a signature
+      if ((await confirmSignedWrite(e.sender, path, 'pageOp')) === 'stop') {
+        return { ok: true, canceled: true }
       }
       try {
         const bytes = await insertBlankPageBytes(
@@ -1370,6 +1627,10 @@ function registerPdfIpc(): void {
       ) {
         return { ok: false, error: 'pdf: path not granted to this view' }
       }
+      // Written straight into the open file: ask first when that would break a signature
+      if ((await confirmSignedWrite(e.sender, path, 'pageOp')) === 'stop') {
+        return { ok: true, canceled: true }
+      }
       const win =
         BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
       const picked = await showOpenDialogWithMemory(dialog, win, {
@@ -1402,6 +1663,10 @@ function registerPdfIpc(): void {
       }
       if (!(Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0)) {
         return { ok: false, error: 'pdf: invalid page size' }
+      }
+      // Written straight into the open file: ask first when that would break a signature
+      if ((await confirmSignedWrite(e.sender, path, 'pageOp')) === 'stop') {
+        return { ok: true, canceled: true }
       }
       try {
         const bytes = await setPageSizeBytes(new Uint8Array(await readFile(path)), width, height)
@@ -1450,6 +1715,10 @@ function registerPdfIpc(): void {
         !rect
       ) {
         return { ok: false, error: 'pdf: path not granted to this view' }
+      }
+      // Written straight into the open file: ask first when that would break a signature
+      if ((await confirmSignedWrite(e.sender, path, 'pageOp')) === 'stop') {
+        return { ok: true, canceled: true }
       }
       try {
         const bytes = await cropPagesBytes(new Uint8Array(await readFile(path)), pages, rect)
@@ -1554,6 +1823,8 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     allowedByWc.delete(wcId)
     dirtyByWc.delete(wcId)
     saveAsTargetByWc.delete(wcId)
+    signedPathsByWc.delete(wcId)
+    signedWriteOkByWc.delete(wcId)
     closeSaveWaiters.get(wcId)?.(false)
     closeSaveWaiters.delete(wcId)
     saveAsWaiters.get(wcId)?.(false)

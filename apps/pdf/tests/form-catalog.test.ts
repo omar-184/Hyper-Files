@@ -210,10 +210,11 @@ describe('form catalog', () => {
   })
 
   it('uses document metadata for compressed XFA and encryption flags', () => {
-    const bytes = new TextEncoder().encode('compressed catalog data')
     expect(
-      documentFormFeatures({ IsXFAPresent: true, EncryptFilterName: 'Standard' }, bytes),
+      documentFormFeatures({ IsXFAPresent: true, EncryptFilterName: 'Standard' }, false),
     ).toEqual({ hasXfa: true, encrypted: true })
-    expect(documentFormFeatures({}, bytes)).toEqual({ hasXfa: false, encrypted: false })
+    expect(documentFormFeatures({}, false)).toEqual({ hasXfa: false, encrypted: false })
+    // the byte marker covers malformed files whose metadata misses the XFA entry
+    expect(documentFormFeatures({}, true)).toEqual({ hasXfa: true, encrypted: false })
   })
 })

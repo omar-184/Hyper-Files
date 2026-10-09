@@ -61,6 +61,10 @@ import {
   readBodyCapped,
   writeJsonAtomic,
 } from '@genoffice/electron-utils'
+import {
+  DICTIONARIES_DIR_NAME,
+  installedDictionaryLanguages,
+} from '@genoffice/electron-utils/spell-dictionaries'
 import { configureMetricsCache, familyVerticalMetrics } from '@genoffice/font-metrics'
 import { createI18n, getUiLang, normalizeLang, setUiLang } from '@genoffice/i18n'
 import type {
@@ -68,6 +72,7 @@ import type {
   MenuItemConstructorOptions,
   OpenDialogOptions,
   SaveDialogOptions,
+  Session,
   WebContents,
 } from 'electron'
 import { convertHtmlToDocx } from '../../../../packages/html2docx/src'
@@ -3542,21 +3547,31 @@ export function registerDocsIpc(): void {
   ipcMain.handle('docs:spell-replace', (event, word: unknown) => {
     if (typeof word === 'string' && word) event.sender.replaceMisspelling(word)
   })
-  ipcMain.handle('docs:spell-languages', (event): SpellLanguages => {
-    const session = event.sender.session
+  // Windows and Linux never download a dictionary (the shell ships them, see
+  // spell-dictionaries.ts): offer only languages with one on disk. macOS uses the system
+  // spell checker, which needs no files.
+  const spellLanguagesOf = (session: Session): SpellLanguages => {
+    const installed =
+      process.platform === 'darwin'
+        ? null
+        : installedDictionaryLanguages(userDataPath(DICTIONARIES_DIR_NAME))
+    const usable = (l: string) => installed === null || installed.has(l)
     return {
-      active: session.getSpellCheckerLanguages(),
-      available: session.availableSpellCheckerLanguages,
+      active: session.getSpellCheckerLanguages().filter(usable),
+      available: session.availableSpellCheckerLanguages.filter(usable),
     }
-  })
+  }
+  ipcMain.handle('docs:spell-languages', (event): SpellLanguages =>
+    spellLanguagesOf(event.sender.session),
+  )
   ipcMain.handle('docs:spell-set-languages', (event, langs: unknown): SpellLanguages => {
     const session = event.sender.session
-    const available = new Set(session.availableSpellCheckerLanguages)
+    const available = new Set(spellLanguagesOf(session).available)
     const next = Array.isArray(langs)
       ? langs.filter((l): l is string => typeof l === 'string' && available.has(l))
       : []
     if (next.length) session.setSpellCheckerLanguages(next)
-    return { active: session.getSpellCheckerLanguages(), available: [...available] }
+    return spellLanguagesOf(session)
   })
 
   ipcMain.handle('docs:respell-kick', async (event) => {
@@ -4779,9 +4794,9 @@ export function startDocsStandalone(): void {
   // dev runs must not share the packaged app's userData (recent files, settings)
   // or its single-instance lock — otherwise `npm run dev` silently quits whenever
   // the installed Hypercube Office Docs is open and forwards its argv there instead.
-  // AI_OFFICE_USER_DATA: E2E/screenshot runs isolate userData (and the
-  // single-instance lock) so parallel automation sessions don't evict each other
-  if (process.env.AI_OFFICE_USER_DATA) app.setPath('userData', process.env.AI_OFFICE_USER_DATA)
+  // GENOFFICE_USER_DATA (the shell's variable too): E2E/screenshot runs isolate userData
+  // (and the single-instance lock) so parallel automation sessions don't evict each other
+  if (process.env.GENOFFICE_USER_DATA) app.setPath('userData', process.env.GENOFFICE_USER_DATA)
   else if (isDev) app.setPath('userData', join(app.getPath('appData'), 'Hypercube Office Docs Dev'))
 
   const hasSingleInstanceLock = app.requestSingleInstanceLock()

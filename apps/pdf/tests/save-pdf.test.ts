@@ -500,6 +500,27 @@ describe('static form fill metadata', () => {
     ])
   })
 
+  it('keeps the records readable after a redaction re-serializes the file', async () => {
+    const saved = await apply(
+      await makePdf([[200, 200]]),
+      request({
+        staticFormFills: [
+          { id: 'a', kind: 'text', pageIndex: 0, rect: [1, 2, 30, 12], text: 'Bob' },
+        ],
+        redactions: [{ pageIndex: 0, rect: [100, 100, 150, 150] }],
+      }),
+    )
+
+    expect(await readStaticFormFills(saved)).toEqual([
+      { id: 'a', kind: 'text', pageIndex: 0, rect: [1, 2, 30, 12], text: 'Bob' },
+    ])
+  })
+
+  it('returns no records for a file that never had any, without a full parse', async () => {
+    // not a parseable PDF: the byte check must answer before pdf-lib is asked to load it
+    expect(await readStaticFormFills(new TextEncoder().encode('%PDF-1.7 garbage'))).toEqual([])
+  })
+
   it('removes the catalog entry when the last fill is deleted', async () => {
     const withFill = await apply(
       await makePdf([[100, 100]]),

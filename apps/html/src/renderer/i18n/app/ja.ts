@@ -53,6 +53,9 @@ export const ja = {
   fmtBold: '太字',
   fmtItalic: '斜体',
   openExternal: 'ブラウザでリンクを開きました',
+  remoteBlocked:
+    'このプレビューでは、インターネット上の画像、フォント、スクリプトをブロックしています。',
+  remoteLoad: 'Web コンテンツを読み込む',
   save: '上書き保存 (⌘S)',
   saveAs: '名前を付けて保存…',
   ribbonCollapse: 'リボンを折りたたむ',

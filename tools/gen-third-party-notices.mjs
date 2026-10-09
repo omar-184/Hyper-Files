@@ -372,6 +372,16 @@ https://www.unicode.org/Public/17.0.0/ucd/EquivalentUnifiedIdeograph.txt
 `
 out += readFileSync(join(ROOT, 'LICENSE-UNICODE.txt'), 'utf8').trim() + '\n'
 
+out += hr('5. Spell-check dictionaries')
+out += `
+apps/shell/build/dictionaries ships Chromium's English Hunspell dictionaries
+(en-US-10-1.bdic, en-GB-10-1.bdic, from Electron's hunspell_dictionaries.zip),
+built from SCOWL word lists:
+
+`
+out +=
+  readFileSync(join(ROOT, 'apps/shell/build/dictionaries/LICENSE-SCOWL.txt'), 'utf8').trim() + '\n'
+
 for (const term of ['@embedpdf/pdfium', 'Copyright 2014 PDFium Authors', 'Apache License']) {
   if (!out.includes(term)) {
     throw new Error(`generated third-party notice is missing PDFium term: ${term}`)

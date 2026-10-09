@@ -11,8 +11,10 @@ Hypercube Office opens and edits PDF, Word, Excel and PowerPoint files, and incl
 
 ## Goals
 
-- **Offline only.** The app never connects to the internet. The single exception is an opt-in
-  update check, off by default, that only asks GitHub Releases whether a newer version exists.
+- **Offline only.** The app never connects to the internet on its own: starting it or opening a
+  file makes no network request. It goes online only when you ask, for example to load an HTML
+  file's web content, insert a picture from a web address, or check for updates (off by default).
+  [PRIVACY.md](PRIVACY.md) lists every case.
 - **Light.** Runs well on a 4 GB RAM laptop with Windows 10 or 11. Files open in a fast read-only
   view first; the editor loads only when you click Edit.
 - **PDF first.** PDF viewing, a PDF24-style toolbox and Acrobat-style editing come before office

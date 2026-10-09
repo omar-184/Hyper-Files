@@ -53,6 +53,8 @@ export const vi = {
   fmtBold: 'In đậm',
   fmtItalic: 'In nghiêng',
   openExternal: 'Đã mở liên kết trong trình duyệt của bạn',
+  remoteBlocked: 'Hình ảnh, phông chữ và tập lệnh từ internet bị chặn trong bản xem trước này.',
+  remoteLoad: 'Tải nội dung web',
   save: 'Lưu (⌘S)',
   saveAs: 'Lưu dưới dạng…',
   ribbonCollapse: 'Thu gọn dải băng',

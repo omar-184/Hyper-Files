@@ -5,6 +5,7 @@ describe('isFromInspector', () => {
   it('accepts well-formed inspector messages', () => {
     expect(isFromInspector({ type: 'gx:ready', version: 3, title: 't', docHeight: 10 })).toBe(true)
     expect(isFromInspector({ type: 'gx:zoom', version: 1, delta: 5 })).toBe(true)
+    expect(isFromInspector({ type: 'gx:remoteBlocked', version: 2 })).toBe(true)
   })
 
   it('rejects forged or malformed shapes', () => {

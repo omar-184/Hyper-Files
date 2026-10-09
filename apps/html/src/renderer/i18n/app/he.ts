@@ -50,6 +50,8 @@ export const he = {
   fmtBold: 'מודגש',
   fmtItalic: 'נטוי',
   openExternal: 'הקישור נפתח בדפדפן',
+  remoteBlocked: 'תמונות, גופנים וסקריפטים מהאינטרנט חסומים בתצוגה מקדימה זו.',
+  remoteLoad: 'טען תוכן מהאינטרנט',
   save: 'שמירה (⌘S)',
   saveAs: 'שמירה בשם…',
   ribbonCollapse: 'כווץ את רצועת הכלים',

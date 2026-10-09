@@ -50,6 +50,8 @@ export const th = {
   fmtBold: 'ตัวหนา',
   fmtItalic: 'ตัวเอียง',
   openExternal: 'เปิดลิงก์ในเบราว์เซอร์แล้ว',
+  remoteBlocked: 'รูปภาพ ฟอนต์ และสคริปต์จากอินเทอร์เน็ตถูกบล็อกในตัวอย่างนี้',
+  remoteLoad: 'โหลดเนื้อหาเว็บ',
   save: 'บันทึก (⌘S)',
   saveAs: 'บันทึกเป็น…',
   ribbonCollapse: 'ยุบ Ribbon',

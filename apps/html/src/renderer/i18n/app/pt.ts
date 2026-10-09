@@ -54,6 +54,8 @@ export const pt = {
   fmtBold: 'Negrito',
   fmtItalic: 'Itálico',
   openExternal: 'Link aberto no navegador',
+  remoteBlocked: 'Imagens, fontes e scripts da internet estão bloqueados nesta pré-visualização.',
+  remoteLoad: 'Carregar conteúdo da web',
   save: 'Salvar (⌘S)',
   saveAs: 'Salvar Como…',
   ribbonCollapse: 'Recolher a Faixa de Opções',

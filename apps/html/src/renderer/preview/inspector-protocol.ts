@@ -116,6 +116,8 @@ export type FromInspectorBody =
   /** ctrl/meta + wheel inside the frame (trackpad pinch); the host owns the zoom level */
   | { type: 'gx:zoom'; delta: number }
   | { type: 'gx:navigateBlocked'; href: string }
+  /** the preview's content policy refused something from the network (web content is blocked) */
+  | { type: 'gx:remoteBlocked' }
   /** a resize handle or a sideways image slide was released: the frame already shows these inline styles */
   | { type: 'gx:resize'; sid: number; styles: Record<string, string> }
   /** the selected element was dropped next to another one */
@@ -137,6 +139,7 @@ const KNOWN_FROM_INSPECTOR = new Set([
   'gx:keyCommand',
   'gx:zoom',
   'gx:navigateBlocked',
+  'gx:remoteBlocked',
   'gx:resize',
   'gx:moveTo',
   'gx:drag',

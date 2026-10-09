@@ -119,20 +119,51 @@ function openingTag(text: string, name: string): TagRange | null {
   return null
 }
 
-export function buildPreviewDocument(text: string, baseHref: string | null): string {
-  if (!baseHref || openingTag(text, 'base')) return text
-  const tag = `<base href="${baseHref.replace(/"/g, '%22')}">`
-  const head = openingTag(text, 'head')
-  if (head) {
-    const at = head.end
-    return text.slice(0, at) + tag + text.slice(at)
-  }
-  const html = openingTag(text, 'html')
-  if (html) {
-    const at = html.end
-    return text.slice(0, at) + tag + text.slice(at)
-  }
-  return tag + text
+/** End of a leading doctype (after whitespace and comments), or 0: anything placed before
+ * the doctype would switch the page to quirks mode */
+function leadingDoctypeEnd(text: string): number {
+  return /^(?:\s|<!--[\s\S]*?-->)*<!doctype[^>]*>/i.exec(text)?.[0].length ?? 0
+}
+
+/**
+ * Content policy for a preview whose web content is blocked: the document's own inline
+ * code and its local files (html-asset:, data:, blob:) load, nothing from the network does.
+ * An author's own policy can only narrow this further.
+ */
+export const BLOCK_REMOTE_CSP = [
+  "default-src html-preview: html-asset: data: blob: 'unsafe-inline' 'unsafe-eval'",
+  'form-action html-preview: html-asset:',
+].join('; ')
+
+/**
+ * Runs first in a preview with web content blocked and counts what the policy refused, so
+ * the inspector (inspector.js, appended later) can offer to load it. Only network
+ * addresses count; an author policy refusing local content is not ours to offer.
+ */
+export const REMOTE_GUARD_SCRIPT =
+  '<script data-gx-inspector>(() => {' +
+  'const state = { count: 0, notify: null };' +
+  'window.__gxRemoteBlocked = state;' +
+  "document.addEventListener('securitypolicyviolation', (e) => {" +
+  'if (!/^(https?|wss?):/i.test(e.blockedURI)) return;' +
+  'state.count += 1;' +
+  'if (state.notify) state.notify();' +
+  '});' +
+  '})()</script>'
+
+export function buildPreviewDocument(
+  text: string,
+  baseHref: string | null,
+  /** markup placed at the top of the head, after the base, so it runs before any content */
+  headMarkup = '',
+): string {
+  const base =
+    baseHref && !openingTag(text, 'base') ? `<base href="${baseHref.replace(/"/g, '%22')}">` : ''
+  const inject = base + headMarkup
+  if (!inject) return text
+  const at =
+    openingTag(text, 'head')?.end ?? openingTag(text, 'html')?.end ?? leadingDoctypeEnd(text)
+  return text.slice(0, at) + inject + text.slice(at)
 }
 
 export function previewUrlFor(webContentsId: number): string {

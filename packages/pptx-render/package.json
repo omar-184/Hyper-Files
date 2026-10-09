@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@genoffice/pptx-engine": "*",
-    "opentype.js": "^2.0.0",
     "bidi-js": "^1.0.3"
   },
   "devDependencies": {

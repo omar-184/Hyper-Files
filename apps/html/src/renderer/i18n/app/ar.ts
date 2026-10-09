@@ -50,6 +50,8 @@ export const ar = {
   fmtBold: 'غامق',
   fmtItalic: 'مائل',
   openExternal: 'تم فتح الرابط في المتصفح',
+  remoteBlocked: 'تم حظر الصور والخطوط والبرامج النصية من الإنترنت في هذه المعاينة.',
+  remoteLoad: 'تحميل محتوى الويب',
   save: 'حفظ (⌘S)',
   saveAs: 'حفظ باسم…',
   ribbonCollapse: 'طي الشريط',

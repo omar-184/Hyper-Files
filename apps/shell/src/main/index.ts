@@ -22,11 +22,17 @@ import {
   nativeImage,
   nativeTheme,
   net,
+  session,
   shell,
   webContents,
 } from 'electron'
-import type { MenuItemConstructorOptions, NativeImage, WebContents } from 'electron'
+import type { MenuItemConstructorOptions, NativeImage, Session, WebContents } from 'electron'
 import { atomicCopyFile, atomicWriteFile } from './atomic-write'
+import {
+  DICTIONARIES_DIR_NAME,
+  localDictionaryDownloadUrl,
+  seedSpellDictionaries,
+} from '@genoffice/electron-utils/spell-dictionaries'
 import { tabStripOverlay } from './title-bar-overlay'
 import menuDocxIcon1x from './assets/menu-docx.png?asset'
 import menuDocxIcon2x from './assets/menu-docx@2x.png?asset'
@@ -147,6 +153,7 @@ import {
   sendPdfPrintRequest,
   setPdfRenamedHook,
   setPdfRedactionSavedHook,
+  setPdfSaveAsCopyHook,
   setPdfSaveAsInFlight,
 } from '../../../pdf/src/main/pdf-main'
 import { PDF_CHANNELS } from '../../../pdf/src/shared/ipc'
@@ -296,6 +303,24 @@ if (!app.isPackaged) {
 } else {
   const userData = resolveUserDataDir(app.getPath('appData'), app.getPath('userData'))
   if (userData !== app.getPath('userData')) app.setPath('userData', userData)
+}
+
+// Spell checking ships with the app instead of being downloaded from Google
+// (spell-dictionaries.ts). The files are seeded before any session exists, so Chromium
+// finds them on its first look, and every session's download address points at the
+// shipped folder. macOS uses the system spell checker and downloads nothing.
+const SPELL_DICTIONARIES_DIR = app.isPackaged
+  ? join(process.resourcesPath, 'dictionaries')
+  : join(app.getAppPath(), 'build', 'dictionaries')
+if (process.platform !== 'darwin') {
+  seedSpellDictionaries(
+    SPELL_DICTIONARIES_DIR,
+    join(app.getPath('userData'), DICTIONARIES_DIR_NAME),
+  )
+  const keepDictionariesLocal = (ses: Session) =>
+    ses.setSpellCheckerDictionaryDownloadURL(localDictionaryDownloadUrl(SPELL_DICTIONARIES_DIR))
+  app.on('session-created', keepDictionariesLocal)
+  void app.whenReady().then(() => keepDictionariesLocal(session.defaultSession))
 }
 
 /**
@@ -3112,6 +3137,8 @@ function createShellWindow(): void {
     recordRecentFile(path)
     applyPendingDir(wc.id, path)
   })
+  // "Save as a Copy…" from the signed-PDF warning: the same Save As flow, for that view
+  setPdfSaveAsCopyHook((wc, path) => void savePdfAs({ webContents: wc, filePath: path }))
   // pdf content-derived auto-rename: the file moved on disk, follow it everywhere
   setPdfRenamedHook((wc, oldPath, newPath) => {
     manager.setTabFileFor(wc.id, newPath)
@@ -4724,8 +4751,9 @@ function buildHtmlMenu(): void {
     waiter/target grant or clears its autosave pause early */
 let savingPdfAs = false
 
-async function savePdfAs(): Promise<void> {
-  const tab = activePdfTarget()
+async function savePdfAs(
+  tab: { webContents: WebContents; filePath?: string } | undefined = activePdfTarget(),
+): Promise<void> {
   const host = pdfHostWindow(tab)
   if (!tab?.filePath || !host || savingPdfAs) return
   savingPdfAs = true

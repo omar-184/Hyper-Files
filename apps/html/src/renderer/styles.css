@@ -505,6 +505,40 @@ html.genoffice-popover-open .ribbon-tabs {
   color: var(--text);
 }
 
+/* ---- web content blocked in the preview (preview-protocol.ts) ---- */
+
+.remote-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--warning-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.remote-bar-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.remote-bar-load {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.remote-bar-load:hover {
+  background: var(--hover);
+}
+
 /* ---- design canvas: floating toolbar + style panel over the preview ---- */
 
 /* the preview stays ltr under an RTL UI — the chrome mirrors, the content does not */

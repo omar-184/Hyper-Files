@@ -16,8 +16,6 @@
   "dependencies": {
     "@embedpdf/pdfium": "^2.15.0",
     "@genoffice/docx-engine": "*",
-    "@genoffice/font-metrics": "*",
-    "@genoffice/pptx-engine": "*",
     "bidi-js": "^1.0.3",
     "jszip": "^3.10.1"
   },

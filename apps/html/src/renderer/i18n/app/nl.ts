@@ -55,6 +55,9 @@ export const nl = {
   fmtBold: 'Vet',
   fmtItalic: 'Cursief',
   openExternal: 'Link geopend in de browser',
+  remoteBlocked:
+    'Afbeeldingen, lettertypen en scripts van internet worden in dit voorbeeld geblokkeerd.',
+  remoteLoad: 'Webinhoud laden',
   save: 'Opslaan (⌘S)',
   saveAs: 'Opslaan als…',
   ribbonCollapse: 'Het lint samenvouwen',

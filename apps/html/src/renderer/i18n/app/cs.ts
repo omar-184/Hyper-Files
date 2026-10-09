@@ -39,6 +39,8 @@ export const cs = {
   fmtBold: 'Tučné',
   fmtItalic: 'Kurzíva',
   openExternal: 'Odkaz byl otevřen v prohlížeči',
+  remoteBlocked: 'Obrázky, písma a skripty z internetu jsou v tomto náhledu blokovány.',
+  remoteLoad: 'Načíst webový obsah',
   save: 'Uložit (⌘S)',
   saveAs: 'Uložit jako…',
   ribbonCollapse: 'Sbalit pás karet',

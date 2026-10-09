@@ -54,6 +54,9 @@ export const de = {
   fmtBold: 'Fett',
   fmtItalic: 'Kursiv',
   openExternal: 'Link im Browser geöffnet',
+  remoteBlocked:
+    'Bilder, Schriftarten und Skripte aus dem Internet sind in dieser Vorschau blockiert.',
+  remoteLoad: 'Webinhalte laden',
   save: 'Speichern (⌘S)',
   saveAs: 'Speichern unter…',
   ribbonCollapse: 'Menüband reduzieren',

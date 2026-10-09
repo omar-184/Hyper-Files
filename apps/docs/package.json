@@ -90,7 +90,6 @@
     "@genoffice/electron-utils": "*",
     "@genoffice/font-metrics": "*",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^6.2.108",
-    "@genoffice/pptx-render": "*"
+    "pdfjs-dist": "^6.2.108"
   }
 }

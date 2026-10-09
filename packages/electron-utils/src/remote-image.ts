@@ -1,13 +1,12 @@
-/// Downloader for AI-inserted images. Image-search results largely live on the
-/// Genspark CDN (sspark.genspark.ai), which intermittently refuses bare
-/// requests; browser-like headers plus a Referer on genspark hosts and a couple
-/// of retries turn most of those transient failures into successful inserts.
+/// Downloader for web pictures the user brings in (pasted web content, a picture
+/// address, a web image in an HTML document). Browser-like headers and a couple
+/// of retries turn most transient CDN refusals into successful inserts.
 
 import { fetchWithSsrfGuard, type FetchWithSsrfGuardOptions } from './safe-remote-url'
 
 const RETRY_DELAYS_MS: readonly number[] = [500, 1500]
 
-/** Cap for a single downloaded picture; the model can point any insert path at an arbitrary URL. */
+/** Cap for a single downloaded picture; a pasted or typed address can point anywhere. */
 export const MAX_REMOTE_IMAGE_BYTES = 50 * 1024 * 1024
 
 export class ResponseTooLargeError extends Error {
@@ -63,7 +62,7 @@ export async function readBodyCapped(resp: Response, maxBytes: number): Promise<
   return out
 }
 
-export function remoteImageHeaders(rawUrl: string): Record<string, string> {
+export function remoteImageHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     'User-Agent': 'Mozilla/5.0',
     // Only advertise formats the insert pipelines can label correctly: callers
@@ -71,20 +70,12 @@ export function remoteImageHeaders(rawUrl: string): Record<string, string> {
     // content-negotiating CDNs to send bytes that end up mislabeled.
     Accept: 'image/png,image/jpeg,image/gif,image/*;q=0.8,*/*;q=0.5',
   }
-  try {
-    const host = new URL(rawUrl).hostname.toLowerCase()
-    if (host === 'genspark.ai' || host.endsWith('.genspark.ai')) {
-      headers.Referer = 'https://www.genspark.ai/'
-    }
-  } catch {
-    /* fetchWithSsrfGuard rejects unparseable URLs on its own */
-  }
   return headers
 }
 
 /**
  * fetchWithSsrfGuard specialized for image downloads: browser-like headers
- * (with a Referer for the Genspark CDN) and retries on transient failures
+ * and retries on transient failures
  * (network errors, 403/408/429, 5xx). An SSRF-blocked URL still returns null
  * immediately — that outcome never changes on retry.
  */
@@ -97,7 +88,7 @@ export async function fetchRemoteImage(
   const { retryDelaysMs = RETRY_DELAYS_MS, ...guardOptions } = options
   // only network images: local file URLs are never read through this path
   if (rawUrl.startsWith('file:')) return null
-  const headers = remoteImageHeaders(rawUrl)
+  const headers = remoteImageHeaders()
   for (let attempt = 0; ; attempt++) {
     let resp: Response | null = null
     let threw = false

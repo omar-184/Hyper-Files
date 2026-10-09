@@ -49,6 +49,8 @@ export const zh = {
   fmtBold: '粗体',
   fmtItalic: '斜体',
   openExternal: '已在浏览器中打开链接',
+  remoteBlocked: '此预览已阻止来自互联网的图片、字体和脚本。',
+  remoteLoad: '加载网页内容',
   save: '保存 (⌘S)',
   saveAs: '另存为…',
   ribbonCollapse: '折叠功能区',

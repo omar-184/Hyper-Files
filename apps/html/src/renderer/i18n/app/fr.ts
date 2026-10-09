@@ -54,6 +54,9 @@ export const fr = {
   fmtBold: 'Gras',
   fmtItalic: 'Italique',
   openExternal: 'Lien ouvert dans le navigateur',
+  remoteBlocked:
+    'Les images, polices et scripts provenant d’internet sont bloqués dans cet aperçu.',
+  remoteLoad: 'Charger le contenu web',
   save: 'Enregistrer (⌘S)',
   saveAs: 'Enregistrer sous…',
   ribbonCollapse: 'Réduire le ruban',
