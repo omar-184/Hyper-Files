@@ -147,6 +147,7 @@ import {
   sendPdfPrintRequest,
   setPdfRenamedHook,
   setPdfRedactionSavedHook,
+  setPdfSaveAsCopyHook,
   setPdfSaveAsInFlight,
 } from '../../../pdf/src/main/pdf-main'
 import { PDF_CHANNELS } from '../../../pdf/src/shared/ipc'
@@ -3112,6 +3113,8 @@ function createShellWindow(): void {
     recordRecentFile(path)
     applyPendingDir(wc.id, path)
   })
+  // "Save as a Copy…" from the signed-PDF warning: the same Save As flow, for that view
+  setPdfSaveAsCopyHook((wc, path) => void savePdfAs({ webContents: wc, filePath: path }))
   // pdf content-derived auto-rename: the file moved on disk, follow it everywhere
   setPdfRenamedHook((wc, oldPath, newPath) => {
     manager.setTabFileFor(wc.id, newPath)
@@ -4724,8 +4727,9 @@ function buildHtmlMenu(): void {
     waiter/target grant or clears its autosave pause early */
 let savingPdfAs = false
 
-async function savePdfAs(): Promise<void> {
-  const tab = activePdfTarget()
+async function savePdfAs(
+  tab: { webContents: WebContents; filePath?: string } | undefined = activePdfTarget(),
+): Promise<void> {
   const host = pdfHostWindow(tab)
   if (!tab?.filePath || !host || savingPdfAs) return
   savingPdfAs = true

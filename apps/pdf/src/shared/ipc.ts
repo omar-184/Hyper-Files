@@ -559,6 +559,9 @@ export interface SavePdfRequest {
    * Must match the target granted to the view by the main process (save dialog pick).
    */
   targetPath?: string
+  /** Written by the autosave timer rather than by the user: never asks, so it skips a
+   *  signed file until the user has chosen to save into it */
+  autosave?: boolean
   markups: MarkupInput[]
   /** Saved markup annotations to remove (applied before every other stage) */
   annotDeletes?: AnnotDeleteInput[]
@@ -617,6 +620,8 @@ export type SavePdfResult =
       skippedImageEdits?: ImageEditFailure[]
     }
   | { ok: false; error: string }
+  /** the user kept a signed original intact: nothing was written, no error to show */
+  | { ok: false; canceled: true }
 
 /** Dry-run matching for pending text edits against the file on disk (no mutation) */
 export interface ValidateTextEditsRequest {
@@ -651,7 +656,8 @@ export interface InsertBlankPageRequest {
   afterPageIndex: number
 }
 
-export type InsertBlankPageResult = { ok: true } | { ok: false; error: string }
+export type InsertBlankPageResult =
+  { ok: true } | { ok: true; canceled: true } | { ok: false; error: string }
 
 /** Split the file into chunks of chunkSize pages: main shows a folder picker and writes one PDF per chunk */
 export interface SplitPdfRequest {
@@ -711,7 +717,8 @@ export interface SetPageSizeRequest {
   height: number
 }
 
-export type SetPageSizeResult = { ok: true } | { ok: false; error: string }
+export type SetPageSizeResult =
+  { ok: true } | { ok: true; canceled: true } | { ok: false; error: string }
 
 /** Split every page into a grid of pages (inverse of merge pages), written to the
  * GenOffice save dir and opened in a new tab */
@@ -732,7 +739,8 @@ export interface CropPagesRequest {
   rect: { l: number; t: number; r: number; b: number }
 }
 
-export type CropPagesResult = { ok: true } | { ok: false; error: string }
+export type CropPagesResult =
+  { ok: true } | { ok: true; canceled: true } | { ok: false; error: string }
 
 /** Export pages as PNG: renderer rasterizes the bitmaps, main process shows a dialog and writes to disk */
 export interface ExportImagesRequest {

@@ -3628,9 +3628,15 @@ export default function App() {
     inFlightPageMapRef.current = snapshot.pageMap
     const run = (async (): Promise<boolean> => {
       setSaveState('saving')
-      const result = await window.pdfApi.save({ path: filePath, ...editsPayload(edits, noteFlush) })
+      const result = await window.pdfApi.save({
+        path: filePath,
+        autosave,
+        ...editsPayload(edits, noteFlush),
+      })
       if (!result.ok) {
-        opFailed(result.error)
+        // The user kept a signed original intact: nothing was written, the edits stay pending
+        if ('canceled' in result) setSaveState('idle')
+        else opFailed(result.error)
         return false
       }
       if (result.skippedTextEdits && result.skippedTextEdits.length > 0) {
@@ -3783,7 +3789,10 @@ export default function App() {
     setSaveState('saving')
     const result = await window.pdfApi.save({ path: filePath, targetPath, ...edits })
     if (!result.ok) {
-      opFailed(result.error)
+      // Only an in-place save stops at the signed-file prompt (the shell never passes the
+      // open file as a Save As target); a cancel wrote nothing
+      if ('canceled' in result) setSaveState('idle')
+      else opFailed(result.error)
       return false
     }
     if (result.skippedTextEdits && result.skippedTextEdits.length > 0) {
