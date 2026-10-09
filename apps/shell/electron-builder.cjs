@@ -9,6 +9,10 @@ const { execFileSync } = require('node:child_process')
 const { existsSync, readFileSync, rmSync } = require('node:fs')
 const { join } = require('node:path')
 
+// Editor build outputs ship their preload and renderer only. Each editor's main-process
+// code is compiled into the shell's own bundle, so out/main would be dead weight (11 MB).
+const MODULE_FILES = ['**/*', '!main{,/**/*}']
+
 // GENOFFICE_MAC_X64=1 — opt into packaging the Intel (x64) dmg/zip alongside
 // arm64. Off by default: Intel packages must only ever ship signed with the
 // company certificate (planned dual-track pipeline), so the current release
@@ -255,26 +259,32 @@ const config = {
     {
       from: '../docs/out',
       to: 'modules/docs',
+      filter: MODULE_FILES,
     },
     {
       from: '../sheets/out',
       to: 'modules/sheets',
+      filter: MODULE_FILES,
     },
     {
       from: '../slides/out',
       to: 'modules/slides',
+      filter: MODULE_FILES,
     },
     {
       from: '../pdf/out',
       to: 'modules/pdf',
+      filter: MODULE_FILES,
     },
     {
       from: '../markdown/out',
       to: 'modules/markdown',
+      filter: MODULE_FILES,
     },
     {
       from: '../html/out',
       to: 'modules/html',
+      filter: MODULE_FILES,
     },
     // PDF text editing engines: the bundled main resolves these under
     // Resources/wasm when node_modules is absent (apps/pdf/src/main/wasm-path.ts)
