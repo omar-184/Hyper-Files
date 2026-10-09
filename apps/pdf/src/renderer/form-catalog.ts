@@ -316,12 +316,13 @@ export function hasXfaMarker(bytes: Uint8Array): boolean {
 
 export function documentFormFeatures(
   info: { EncryptFilterName?: string | null; IsXFAPresent?: boolean },
-  bytes: Uint8Array,
+  /** hasXfaMarker of the file, taken before pdf.js detached its bytes */
+  xfaMarker: boolean,
 ): { encrypted: boolean; hasXfa: boolean } {
   return {
     encrypted: info.EncryptFilterName != null,
     // XFA entries are often compressed, so PDF.js metadata is authoritative.
     // The byte marker remains useful for malformed files with incomplete metadata.
-    hasXfa: info.IsXFAPresent === true || hasXfaMarker(bytes),
+    hasXfa: info.IsXFAPresent === true || xfaMarker,
   }
 }

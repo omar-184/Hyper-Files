@@ -1056,7 +1056,11 @@ export default function App() {
     ) => {
       const data = await window.pdfApi.readFile(path)
       const bytes = new Uint8Array(data)
-      setFormHasXfa(hasXfaMarker(bytes))
+      // getDocument transfers the buffer to the pdf.js worker, leaving `bytes` detached
+      // (empty): every scan of the file's bytes has to happen before it
+      const xfaMarker = hasXfaMarker(bytes)
+      const mayHaveStaticFormFills = containsAscii(bytes, STATIC_FORM_FILLS_KEY_NAME)
+      setFormHasXfa(xfaMarker)
       if (!saved) {
         setFormCatalog(null)
         setSavedStaticFormFills([])
@@ -1087,7 +1091,7 @@ export default function App() {
           EncryptFilterName?: string | null
           IsXFAPresent?: boolean
         }
-        const formFeatures = documentFormFeatures(documentInfo, bytes)
+        const formFeatures = documentFormFeatures(documentInfo, xfaMarker)
         setFormHasXfa(formFeatures.hasXfa)
         setDocumentEncrypted(formFeatures.encrypted)
         for (let i = 1; i <= loaded.numPages; i++) {
@@ -1116,9 +1120,7 @@ export default function App() {
         // Reading the records parses the whole file in the main process; skip the round trip
         // for the (nearly all) files that carry none
         setSavedStaticFormFills(
-          containsAscii(bytes, STATIC_FORM_FILLS_KEY_NAME)
-            ? await window.pdfApi.listStaticFormFills(path)
-            : [],
+          mayHaveStaticFormFills ? await window.pdfApi.listStaticFormFills(path) : [],
         )
       } catch {
         setSavedStaticFormFills([])
