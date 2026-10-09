@@ -1,0 +1,190 @@
+diff --git a/apps/pdf/src/renderer/App.tsx b/apps/pdf/src/renderer/App.tsx
+index d07bc3a..574d542 100644
+--- a/apps/pdf/src/renderer/App.tsx
++++ b/apps/pdf/src/renderer/App.tsx
+@@ -162,6 +162,7 @@ import type {
+ } from '../shared/ipc'
+ import {
+   ZOOM_STEPS,
++  WHEEL_ZOOM_PER_PX,
+   MIN_SCALE,
+   MAX_SCALE,
+   PAGE_GAP,
+@@ -1588,15 +1589,18 @@ export default function App() {
+     const el = scrollRef.current
+     if (!el || rows.length === 0) return
+     const anchor = el.scrollTop + el.clientHeight * 0.4
++    // Running row top (same sum as rowTop) — calling rowTop(i) per row made this O(rows²)
+     let rowIdx = 0
++    let top = PAGE_GAP
+     for (let i = 0; i < rows.length; i++) {
+-      if (rowTop(i) <= anchor) rowIdx = i
++      if (top <= anchor) rowIdx = i
+       else break
++      top += rowHeights[i]! * scale + PAGE_GAP
+     }
+     const page = visList.indexOf(rows[rowIdx]![0]!) + 1
+     setCurrentPage(page)
+     setPageInput(String(page))
+-  }, [rows, rowTop, visList])
++  }, [rows, rowHeights, scale, visList])
+ 
+   const scrollToPage = (n: number) => {
+     const el = scrollRef.current
+@@ -5869,7 +5873,11 @@ export default function App() {
+       // Accumulate against the queued scale so a fast pinch loses no ticks between renders
+       const committed = layoutRef.current.scale
+       const current = queuedScaleRef.current ?? committed
+-      const next = clampScale(current - e.deltaY * 0.006)
++      // Multiplicative: every notch is the same zoom ratio at any level (a linear step
++      // was +60% at 100% but only +15% at 400%, and -60% when zooming out from 100%)
++      let next = clampScale(current * Math.exp(-e.deltaY * WHEEL_ZOOM_PER_PX))
++      // in-then-out must land exactly back on the committed scale (float drift)
++      if (Math.abs(next - committed) < 1e-6) next = committed
+       if (next === current) return
+       if (next === committed) {
+         // nets out to no change: the queue must still be overridden, else an intermediate
+diff --git a/apps/pdf/src/renderer/PdfPage.tsx b/apps/pdf/src/renderer/PdfPage.tsx
+index 5a27d4c..65c6d8a 100644
+--- a/apps/pdf/src/renderer/PdfPage.tsx
++++ b/apps/pdf/src/renderer/PdfPage.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useRef, useState } from 'react'
++import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+ import type { CSSProperties, RefObject } from 'react'
+ import { AnnotationMode, TextLayer } from 'pdfjs-dist/legacy/build/pdf.mjs'
+ import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
+@@ -44,6 +44,23 @@ export function useVisibleSet(
+   }
+ }
+ 
++/** Quiet period after the last zoom step before a visible page re-rasters. While the
++ *  user is still turning the wheel the current bitmap is only CSS-stretched. */
++const ZOOM_RERENDER_DELAY_MS = 150
++
++/** What the page's current bitmap + text layer were produced for */
++interface RenderedPage {
++  doc: PDFDocumentProxy
++  pageNo: number
++  rotationDelta: number
++  scale: number
++  /** viewport CSS size at scale 1 (the bitmap is stretched to unit × scale) */
++  unitW: number
++  unitH: number
++  textDiv: HTMLDivElement
++  textLayer: TextLayer
++}
++
+ /** Single page: renders canvas + text layer (select/copy) when visible, released once off-viewport */
+ export function PdfPage({
+   doc,
+@@ -62,6 +79,17 @@ export function PdfPage({
+   onRenderState: (doc: PDFDocumentProxy, pageNo: number, pending: boolean) => void
+ }) {
+   const holderRef = useRef<HTMLDivElement>(null)
++  const renderedRef = useRef<RenderedPage | null>(null)
++  // Zoom only (same document, page and rotation): stretch the current bitmap to the new
++  // page box in the same commit that resizes the box, so it never lags the layout.
++  useLayoutEffect(() => {
++    const prev = renderedRef.current
++    const canvas = holderRef.current?.querySelector('canvas')
++    if (!prev || !canvas) return
++    if (prev.doc !== doc || prev.pageNo !== pageNo || prev.rotationDelta !== rotationDelta) return
++    canvas.style.width = `${Math.floor(prev.unitW * scale)}px`
++    canvas.style.height = `${Math.floor(prev.unitH * scale)}px`
++  }, [doc, pageNo, rotationDelta, scale])
+   useEffect(() => {
+     const holder = holderRef.current
+     if (!holder) return
+@@ -70,18 +98,35 @@ export function PdfPage({
+     // is fully rendered so the page never flashes white between document instances.
+     if (!visible) {
+       holder.replaceChildren()
++      renderedRef.current = null
+       // A page captured by the post-save barrier may scroll out before its replacement
+       // renders. Its overlays are no longer mounted, so treat the cleared offscreen page
+       // as settled instead of making the whole document wait for the timeout.
+       onRenderState(doc, pageNo, false)
+       return
+     }
++    // Zoom only: the bitmap is already stretched (layout effect above); keep the text
++    // layer (its geometry is driven by --scale-factor) and re-raster once zooming pauses.
++    const prev = renderedRef.current
++    const zoomOnly =
++      prev !== null &&
++      holder.querySelector('canvas') !== null &&
++      prev.doc === doc &&
++      prev.pageNo === pageNo &&
++      prev.rotationDelta === rotationDelta
++    if (zoomOnly) {
++      if (prev.scale === scale) {
++        // back at the rendered scale before the re-raster fired: nothing left pending
++        onRenderState(doc, pageNo, false)
++        return
++      }
++    }
+     // Visibility may change while a save reload is running. Register newly visible
+     // pages dynamically so global preview cleanup cannot outrun their bitmap swap.
+     onRenderState(doc, pageNo, true)
+     let cancelled = false
+     let renderTask: RenderTask | null = null
+-    void (async () => {
++    const run = async () => {
+       const page = await doc.getPage(pageNo)
+       if (cancelled) return
+       const viewport = page.getViewport({ scale, rotation: (page.rotate + rotationDelta) % 360 })
+@@ -111,9 +156,21 @@ export function PdfPage({
+         return // cancelled
+       }
+       if (cancelled) return
++      const replaced = holder.querySelector('canvas')
++      const unit = { unitW: viewport.width / scale, unitH: viewport.height / scale }
++      if (zoomOnly && prev) {
++        holder.replaceChildren(canvas, prev.textDiv)
++        renderedRef.current = { ...prev, scale, ...unit }
++        onRenderState(doc, pageNo, false)
++        // free the old bitmap now instead of at the next GC (it can be tens of MB)
++        if (replaced) replaced.width = replaced.height = 0
++        prev.textLayer.update({ viewport })
++        return
++      }
+       const textDiv = document.createElement('div')
+       textDiv.className = 'textLayer'
+       holder.replaceChildren(canvas, textDiv)
++      if (replaced) replaced.width = replaced.height = 0
+       // Notify after the bitmap swap, but before the browser paints. A post-save
+       // reload uses this to remove the matching edit previews in the same frame.
+       onRenderState(doc, pageNo, false)
+@@ -122,14 +179,18 @@ export function PdfPage({
+         container: textDiv,
+         viewport,
+       })
++      renderedRef.current = { doc, pageNo, rotationDelta, scale, ...unit, textDiv, textLayer }
+       try {
+         await textLayer.render()
+       } catch {
+         /* cancelled */
+       }
+-    })()
++    }
++    const timer = zoomOnly ? window.setTimeout(() => void run(), ZOOM_RERENDER_DELAY_MS) : 0
++    if (!zoomOnly) void run()
+     return () => {
+       cancelled = true
++      window.clearTimeout(timer)
+       renderTask?.cancel()
+     }
+   }, [doc, pageNo, scale, rotationDelta, visible, onRenderState])
+diff --git a/apps/pdf/src/renderer/view-config.ts b/apps/pdf/src/renderer/view-config.ts
+index 798e06a..6825412 100644
+--- a/apps/pdf/src/renderer/view-config.ts
++++ b/apps/pdf/src/renderer/view-config.ts
+@@ -4,6 +4,8 @@ export const ASSET_BASE = new URL('pdfjs/', document.baseURI).href
+ export const ZOOM_STEPS = [
+   0.1, 0.25, 0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5, 6, 8,
+ ]
++/** Ctrl+wheel zoom: ln(ratio) per wheel pixel. A 100px mouse notch zooms ×1.2 */
++export const WHEEL_ZOOM_PER_PX = Math.log(1.2) / 100
+ export const MIN_SCALE = ZOOM_STEPS[0]
+ export const MAX_SCALE = ZOOM_STEPS[ZOOM_STEPS.length - 1]
+ export const PAGE_GAP = 16
