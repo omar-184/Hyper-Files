@@ -78,6 +78,17 @@ async function shownBoxes(app: ElectronApplication): Promise<string[]> {
   return app.evaluate(() => (globalThis as unknown as { __boxes: string[] }).__boxes)
 }
 
+/** The window with the Home screen's API (firstWindow() may be an editor view instead) */
+async function shellPage(app: ElectronApplication): Promise<Page> {
+  for (const page of app.windows()) {
+    const hasApi = await page
+      .evaluate(() => Boolean((window as unknown as { hyperFiles?: unknown }).hyperFiles))
+      .catch(() => false)
+    if (hasApi) return page
+  }
+  throw new Error('No window exposing window.hyperFiles')
+}
+
 async function addTextBox(editor: Page, text: string, at: number): Promise<void> {
   // The tool button toggles, and the tool stays armed after placing a box
   const tool = editor.getByRole('button', { name: 'Text box', exact: true })
@@ -183,7 +194,8 @@ test('renaming an open signed PDF keeps the warning for the renamed file', async
     await addTextBox(editor, 'After rename', 0.3)
 
     // Rename the open file through the Home screen's rename (the view keeps its document)
-    const result = await launched.page.evaluate(
+    const shell = await shellPage(launched.app)
+    const result = await shell.evaluate(
       ([path, name]) =>
         (
           window as unknown as {
