@@ -54,6 +54,9 @@ export const es = {
   fmtBold: 'Negrita',
   fmtItalic: 'Cursiva',
   openExternal: 'Enlace abierto en el navegador',
+  remoteBlocked:
+    'Las imágenes, fuentes y scripts de internet están bloqueados en esta vista previa.',
+  remoteLoad: 'Cargar contenido web',
   save: 'Guardar (⌘S)',
   saveAs: 'Guardar como…',
   ribbonCollapse: 'Contraer la cinta de opciones',

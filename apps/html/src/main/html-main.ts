@@ -388,6 +388,8 @@ const savePathByWc = new Map<number, string>()
 const dirtyByWc = new Set<number>()
 /** Latest buffer text pushed by each renderer; served by html-preview:// to the preview iframe */
 const previewTextByWc = new Map<number, string>()
+/** views whose user chose "Load web content"; every other preview blocks it (preview-protocol.ts) */
+const remoteAllowedWc = new Set<number>()
 const closeSaveWaiters = new Map<number, (ok: boolean) => void>()
 /** Resolvers for menu-triggered saves, resolved when the renderer's save invoke completes */
 const saveWaiters = new Map<number, (ok: boolean) => void>()
@@ -708,7 +710,11 @@ function registerHtmlIpc(): void {
     const text = previewTextByWc.get(wcId)
     if (text === undefined) return null
     const doc = savePathByWc.get(wcId)
-    return { text, baseHref: doc ? assetBaseHref(dirname(doc)) : null }
+    return {
+      text,
+      baseHref: doc ? assetBaseHref(dirname(doc)) : null,
+      allowRemote: remoteAllowedWc.has(wcId),
+    }
   })
 
   ipcMain.handle(HTML_CHANNELS.consumePending, (e) => openPathByWc.get(e.sender.id) ?? null)
@@ -734,6 +740,11 @@ function registerHtmlIpc(): void {
 
   ipcMain.on(HTML_CHANNELS.previewUpdate, (e, text: unknown) => {
     if (typeof text === 'string') previewTextByWc.set(e.sender.id, text)
+  })
+
+  // "Load web content" on the preview's bar: for this tab only, until it closes
+  ipcMain.handle(HTML_CHANNELS.previewAllowRemote, (e) => {
+    remoteAllowedWc.add(e.sender.id)
   })
 
   ipcMain.handle(HTML_CHANNELS.previewInfo, (e) => ({
@@ -1156,6 +1167,7 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     savePathByWc.delete(wcId)
     dirtyByWc.delete(wcId)
     previewTextByWc.delete(wcId)
+    remoteAllowedWc.delete(wcId)
     closeSaveWaiters.get(wcId)?.(false)
     closeSaveWaiters.delete(wcId)
     saveWaiters.get(wcId)?.(false)

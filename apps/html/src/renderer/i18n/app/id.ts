@@ -51,6 +51,8 @@ export const id = {
   fmtBold: 'Tebal',
   fmtItalic: 'Miring',
   openExternal: 'Tautan dibuka di browser',
+  remoteBlocked: 'Gambar, font, dan skrip dari internet diblokir di pratinjau ini.',
+  remoteLoad: 'Muat konten web',
   save: 'Simpan (⌘S)',
   saveAs: 'Simpan Sebagai…',
   ribbonCollapse: 'Ciutkan Pita',

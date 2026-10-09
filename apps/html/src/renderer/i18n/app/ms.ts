@@ -51,6 +51,8 @@ export const ms = {
   fmtBold: 'Tebal',
   fmtItalic: 'Condong',
   openExternal: 'Pautan dibuka dalam pelayar',
+  remoteBlocked: 'Gambar, fon dan skrip dari internet disekat dalam pratonton ini.',
+  remoteLoad: 'Muatkan kandungan web',
   save: 'Simpan (⌘S)',
   saveAs: 'Simpan Sebagai…',
   ribbonCollapse: 'Runtuhkan Reben',

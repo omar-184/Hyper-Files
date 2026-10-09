@@ -51,6 +51,8 @@ export const pl = {
   fmtBold: 'Pogrubienie',
   fmtItalic: 'Kursywa',
   openExternal: 'Link otwarty w przeglądarce',
+  remoteBlocked: 'Obrazy, czcionki i skrypty z internetu są zablokowane w tym podglądzie.',
+  remoteLoad: 'Wczytaj zawartość z sieci',
   save: 'Zapisz (⌘S)',
   saveAs: 'Zapisz jako…',
   ribbonCollapse: 'Zwiń Wstążkę',

@@ -51,6 +51,8 @@ export const ko = {
   fmtBold: '굵게',
   fmtItalic: '기울임',
   openExternal: '브라우저에서 링크를 열었습니다',
+  remoteBlocked: '이 미리 보기에서는 인터넷의 그림, 글꼴, 스크립트가 차단됩니다.',
+  remoteLoad: '웹 콘텐츠 불러오기',
   save: '저장 (⌘S)',
   saveAs: '다른 이름으로 저장…',
   ribbonCollapse: '리본 축소',

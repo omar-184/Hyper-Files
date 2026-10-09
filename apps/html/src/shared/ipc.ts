@@ -5,6 +5,7 @@ export const HTML_CHANNELS = {
   consumePending: 'html:consume-pending',
   previewUpdate: 'html:preview-update',
   previewInfo: 'html:preview-info',
+  previewAllowRemote: 'html:preview-allow-remote',
   presentFullScreen: 'html:present-fullscreen',
   presentNewTab: 'html:present-new-tab',
   readFile: 'html:read-file',
@@ -126,6 +127,8 @@ export interface HtmlApi {
   updatePreview(text: string): void
   /** The html-preview:// URL bound to this view (a present tab gets its owner's URL) */
   getPreviewInfo(): Promise<{ url: string }>
+  /** Load the document's web content in this tab's preview (blocked by default) */
+  allowRemoteContent(): Promise<void>
   /** Present → Fullscreen: cover the screen in one main-side call (tab-strip bleed, macOS simpleFullScreen) */
   setPresentFullScreen(on: boolean): Promise<void>
   /** Present → New tab: a chrome-free tab (shell) or window (standalone) showing this view's preview */

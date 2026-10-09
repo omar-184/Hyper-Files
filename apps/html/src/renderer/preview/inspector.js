@@ -1099,4 +1099,12 @@
     title: document.title,
     docHeight: document.documentElement.scrollHeight,
   })
+
+  // With web content blocked, the main process puts a counter at the top of the head
+  // (preview-document.ts); report what it refused before this script ran, and anything later
+  const remote = window.__gxRemoteBlocked
+  if (remote) {
+    remote.notify = () => post({ type: 'gx:remoteBlocked' })
+    if (remote.count > 0) remote.notify()
+  }
 })()

@@ -55,6 +55,8 @@ export const it = {
   fmtBold: 'Grassetto',
   fmtItalic: 'Corsivo',
   openExternal: 'Link aperto nel browser',
+  remoteBlocked: 'Immagini, caratteri e script da internet sono bloccati in questa anteprima.',
+  remoteLoad: 'Carica contenuti web',
   save: 'Salva (⌘S)',
   saveAs: 'Salva con nome…',
   ribbonCollapse: 'Riduci a icona la barra multifunzione',

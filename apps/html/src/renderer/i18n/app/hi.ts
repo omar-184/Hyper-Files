@@ -52,6 +52,8 @@ export const hi = {
   fmtBold: 'बोल्ड',
   fmtItalic: 'इटैलिक',
   openExternal: 'लिंक ब्राउज़र में खोला गया',
+  remoteBlocked: 'इस पूर्वावलोकन में इंटरनेट से चित्र, फ़ॉन्ट और स्क्रिप्ट अवरुद्ध हैं।',
+  remoteLoad: 'वेब सामग्री लोड करें',
   save: 'सहेजें (⌘S)',
   saveAs: 'इस रूप में सहेजें…',
   ribbonCollapse: 'रिबन संक्षिप्त करें',

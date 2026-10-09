@@ -50,6 +50,8 @@ export const zhTW = {
   fmtBold: '粗體',
   fmtItalic: '斜體',
   openExternal: '已在瀏覽器中開啟連結',
+  remoteBlocked: '此預覽已封鎖來自網際網路的圖片、字型和指令碼。',
+  remoteLoad: '載入網頁內容',
   save: '儲存 (⌘S)',
   saveAs: '另存新檔…',
   ribbonCollapse: '摺疊功能區',

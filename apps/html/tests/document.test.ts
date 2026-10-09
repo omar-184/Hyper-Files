@@ -200,4 +200,46 @@ describe('preview document', () => {
     expect(buildPreviewDocument('<p>a</p>', null)).toBe('<p>a</p>')
     expect(assetBaseHref('C:\\Users\\h\\docs\\')).toBe('html-asset://local/C:/Users/h/docs/')
   })
+
+  it('keeps a leading doctype first when the document has no head or html tag', async () => {
+    const { buildPreviewDocument } = await import('../src/main/preview-document')
+    const base = 'html-asset://local/docs/'
+    expect(buildPreviewDocument('<!DOCTYPE html><title>x</title><p>a</p>', base)).toBe(
+      `<!DOCTYPE html><base href="${base}"><title>x</title><p>a</p>`,
+    )
+    expect(buildPreviewDocument('\n<!-- note -->\n<!doctype html>\n<p>a</p>', base)).toBe(
+      `\n<!-- note -->\n<!doctype html><base href="${base}">\n<p>a</p>`,
+    )
+  })
+
+  it('places head markup after the base, even when the author declared their own base', async () => {
+    const { buildPreviewDocument, REMOTE_GUARD_SCRIPT } =
+      await import('../src/main/preview-document')
+    const base = 'html-asset://local/docs/'
+    expect(
+      buildPreviewDocument(
+        '<html><head><title>x</title></head></html>',
+        base,
+        '<script>g</script>',
+      ),
+    ).toBe(`<html><head><base href="${base}"><script>g</script><title>x</title></head></html>`)
+    const authored = '<html><head><base href="https://x/"></head></html>'
+    expect(buildPreviewDocument(authored, base, '<script>g</script>')).toBe(
+      '<html><head><script>g</script><base href="https://x/"></head></html>',
+    )
+    expect(buildPreviewDocument('<p>a</p>', null, '<script>g</script>')).toBe(
+      '<script>g</script><p>a</p>',
+    )
+    expect(REMOTE_GUARD_SCRIPT).toMatch(/^<script data-gx-inspector>[\s\S]*<\/script>$/)
+  })
+
+  it('blocks network content in the preview policy and keeps local content', async () => {
+    const { BLOCK_REMOTE_CSP } = await import('../src/main/preview-document')
+    const defaultSrc = BLOCK_REMOTE_CSP.split(';')[0]!.trim().split(/\s+/)
+    expect(defaultSrc[0]).toBe('default-src')
+    expect(defaultSrc).toEqual(
+      expect.arrayContaining(['html-preview:', 'html-asset:', 'data:', 'blob:', "'unsafe-inline'"]),
+    )
+    expect(BLOCK_REMOTE_CSP).not.toMatch(/https?:|\*/)
+  })
 })

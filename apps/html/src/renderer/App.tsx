@@ -154,6 +154,9 @@ export default function App() {
   )
   const [panelDismissedSid, setPanelDismissedSid] = useState<number | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  /** the preview refused web content (blocked until the user loads it for this tab) */
+  const [remoteBlocked, setRemoteBlocked] = useState(false)
+  const [remoteAllowed, setRemoteAllowed] = useState(false)
   /** a resize / reorder drag is in progress inside the frame: the floating chrome would only get in the way */
   const [dragging, setDragging] = useState(false)
   /** freshly inserted text element: opens for typing once the reloaded frame reports ready */
@@ -656,6 +659,9 @@ export default function App() {
           window.open(msg.href)
           setNotice(t('openExternal'))
           return
+        case 'gx:remoteBlocked':
+          setRemoteBlocked(true)
+          return
         case 'gx:resize':
           if (msg.sid === selectedSidRef.current) previewStyleRef.current(msg.styles)
           return
@@ -906,6 +912,15 @@ export default function App() {
     },
     [path, setCanvasMode, flushPending, pushPreview],
   )
+
+  // "Load web content": the main process drops the preview's content policy for this tab,
+  // then the frame reloads the same copy (its parse-map version is still live)
+  const loadRemoteContent = useCallback(() => {
+    void window.htmlApi.allowRemoteContent().then(() => {
+      setRemoteAllowed(true)
+      setPreviewNonce((n) => n + 1)
+    })
+  }, [])
 
   // a link navigation inside the presented frame keeps focus in a document without our
   // inspector; hand it back to the app so Esc still ends the presentation
@@ -1306,6 +1321,14 @@ export default function App() {
           )}
           <div className={`workspace view-${canvasMode === 'present' ? 'preview' : view}`}>
             <div className="pane pane-preview">
+              {remoteBlocked && !remoteAllowed && canvasMode !== 'present' && (
+                <div className="remote-bar" role="status">
+                  <span className="remote-bar-text">{t('remoteBlocked')}</span>
+                  <button type="button" className="remote-bar-load" onClick={loadRemoteContent}>
+                    {t('remoteLoad')}
+                  </button>
+                </div>
+              )}
               <div
                 className="preview-stage"
                 ref={stageRef}
