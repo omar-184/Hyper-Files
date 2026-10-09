@@ -157,3 +157,27 @@ export function zoomAnchorY(
     top += rowHeights[i]! * scale + gap
   return top + anchor.content * scale + anchor.fixed
 }
+
+/** Index of the last row whose top is at or above document-space `y`, with rows laid out at
+ *  `scale` (`rowHeights` at scale 1). One running sum: linear in the number of rows, so it
+ *  stays cheap on every scroll event of a document with thousands of pages. */
+export function rowIndexAt(y: number, rowHeights: number[], gap: number, scale: number): number {
+  let rowIdx = 0
+  let top = gap
+  for (let i = 0; i < rowHeights.length; i++) {
+    if (top <= y) rowIdx = i
+    else break
+    top += rowHeights[i]! * scale + gap
+  }
+  return rowIdx
+}
+
+/** Zoom ratio per wheel pixel: a 100px mouse-wheel notch zooms by x1.2 */
+export const WHEEL_ZOOM_PER_PX = Math.log(1.2) / 100
+
+/** Scale after a Ctrl+wheel delta. Multiplicative, so every notch is the same zoom ratio at
+ *  any level (a linear step was +60% at 100% but only +15% at 400%); a pinch's small deltas
+ *  give small, smooth steps. Unclamped: the caller applies the zoom limits. */
+export function wheelZoomScale(current: number, deltaY: number): number {
+  return current * Math.exp(-deltaY * WHEEL_ZOOM_PER_PX)
+}

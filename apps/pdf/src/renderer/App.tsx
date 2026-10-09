@@ -58,7 +58,9 @@ import {
   captureViewState,
   captureZoomAnchor,
   loadViewState,
+  rowIndexAt,
   saveViewState,
+  wheelZoomScale,
   zoomAnchorY,
 } from './view-state'
 import type { PdfViewState, ZoomAnchor } from './view-state'
@@ -1587,16 +1589,12 @@ export default function App() {
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
     if (!el || rows.length === 0) return
-    const anchor = el.scrollTop + el.clientHeight * 0.4
-    let rowIdx = 0
-    for (let i = 0; i < rows.length; i++) {
-      if (rowTop(i) <= anchor) rowIdx = i
-      else break
-    }
+    // rowIndexAt is one running sum: calling rowTop(i) per row was quadratic in the page count
+    const rowIdx = rowIndexAt(el.scrollTop + el.clientHeight * 0.4, rowHeights, PAGE_GAP, scale)
     const page = visList.indexOf(rows[rowIdx]![0]!) + 1
     setCurrentPage(page)
     setPageInput(String(page))
-  }, [rows, rowTop, visList])
+  }, [rows, rowHeights, scale, visList])
 
   const scrollToPage = (n: number) => {
     const el = scrollRef.current
@@ -5869,7 +5867,9 @@ export default function App() {
       // Accumulate against the queued scale so a fast pinch loses no ticks between renders
       const committed = layoutRef.current.scale
       const current = queuedScaleRef.current ?? committed
-      const next = clampScale(current - e.deltaY * 0.006)
+      let next = clampScale(wheelZoomScale(current, e.deltaY))
+      // in-then-out must land exactly back on the committed scale (float drift)
+      if (Math.abs(next - committed) < 1e-6) next = committed
       if (next === current) return
       if (next === committed) {
         // nets out to no change: the queue must still be overridden, else an intermediate

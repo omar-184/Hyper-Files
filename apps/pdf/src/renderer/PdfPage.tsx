@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { AnnotationMode, TextLayer } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
@@ -44,6 +44,23 @@ export function useVisibleSet(
   }
 }
 
+/** Quiet period after the last zoom step before a visible page re-rasters. While the
+ *  user is still turning the wheel the current bitmap is only CSS-stretched. */
+const ZOOM_RERENDER_DELAY_MS = 100
+
+/** What the page's current bitmap + text layer were produced for */
+interface RenderedPage {
+  doc: PDFDocumentProxy
+  pageNo: number
+  rotationDelta: number
+  scale: number
+  /** viewport CSS size at scale 1 (the bitmap is stretched to unit × scale) */
+  unitW: number
+  unitH: number
+  textDiv: HTMLDivElement
+  textLayer: TextLayer
+}
+
 /** Single page: renders canvas + text layer (select/copy) when visible, released once off-viewport */
 export function PdfPage({
   doc,
@@ -62,6 +79,17 @@ export function PdfPage({
   onRenderState: (doc: PDFDocumentProxy, pageNo: number, pending: boolean) => void
 }) {
   const holderRef = useRef<HTMLDivElement>(null)
+  const renderedRef = useRef<RenderedPage | null>(null)
+  // Zoom only (same document, page and rotation): stretch the current bitmap to the new
+  // page box in the same commit that resizes the box, so it never lags the layout.
+  useLayoutEffect(() => {
+    const prev = renderedRef.current
+    const canvas = holderRef.current?.querySelector('canvas')
+    if (!prev || !canvas) return
+    if (prev.doc !== doc || prev.pageNo !== pageNo || prev.rotationDelta !== rotationDelta) return
+    canvas.style.width = `${Math.floor(prev.unitW * scale)}px`
+    canvas.style.height = `${Math.floor(prev.unitH * scale)}px`
+  }, [doc, pageNo, rotationDelta, scale])
   useEffect(() => {
     const holder = holderRef.current
     if (!holder) return
@@ -70,18 +98,35 @@ export function PdfPage({
     // is fully rendered so the page never flashes white between document instances.
     if (!visible) {
       holder.replaceChildren()
+      renderedRef.current = null
       // A page captured by the post-save barrier may scroll out before its replacement
       // renders. Its overlays are no longer mounted, so treat the cleared offscreen page
       // as settled instead of making the whole document wait for the timeout.
       onRenderState(doc, pageNo, false)
       return
     }
+    // Zoom only: the bitmap is already stretched (layout effect above); keep the text
+    // layer (its geometry is driven by --scale-factor) and re-raster once zooming pauses.
+    const prev = renderedRef.current
+    const zoomOnly =
+      prev !== null &&
+      holder.querySelector('canvas') !== null &&
+      prev.doc === doc &&
+      prev.pageNo === pageNo &&
+      prev.rotationDelta === rotationDelta
+    if (zoomOnly) {
+      if (prev.scale === scale) {
+        // back at the rendered scale before the re-raster fired: nothing left pending
+        onRenderState(doc, pageNo, false)
+        return
+      }
+    }
     // Visibility may change while a save reload is running. Register newly visible
     // pages dynamically so global preview cleanup cannot outrun their bitmap swap.
     onRenderState(doc, pageNo, true)
     let cancelled = false
     let renderTask: RenderTask | null = null
-    void (async () => {
+    const run = async () => {
       const page = await doc.getPage(pageNo)
       if (cancelled) return
       const viewport = page.getViewport({ scale, rotation: (page.rotate + rotationDelta) % 360 })
@@ -111,9 +156,21 @@ export function PdfPage({
         return // cancelled
       }
       if (cancelled) return
+      const replaced = holder.querySelector('canvas')
+      const unit = { unitW: viewport.width / scale, unitH: viewport.height / scale }
+      if (zoomOnly && prev) {
+        holder.replaceChildren(canvas, prev.textDiv)
+        renderedRef.current = { ...prev, scale, ...unit }
+        onRenderState(doc, pageNo, false)
+        // free the old bitmap now instead of at the next GC (it can be tens of MB)
+        if (replaced) replaced.width = replaced.height = 0
+        prev.textLayer.update({ viewport })
+        return
+      }
       const textDiv = document.createElement('div')
       textDiv.className = 'textLayer'
       holder.replaceChildren(canvas, textDiv)
+      if (replaced) replaced.width = replaced.height = 0
       // Notify after the bitmap swap, but before the browser paints. A post-save
       // reload uses this to remove the matching edit previews in the same frame.
       onRenderState(doc, pageNo, false)
@@ -122,14 +179,18 @@ export function PdfPage({
         container: textDiv,
         viewport,
       })
+      renderedRef.current = { doc, pageNo, rotationDelta, scale, ...unit, textDiv, textLayer }
       try {
         await textLayer.render()
       } catch {
         /* cancelled */
       }
-    })()
+    }
+    const timer = zoomOnly ? window.setTimeout(() => void run(), ZOOM_RERENDER_DELAY_MS) : 0
+    if (!zoomOnly) void run()
     return () => {
       cancelled = true
+      window.clearTimeout(timer)
       renderTask?.cancel()
     }
   }, [doc, pageNo, scale, rotationDelta, visible, onRenderState])
