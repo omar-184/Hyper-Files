@@ -17,7 +17,8 @@
     "./renderer-protocol": "./src/renderer-protocol.ts",
     "./renderer-scheme": "./src/renderer-scheme.ts",
     "./safe-external-url": "./src/safe-external-url.ts",
-    "./safe-remote-url": "./src/safe-remote-url.ts"
+    "./safe-remote-url": "./src/safe-remote-url.ts",
+    "./spell-dictionaries": "./src/spell-dictionaries.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

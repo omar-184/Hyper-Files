@@ -245,6 +245,13 @@ const config = {
       from: '../../node_modules/electron/dist/LICENSES.chromium.html',
       to: 'LICENSES.chromium.html',
     },
+    // English spell-check dictionaries, seeded into userData/Dictionaries so Chromium
+    // never downloads one (packages/electron-utils/src/spell-dictionaries.ts)
+    {
+      from: 'build/dictionaries',
+      to: 'dictionaries',
+      filter: ['*.bdic', 'LICENSE-SCOWL.txt'],
+    },
     {
       from: '../docs/out',
       to: 'modules/docs',

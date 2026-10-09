@@ -15,6 +15,7 @@
 *.otf binary
 *.woff binary
 *.woff2 binary
+*.bdic binary
 
 # Windows scripts keep CRLF (Hypercube Office)
 *.bat text eol=crlf
