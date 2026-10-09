@@ -140,7 +140,8 @@ import { platformShortcuts } from '@genoffice/i18n'
 import { Dropdown, useDismissablePopover, useRibbonCollapse } from '@genoffice/ui'
 import { useI18n } from './i18n/locale'
 import { useAutosave } from './useAutosave'
-import { MAX_REDACTION_REGIONS } from '../shared/ipc'
+import { containsAscii } from '../shared/ascii-search'
+import { MAX_REDACTION_REGIONS, STATIC_FORM_FILLS_KEY_NAME } from '../shared/ipc'
 import type { NewFieldType } from '../shared/ipc'
 import type {
   AnnotDeleteInput,
@@ -1112,7 +1113,13 @@ export default function App() {
         setFormCatalog({ widgets: [], fields: new Map(), byPage: new Map() })
       }
       try {
-        setSavedStaticFormFills(await window.pdfApi.listStaticFormFills(path))
+        // Reading the records parses the whole file in the main process; skip the round trip
+        // for the (nearly all) files that carry none
+        setSavedStaticFormFills(
+          containsAscii(bytes, STATIC_FORM_FILLS_KEY_NAME)
+            ? await window.pdfApi.listStaticFormFills(path)
+            : [],
+        )
       } catch {
         setSavedStaticFormFills([])
       }

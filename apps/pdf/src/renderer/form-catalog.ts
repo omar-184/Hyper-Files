@@ -1,4 +1,5 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+import { indexOfAscii } from '../shared/ascii-search'
 import { VISUAL_SIGNATURE_CONTENT_PREFIX } from '../shared/ipc'
 
 export type FormWidgetKind = 'text' | 'checkbox' | 'radio' | 'choice' | 'signature'
@@ -283,7 +284,6 @@ function rectsSubstantiallyOverlap(a: number[], b: number[]): boolean {
 
 /** Lightweight pre-parse warning for XFA or mixed AcroForm/XFA documents. */
 export function hasXfaMarker(bytes: Uint8Array): boolean {
-  const marker = [0x2f, 0x58, 0x46, 0x41] // /XFA
   // PDF whitespace and the delimiters that legitimately precede or follow a name token
   const isDelimiter = (b: number): boolean =>
     b === 0 || // NUL
@@ -296,16 +296,18 @@ export function hasXfaMarker(bytes: Uint8Array): boolean {
     b === 0x5b || // [
     b === 0x7b || // {
     b === 0x2f // / — another name token starts here, so ours ended
-  outer: for (let index = 0; index <= bytes.length - marker.length; index++) {
-    for (let offset = 0; offset < marker.length; offset++) {
-      if (bytes[index + offset] !== marker[offset]) continue outer
-    }
+  // Runs over the whole file on every open. Native per-candidate search keeps a 150 MB file
+  // well under 100 ms (a byte-by-byte loop took over a second); it anchors on 'XFA' because
+  // '/' starts every name token and is by far the most frequent first byte to step through.
+  for (let at = indexOfAscii(bytes, 'XFA', 1); at !== -1; at = indexOfAscii(bytes, 'XFA', at + 1)) {
+    const slash = at - 1
+    if (bytes[slash] !== 0x2f) continue
     // In PDF syntax `/` starts a name token after ANY regular character, so a match is
     // real only when the byte before it ends the previous token. Without this, content
     // text like '(/XFA forms)' or '/DR 5 0 R/XFA 6 0 R' reads as an XFA document.
     // '(' is deliberately absent: it opens a literal string, so '/XFA' after it is
     // string content, not a key.
-    const before = index > 0 ? bytes[index - 1]! : null
+    const before = slash > 0 ? bytes[slash - 1]! : null
     if (before != null && !isDelimiter(before)) continue
     return true
   }

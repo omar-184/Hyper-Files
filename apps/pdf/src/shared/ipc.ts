@@ -459,6 +459,10 @@ export interface PageImageRef {
   aboveText: boolean
 }
 
+/** Catalog key holding the static form fill records. The save path always writes the catalog
+ *  uncompressed, so the name appears verbatim in any file it stored records in. */
+export const STATIC_FORM_FILLS_KEY_NAME = 'GenOfficeStaticFormFills'
+
 /** Editable metadata for a GenOffice static form fill embedded as a page image. */
 export interface StaticFormFillRecord {
   id: string
